@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xander's Parenting Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --j:      #2563eb;
+  --j-l:    #dbeafe;
+  --j-m:    #93c5fd;
+  --j-d:    #1e40af;
+  --b:      #ec4899;
+  --b-l:    #fce7f3;
+  --b-m:    #f9a8d4;
+  --b-d:    #9d174d;
+  --gold:   #f59e0b;
+  --gold-l: #fef3c7;
+  --bg:     #f1f5f9;
+  --card:   #ffffff;
+  --border: #e2e8f0;
+  --text:   #0f172a;
+  --muted:  #64748b;
+  --r:      10px;
+  --shadow: 0 2px 16px rgba(0,0,0,0.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 100%);padding:18px 22px 14px;color:#fff}
+.hdr-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+.hdr-title{font-family:'Nunito',sans-serif;font-size:1.55em;font-weight:900;letter-spacing:-.4px}
+.hdr-sub{font-size:.8em;opacity:.72;margin-top:2px}
+.hdr-info{text-align:right;font-size:.8em;opacity:.85}
+.hdr-info b{font-family:'Nunito',sans-serif;font-size:1.05em}
+.badges{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.badge{padding:5px 13px;border-radius:20px;font-size:.78em;font-weight:700;font-family:'Nunito',sans-serif}
+.badge-j{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35)}
+.badge-b{background:rgba(236,72,153,.28);border:1.5px solid rgba(236,72,153,.55)}
+
+/* LEGEND */
+.legend{background:#fff;border-bottom:1px solid var(--border);padding:9px 18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.lg{display:flex;align-items:center;gap:5px;font-size:.73em;color:var(--text)}
+.ls{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.1);flex-shrink:0}
+.changed-ls{width:9px;height:9px;border-radius:50%;background:var(--gold);border:none}
+.legend-hint{font-size:.7em;color:var(--muted);margin-left:auto}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:#fff;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.month-lbl{font-family:'Nunito',sans-serif;font-size:1.3em;font-weight:800;min-width:190px;text-align:center}
+.nav-btn{background:var(--j);color:#fff;border:none;border-radius:8px;padding:7px 18px;font-size:.88em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .14s,transform .1s}
+.nav-btn:hover{background:var(--j-d);transform:translateY(-1px)}
+.nav-btn:active{transform:translateY(0)}
+
+/* QUICK JUMPS */
+.qj-bar{background:#fff;border-bottom:1px solid var(--border);padding:7px 18px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.qj-lbl{font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:4px}
+.qj{background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.73em;font-weight:600;cursor:pointer;transition:all .14s;color:var(--text);font-family:'DM Sans',sans-serif}
+.qj:hover,.qj.active{background:var(--j-l);border-color:var(--j-m);color:var(--j-d)}
+
+/* STATS */
+.stats{display:flex;gap:9px;padding:9px 18px;background:#f8fafc;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 13px;font-size:.78em}
+.stat-dot{width:10px;height:10px;border-radius:50%}
+.stat-v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.15em}
+.stat-l{color:var(--muted);font-size:.82em}
+
+/* SUMMER BANNER */
+.sum-banner{margin:10px 16px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sum-t{font-weight:700;font-family:'Nunito',sans-serif;font-size:.88em}
+.sum-s{font-size:.75em;color:#92400e;margin-top:2px}
+.btn-sum{background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:.8em;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap;transition:background .14s}
+.btn-sum:hover{background:#d97706}
+
+/* CALENDAR */
+.cal-wrap{padding:12px 14px 24px;max-width:980px;margin:0 auto}
+.day-hdrs{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
+.dh{text-align:center;font-family:'Nunito',sans-serif;font-size:.7em;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:4px 0}
+.dh.wknd{color:var(--j)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+
+/* DAY CELLS */
+.dc{border-radius:9px;padding:7px 6px 6px;min-height:105px;border:1.5px solid transparent;cursor:pointer;transition:box-shadow .14s,transform .1s;position:relative;user-select:none;display:flex;flex-direction:column;gap:2px}
+.dc:hover{box-shadow:0 5px 18px rgba(0,0,0,.14);transform:translateY(-2px);z-index:5}
+.dc.empty{background:#e9eef4;cursor:default;border-color:transparent}
+.dc.empty:hover{box-shadow:none;transform:none}
+
+.dc.j-reg{background:var(--j-l);border-color:var(--j-m)}
+.dc.j-strong{background:#bfdbfe;border-color:var(--j)}
+.dc.b-reg{background:var(--b-l);border-color:var(--b-m)}
+.dc.b-strong{background:#fbcfe8;border-color:var(--b)}
+.dc.bday{background:var(--gold-l)!important;border-color:var(--gold)!important}
+.dc.mid{background:#ede9fe;border-color:#a78bfa}
+.dc.today-ring{outline:2.5px solid var(--gold);outline-offset:-1px}
+
+.d-num{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.05em;line-height:1}
+.d-today{font-size:.6em;color:#92400e;font-weight:700;vertical-align:middle;margin-left:3px}
+.d-event{font-size:.67em;color:var(--muted);font-weight:600;line-height:1.2;margin-top:1px}
+.d-owner{display:inline-block;font-size:.68em;font-weight:700;padding:2px 6px;border-radius:4px;margin-top:auto}
+.d-owner.j{background:var(--j);color:#fff}
+.d-owner.b{background:var(--b);color:#fff}
+.d-note{font-size:.63em;color:#7c3aed;font-style:italic;line-height:1.2;margin-top:1px}
+.d-mid{font-size:.61em;background:#ddd6fe;color:#4c1d95;border-radius:3px;padding:1px 4px;font-weight:600;margin-top:1px;display:inline-block}
+.d-bday{font-size:.66em;background:var(--gold);color:#fff;border-radius:4px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block}
+.changed-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 1.5px #fff}
+
+/* MODALS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;width:90%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.28);animation:popIn .18s ease}
+@keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-title{font-family:'Nunito',sans-serif;font-size:1.18em;font-weight:800;margin-bottom:3px}
+.modal-sub{font-size:.78em;color:var(--muted);margin-bottom:16px}
+.field-lbl{font-size:.72em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.sel,.inp,.ta{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.92em;font-family:'DM Sans',sans-serif;margin-bottom:13px;transition:border-color .14s;background:#fff;color:var(--text)}
+.sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.sel:focus,.inp:focus,.ta:focus{outline:none;border-color:var(--j)}
+.ta{resize:vertical;min-height:62px;margin-bottom:16px}
+.btn-row{display:flex;gap:7px}
+.btn{border:none;border-radius:8px;padding:9px 14px;font-weight:700;font-size:.85em;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .14s}
+.btn-save{flex:1;background:var(--j);color:#fff}.btn-save:hover{background:var(--j-d)}
+.btn-reset{background:#fee2e2;color:#dc2626}.btn-reset:hover{background:#fecaca}
+.btn-cancel{background:#f1f5f9;color:var(--text)}.btn-cancel:hover{background:#e2e8f0}
+
+/* SUMMER PLANNER MODAL */
+.sum-modal{background:#fff;border-radius:16px;width:92%;max-width:560px;box-shadow:0 24px 60px rgba(0,0,0,.28);animation:popIn .18s ease;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.sum-modal-hdr{background:linear-gradient(135deg,#78350f,#d97706);padding:18px 22px 14px;color:#fff;flex-shrink:0}
+.sum-modal-title{font-family:'Nunito',sans-serif;font-size:1.2em;font-weight:900}
+.sum-modal-sub{font-size:.78em;opacity:.8;margin-top:3px}
+.sum-modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+.week-card{background:#f8fafc;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;position:relative}
+.week-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.week-num{font-family:'Nunito',sans-serif;font-weight:800;font-size:.85em;color:var(--muted)}
+.rm-btn{background:none;border:none;color:#dc2626;cursor:pointer;font-size:1.1em;padding:2px 6px;border-radius:5px;transition:background .1s;line-height:1}
+.rm-btn:hover{background:#fee2e2}
+.week-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.week-owner-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0}
+.date-inp{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.83em;font-family:'DM Sans',sans-serif;cursor:pointer;transition:border-color .14s}
+.date-inp:focus{outline:none;border-color:var(--gold)}
+.week-label-inp{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.82em;font-family:'DM Sans',sans-serif;margin-top:7px;transition:border-color .14s}
+.week-label-inp:focus{outline:none;border-color:var(--gold)}
+.owner-btn{padding:6px 0;border:1.5px solid var(--border);border-radius:7px;font-size:.78em;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .14s;background:#f1f5f9;color:var(--text);text-align:center}
+.owner-btn.active-j{background:var(--j);color:#fff;border-color:var(--j-d)}
+.owner-btn.active-b{background:var(--b);color:#fff;border-color:var(--b-d)}
+.week-days-badge{font-size:.72em;color:var(--muted);margin-top:6px;font-style:italic}
+.add-week-btn{width:100%;background:#f1f5f9;border:1.5px dashed var(--border);border-radius:9px;padding:10px;font-size:.82em;font-weight:600;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .14s;margin-bottom:6px}
+.add-week-btn:hover{background:var(--j-l);border-color:var(--j-m);color:var(--j-d)}
+.sum-stats{display:flex;gap:8px;flex-wrap:wrap;padding:10px 20px;background:#fffbeb;border-top:1px solid #fde68a;flex-shrink:0}
+.sum-stat{font-size:.76em;display:flex;align-items:center;gap:5px}
+.sum-stat-dot{width:8px;height:8px;border-radius:50%}
+.sum-modal-ftr{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0;background:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:#0f172a;color:#fff;padding:10px 22px;border-radius:9px;font-size:.84em;font-weight:600;transition:transform .28s cubic-bezier(.34,1.56,.64,1);z-index:9999;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  .dc{min-height:78px;padding:5px 4px}
+  .cal-wrap{padding:8px 8px 20px}
+  .nav{padding:9px 12px}
+  .month-lbl{font-size:1.1em;min-width:160px}
+  .week-grid,.week-owner-grid{grid-template-columns:1fr}
+}
+</style>
+
+  <!-- ═══ FIREBASE REALTIME DATABASE ═══ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║  PASTE YOUR FIREBASE CONFIG BELOW                           ║
+    // ║  Firebase Console → Your Project → Project Settings         ║
+    // ║  → Your apps → SDK setup → Config                          ║
+    // ╚══════════════════════════════════════════════════════════════╝
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYZTIytd4b2tExGFq4Onr_O8m-SvvI9_M",
+    authDomain: "xander-calendar-a9a5b.firebaseapp.com",
+    databaseURL: "https://xander-calendar-a9a5b-default-rtdb.firebaseio.com",
+    projectId: "xander-calendar-a9a5b",
+    storageBucket: "xander-calendar-a9a5b.firebasestorage.app",
+    messagingSenderId: "468049238415",
+    appId: "1:468049238415:web:5a04d638a02c62283bd3fa"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const CAL_REF = ref(db, "xander_cal");
+
+    // Save everything to Firebase (debounced - called from main script)
+    window._fbSave = function(overrides, summerPlan) {
+      set(CAL_REF, {
+        overrides:   overrides,
+        summerPlan:  summerPlan,
+        updatedAt:   new Date().toISOString(),
+        updatedBy:   "web"
+      }).then(() => {
+        window._setSyncStatus("saved");
+      }).catch(err => {
+        window._setSyncStatus("error");
+        console.error("Firebase save error:", err);
+      });
+    };
+
+    // Real-time listener — fires on any remote change
+    window._fbListen = function(onData) {
+      onValue(CAL_REF, (snapshot) => {
+        const data = snapshot.val();
+        onData(data);
+      }, (err) => {
+        console.error("Firebase listen error:", err);
+        window._setSyncStatus("error");
+      });
+    };
+
+    // Mark Firebase as ready for the main script
+    window._fbReady = true;
+    window.dispatchEvent(new CustomEvent("fbReady"));
+  </script>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="hdr-sub">Center Grove Schools · Indiana Parenting Time Guidelines</div>
+      <div class="hdr-title">📅 Xander's Parenting Calendar</div>
+    </div>
+    <div class="hdr-info"><b>Xander Harrington</b><br>Born May 27, 2012 · Age 13</div>
+  </div>
+  <div class="badges">
+    <div class="badge badge-j">👨 Justin — Father (Noncustodial)</div>
+    <div class="badge badge-b">👩 Brittany — Mother (Custodial)</div>
+  </div>
+</div>
+
+<div class="legend">
+  <span style="font-size:.72em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Key:</span>
+  <div class="lg"><div class="ls" style="background:var(--j-l);border-color:var(--j-m)"></div>Justin</div>
+  <div class="lg"><div class="ls" style="background:var(--b-l);border-color:var(--b-m)"></div>Brittany</div>
+  <div class="lg"><div class="ls" style="background:var(--gold-l);border-color:var(--gold)"></div>Birthday 🎂</div>
+  <div class="lg"><div class="ls" style="background:#ede9fe;border-color:#a78bfa"></div>Tue/Thu Justin</div>
+  <div class="lg"><div class="changed-ls"></div>Manually edited</div>
+  <div class="lg"><div class="ls" style="background:#fff;box-shadow:0 0 0 2px var(--gold)"></div>Today</div>
+  <div class="legend-hint">Tap any day to edit · Changes marked with 🟡</div>
+</div>
+
+
+<!-- SYNC STATUS BAR -->
+<div id="sync-bar" style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 18px;display:flex;align-items:center;gap:9px;font-size:.74em;font-family:'DM Sans',sans-serif;flex-wrap:wrap;">
+  <span id="sync-dot" style="width:9px;height:9px;border-radius:50%;background:#86efac;display:inline-block;flex-shrink:0;transition:background .3s"></span>
+  <span id="sync-msg" style="color:#166534;font-weight:600">Connecting to sync…</span>
+  <span id="sync-time" style="margin-left:auto;color:#4ade80;font-style:italic;font-size:.92em"></span>
+</div>
+
+<div class="nav">
+  <button class="nav-btn" onclick="changeMonth(-1)">◀ Prev</button>
+  <div class="month-lbl" id="month-lbl"></div>
+  <button class="nav-btn" onclick="changeMonth(1)">Next ▶</button>
+</div>
+
+<div class="qj-bar">
+  <span class="qj-lbl">Jump:</span>
+  <button class="qj" onclick="jumpTo(2026,2)">Mar '26</button>
+  <button class="qj" onclick="jumpTo(2026,4)">May '26</button>
+  <button class="qj" onclick="jumpTo(2026,5)">Jun '26 ☀️</button>
+  <button class="qj" onclick="jumpTo(2026,6)">Jul '26 ☀️</button>
+  <button class="qj" onclick="jumpTo(2026,7)">Aug '26</button>
+  <button class="qj" onclick="jumpTo(2026,10)">Nov '26</button>
+  <button class="qj" onclick="jumpTo(2026,11)">Dec '26</button>
+  <button class="qj" onclick="jumpTo(2027,2)">Mar '27</button>
+  <button class="qj" onclick="jumpTo(2027,4)">May '27 ☀️</button>
+</div>
+
+<div id="sum-banner"></div>
+<div class="stats" id="stats"></div>
+
+<div class="cal-wrap">
+  <div class="day-hdrs">
+    <div class="dh wknd">Sun</div><div class="dh">Mon</div><div class="dh">Tue</div>
+    <div class="dh">Wed</div><div class="dh">Thu</div><div class="dh">Fri</div>
+    <div class="dh wknd">Sat</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- Day Edit Modal -->
+<div class="overlay" id="day-overlay">
+  <div class="modal">
+    <div class="modal-title" id="m-title">Edit Day</div>
+    <div class="modal-sub" id="m-sub"></div>
+    <div class="field-lbl">Who has Xander?</div>
+    <select class="sel" id="m-owner">
+      <option value="Justin">👨 Justin</option>
+      <option value="Brittany">👩 Brittany</option>
+    </select>
+    <div class="field-lbl">Event / Label</div>
+    <input class="inp" id="m-event" placeholder="e.g. Summer Vacation, Doctor Appt…">
+    <div class="field-lbl">Notes</div>
+    <textarea class="ta" id="m-note" placeholder="Pickup time, swap reason, reminders…"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-reset" onclick="resetDay()">↺ Reset</button>
+      <button class="btn btn-cancel" onclick="closeDay()">Cancel</button>
+      <button class="btn btn-save" onclick="saveDay()">✓ Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Summer Planner Modal -->
+<div class="overlay" id="sum-overlay">
+  <div class="sum-modal">
+    <div class="sum-modal-hdr">
+      <div class="sum-modal-title">☀️ Summer 2026 Vacation Planner</div>
+      <div class="sum-modal-sub">May 22 – Aug 2, 2026 · Justin selects by April 1 · Typically two 2-week blocks</div>
+    </div>
+    <div class="sum-modal-body" id="sum-body"></div>
+    <div class="sum-stats" id="sum-stats"></div>
+    <div class="sum-modal-ftr">
+      <button class="btn btn-cancel" onclick="closeSummer()">Cancel</button>
+      <button class="btn btn-save" style="flex:1" onclick="applySummer()">✓ Apply to Calendar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT = {"2026-03": {"1": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "15": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "23": {"owner": "Justin", "event": "Spring Break Wk1 \ud83c\udf38", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "29": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "30": {"owner": "Brittany", "event": "Spring Break Wk2", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "31": {"owner": "Brittany", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}}, "2026-04": {"1": {"owner": "Brittany", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Brittany", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Brittany", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "5": {"owner": "Brittany", "event": "Easter \ud83d\udc23", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "12": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "26": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2026-05": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "10": {"owner": "Justin", "event": "Mother's Day \ud83c\udf37", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Justin", "event": "Last Day of School \ud83c\udf93", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "24": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "25": {"owner": "Justin", "event": "Memorial Day \ud83c\uddfa\ud83c\uddf8", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Justin", "event": "\ud83c\udf82 Xander Turns 14!", "is_bday": true, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "29": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "30": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "31": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}}, "2026-06": {"1": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "4": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "5": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "6": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "7": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "8": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "9": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "10": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "11": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "12": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "13": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "14": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "15": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "17": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "18": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "19": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "20": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "21": {"owner": "Justin", "event": "Father's Day \ud83d\udc68", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "22": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}}, "2026-07": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Brittany", "event": "July 4th Eve", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "4": {"owner": "Brittany", "event": "July 4th \ud83c\udf86", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "5": {"owner": "Brittany", "event": "July 4th", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "31": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}}, "2026-08": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "3": {"owner": "Brittany", "event": "First Day of School \ud83c\udfeb", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "16": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "30": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "31": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2026-09": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "7": {"owner": "Justin", "event": "Labor Day \ud83c\uddfa\ud83c\uddf8", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "13": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "26": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "27": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2026-10": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "11": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "12": {"owner": "Brittany", "event": "Fall Break \ud83c\udf42", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "13": {"owner": "Brittany", "event": "Fall Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "14": {"owner": "Brittany", "event": "Fall Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "15": {"owner": "Brittany", "event": "Fall Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Brittany", "event": "Fall Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "25": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "31": {"owner": "Brittany", "event": "Halloween \ud83c\udf83", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}}, "2026-11": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "8": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "22": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Justin", "event": "Thanksgiving \ud83e\udd83", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "Thanksgiving", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Justin", "event": "Thanksgiving", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "28": {"owner": "Justin", "event": "Thanksgiving", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "29": {"owner": "Justin", "event": "Thanksgiving", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2026-12": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "6": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "20": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "21": {"owner": "Brittany", "event": "Winter Break \u2744\ufe0f", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Brittany", "event": "Christmas Eve \ud83c\udf84", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Brittany", "event": "Christmas Day \ud83c\udf84", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "31": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2027-01": {"1": {"owner": "Justin", "event": "New Year's Day \ud83c\udf89", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "3": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "4": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "5": {"owner": "Brittany", "event": "Classes Resume \ud83c\udfeb", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "17": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "18": {"owner": "Brittany", "event": "MLK Day", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "31": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}}, "2027-02": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "14": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "15": {"owner": "Brittany", "event": "Presidents Day", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}}, "2027-03": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "14": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "22": {"owner": "Justin", "event": "Spring Break \ud83c\udf38", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "Spring Break", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "31": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2027-04": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "4": {"owner": "Justin", "event": "Easter \ud83d\udc23", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": true}, "5": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "6": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": true, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "10": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "11": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "24": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "25": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}}, "2027-05": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "4": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "8": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "9": {"owner": "Justin", "event": "Mother's Day \ud83c\udf37", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "22": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "23": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": true}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": true, "is_summer": false, "is_holiday": false, "is_weekend": false}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": false, "is_holiday": false, "is_weekend": false}, "27": {"owner": "Brittany", "event": "\ud83c\udf82 Xander Turns 15! \u00b7 Last Day \ud83c\udf93", "is_bday": true, "midweek": true, "is_summer": true, "is_holiday": false, "is_weekend": false}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "29": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "30": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "31": {"owner": "Justin", "event": "Memorial Day \ud83c\uddfa\ud83c\uddf8", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}}, "2027-06": {"1": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "4": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "5": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "6": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "7": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "8": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "9": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "10": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "11": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "12": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "13": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "14": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "15": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "17": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "18": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "19": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "20": {"owner": "Justin", "event": "Father's Day \ud83d\udc68", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "21": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "22": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "25": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "26": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "27": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "28": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "29": {"owner": "Justin", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}}, "2027-07": {"1": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "2": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "3": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "4": {"owner": "Brittany", "event": "July 4th \ud83c\udf86", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "5": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "6": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "7": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "8": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "9": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "10": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "11": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "12": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "13": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "14": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "15": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "16": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "17": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "18": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "19": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "20": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "21": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "22": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "23": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "24": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "25": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}, "26": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "27": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "28": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "29": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "30": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": false}, "31": {"owner": "Brittany", "event": "", "is_bday": false, "midweek": false, "is_summer": true, "is_holiday": true, "is_weekend": true}}};
+const MN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const today = new Date();
+let cY = today.getFullYear(), cM = today.getMonth();
+// Clamp to Mar 2026 – Jul 2027
+if(cY < 2026 || (cY===2026 && cM<2)){cY=2026;cM=2;}
+if(cY > 2027 || (cY===2027 && cM>6)){cY=2027;cM=6;}
+
+let overrides = {};   // "YYYY-MM-DD" → {owner,event,note}
+let editKey = null;
+
+// Summer plan: array of {start:"YYYY-MM-DD", end:"YYYY-MM-DD", owner:"Justin"|"Brittany", label:""}
+let summerPlan = [
+  {start:"2026-05-22", end:"2026-06-04", owner:"Justin",   label:"Justin's Vacation Wk 1-2"},
+  {start:"2026-06-05", end:"2026-06-18", owner:"Brittany", label:"Brittany's Time"},
+  {start:"2026-06-19", end:"2026-07-02", owner:"Justin",   label:"Justin's Vacation Wk 3-4"},
+  {start:"2026-07-03", end:"2026-08-02", owner:"Brittany", label:"Brittany's Time"},
+];
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function dk(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function dataKey(y,m){return `${y}-${String(m+1).padStart(2,'0')}`}
+function getInfo(y,m,d){
+  const base = (DEFAULT[dataKey(y,m)]||{})[String(d)] || null;
+  const ov = overrides[dk(y,m,d)];
+  if(!base && !ov) return null;
+  return Object.assign({}, base||{}, ov||{});
+}
+function daysBetween(a,b){
+  const da=new Date(a), db=new Date(b);
+  return Math.round((db-da)/86400000)+1;
+}
+function addDays(dateStr, n){
+  const d=new Date(dateStr); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10);
+}
+function fmtDate(s){
+  const d=new Date(s+'T12:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function dkFromStr(s){return s} // already "YYYY-MM-DD"
+
+// ── render ────────────────────────────────────────────────────────────────────
+function render(){
+  document.getElementById('month-lbl').textContent = `${MN[cM]} ${cY}`;
+  // Update active quick-jump
+  document.querySelectorAll('.qj').forEach(b=>{
+    const fn = b.getAttribute('onclick');
+    b.classList.toggle('active', fn===`jumpTo(${cY},${cM})`);
+  });
+  renderBanner();
+  renderStats();
+  renderGrid();
+}
+
+function renderBanner(){
+  const el = document.getElementById('sum-banner');
+  const showSummer = (cY===2026 && cM>=4 && cM<=7);
+  el.innerHTML = showSummer ? `<div class="sum-banner">
+    <div><div class="sum-t">☀️ Summer 2026 — Plan Justin's vacation weeks</div>
+    <div class="sum-s">May 22 – Aug 2 · Justin gets half; typically 2-week blocks · Must select by April 1</div></div>
+    <button class="btn-sum" onclick="openSummer()">Plan Summer Weeks ▶</button>
+  </div>` : '';
+}
+
+function renderStats(){
+  const last = new Date(cY,cM+1,0).getDate();
+  let j=0,b=0,ch=0;
+  for(let d=1;d<=last;d++){
+    const info=getInfo(cY,cM,d);
+    (info?.owner==='Justin'?j++:b++);
+    if(overrides[dk(cY,cM,d)]) ch++;
+  }
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-dot" style="background:var(--j)"></div>
+      <div><div class="stat-v" style="color:var(--j)">${j}</div><div class="stat-l">Justin's days</div></div></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--b)"></div>
+      <div><div class="stat-v" style="color:var(--b)">${b}</div><div class="stat-l">Brittany's days</div></div></div>
+    <div class="stat"><div class="stat-dot" style="background:var(--muted)"></div>
+      <div><div class="stat-v">${j+b}</div><div class="stat-l">Total days</div></div></div>
+    ${ch>0?`<div class="stat"><div class="stat-dot" style="background:var(--gold)"></div>
+      <div><div class="stat-v" style="color:var(--gold)">${ch}</div><div class="stat-l">Edited</div></div></div>`:''}`;
+}
+
+function renderGrid(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  const firstDow = new Date(cY,cM,1).getDay();
+  const lastDate = new Date(cY,cM+1,0).getDate();
+  const isToday = (d)=>cY===today.getFullYear()&&cM===today.getMonth()&&d===today.getDate();
+
+  for(let i=0;i<firstDow;i++){
+    const e=document.createElement('div');e.className='dc empty';grid.appendChild(e);
+  }
+  for(let d=1;d<=lastDate;d++){
+    const info=getInfo(cY,cM,d)||{owner:'Brittany',event:'',is_bday:false,midweek:false};
+    const ov=overrides[dk(cY,cM,d)];
+    const owner=info.owner;
+    const strong=info.is_holiday||info.is_weekend||info.is_summer;
+
+    let cls='dc ';
+    if(info.is_bday) cls+='bday';
+    else if(info.midweek&&!ov) cls+='mid';
+    else if(owner==='Justin') cls+=(strong?'j-strong':'j-reg');
+    else cls+=(strong?'b-strong':'b-reg');
+    if(isToday(d)) cls+=' today-ring';
+
+    const cell=document.createElement('div');
+    cell.className=cls;
+    cell.onclick=()=>openDay(cY,cM,d);
+
+    const dColor = owner==='Justin'?'#1e40af':'#9d174d';
+    let html=`<div class="d-num" style="color:${dColor}">${d}`;
+    if(isToday(d)) html+=`<span class="d-today">TODAY</span>`;
+    html+='</div>';
+
+    if(info.is_bday) html+=`<div class="d-bday">🎂 Xander's Birthday!</div>`;
+    if(info.event) html+=`<div class="d-event">${info.event}</div>`;
+    if(info.note)  html+=`<div class="d-note">📝 ${info.note}</div>`;
+    html+=`<div class="d-owner ${owner==='Justin'?'j':'b'}">${owner==='Justin'?'👨 Justin':'👩 Brittany'}</div>`;
+    if(info.midweek&&!ov) html+=`<div class="d-mid">📚 Justin after school–8pm</div>`;
+    if(ov) html+=`<div class="changed-dot" title="Manually edited"></div>`;
+
+    cell.innerHTML=html;
+    grid.appendChild(cell);
+  }
+}
+
+// ── Day edit modal ────────────────────────────────────────────────────────────
+function openDay(y,m,d){
+  editKey=dk(y,m,d);
+  const info=getInfo(y,m,d)||{owner:'Brittany',event:'',note:''};
+  const ov=overrides[editKey]||{};
+  const dateStr=new Date(y,m,d).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('m-title').textContent=`Edit ${MN[m]} ${d}, ${y}`;
+  document.getElementById('m-sub').textContent=dateStr;
+  document.getElementById('m-owner').value=info.owner;
+  document.getElementById('m-event').value=ov.event!==undefined?ov.event:(info.event||'');
+  document.getElementById('m-note').value=ov.note||'';
+  document.getElementById('day-overlay').classList.add('open');
+}
+function closeDay(){document.getElementById('day-overlay').classList.remove('open');editKey=null;}
+function saveDay(){
+  if(!editKey)return;
+  const owner=document.getElementById('m-owner').value;
+  const event=document.getElementById('m-event').value;
+  const note=document.getElementById('m-note').value;
+  overrides[editKey]={owner,event,note,_manual:true};
+  closeDay(); render(); showToast('✓ Day saved!');
+}
+function resetDay(){
+  if(!editKey)return;
+  delete overrides[editKey];
+  closeDay(); render(); showToast('↺ Reset to default');
+}
+document.getElementById('day-overlay').addEventListener('click',function(e){if(e.target===this)closeDay();});
+
+// ── Summer planner ────────────────────────────────────────────────────────────
+function openSummer(){
+  renderSummerBody();
+  document.getElementById('sum-overlay').classList.add('open');
+}
+function closeSummer(){document.getElementById('sum-overlay').classList.remove('open');}
+document.getElementById('sum-overlay').addEventListener('click',function(e){if(e.target===this)closeSummer();});
+
+function renderSummerBody(){
+  const body=document.getElementById('sum-body');
+  body.innerHTML='';
+
+  summerPlan.forEach((blk,i)=>{
+    const days=blk.start&&blk.end?daysBetween(blk.start,blk.end):0;
+    const card=document.createElement('div');
+    card.className='week-card';
+    card.innerHTML=`
+      <div class="week-card-hdr">
+        <span class="week-num">Block ${i+1}</span>
+        <button class="rm-btn" onclick="removeBlock(${i})" title="Remove">✕</button>
+      </div>
+      <div class="week-grid">
+        <div>
+          <div style="font-size:.72em;font-weight:700;color:var(--muted);margin-bottom:4px">START DATE</div>
+          <input type="date" class="date-inp" value="${blk.start}" min="2026-05-22" max="2026-08-02"
+            onchange="summerPlan[${i}].start=this.value;renderSummerBody()">
+        </div>
+        <div>
+          <div style="font-size:.72em;font-weight:700;color:var(--muted);margin-bottom:4px">END DATE</div>
+          <input type="date" class="date-inp" value="${blk.end}" min="2026-05-22" max="2026-08-02"
+            onchange="summerPlan[${i}].end=this.value;renderSummerBody()">
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <div style="font-size:.72em;font-weight:700;color:var(--muted);margin-bottom:5px">WHO HAS XANDER THIS BLOCK?</div>
+        <div class="week-owner-grid">
+          <button class="owner-btn ${blk.owner==='Justin'?'active-j':''}" onclick="setBlockOwner(${i},'Justin')">👨 Justin</button>
+          <button class="owner-btn ${blk.owner==='Brittany'?'active-b':''}" onclick="setBlockOwner(${i},'Brittany')">👩 Brittany</button>
+        </div>
+      </div>
+      <input class="week-label-inp" placeholder="Label / description  e.g. Beach Trip, Stay Home…"
+        value="${blk.label||''}" oninput="summerPlan[${i}].label=this.value">
+      ${days>0?`<div class="week-days-badge">${days} day${days!==1?'s':''} · ${fmtDate(blk.start)} – ${fmtDate(blk.end)}</div>`:''}
+    `;
+    body.appendChild(card);
+  });
+
+  const addBtn=document.createElement('button');
+  addBtn.className='add-week-btn';
+  addBtn.textContent='+ Add Another Block';
+  addBtn.onclick=addBlock;
+  body.appendChild(addBtn);
+
+  renderSummerStats();
+}
+
+function setBlockOwner(i,owner){summerPlan[i].owner=owner;renderSummerBody();}
+function removeBlock(i){summerPlan.splice(i,1);renderSummerBody();}
+function addBlock(){
+  // Default: start day after last block ends, 2 weeks long
+  let start='2026-05-22';
+  if(summerPlan.length>0){
+    const last=summerPlan[summerPlan.length-1];
+    if(last.end) start=addDays(last.end,1);
+  }
+  const end=addDays(start,13);
+  summerPlan.push({start,end:end>'2026-08-02'?'2026-08-02':end,owner:'Justin',label:''});
+  renderSummerBody();
+}
+
+function renderSummerStats(){
+  let j=0,b=0;
+  summerPlan.forEach(blk=>{
+    if(blk.start&&blk.end){
+      const days=daysBetween(blk.start,blk.end);
+      if(blk.owner==='Justin') j+=days; else b+=days;
+    }
+  });
+  const total=j+b;
+  document.getElementById('sum-stats').innerHTML=`
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--j)"></div>
+      <b style="color:var(--j)">${j}</b> days Justin</div>
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--b)"></div>
+      <b style="color:var(--b)">${b}</b> days Brittany</div>
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:#94a3b8"></div>
+      <b>${total}</b> of 73 total summer days planned</div>
+    ${Math.abs(j-b)<=2?'<div class="sum-stat">✅ Split is roughly 50/50</div>':
+      j>b?`<div class="sum-stat" style="color:#92400e">⚠️ Justin has ${j-b} more days than Brittany</div>`:
+           `<div class="sum-stat" style="color:#92400e">⚠️ Brittany has ${b-j} more days than Justin</div>`}`;
+}
+
+function applySummer(){
+  // First clear all summer overrides
+  const sumStart=new Date(2026,4,22), sumEnd=new Date(2026,7,2);
+  for(let d=new Date(sumStart);d<=sumEnd;d.setDate(d.getDate()+1)){
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    delete overrides[key];
+  }
+  // Apply each block
+  summerPlan.forEach(blk=>{
+    if(!blk.start||!blk.end) return;
+    const s=new Date(blk.start+'T12:00:00'), e=new Date(blk.end+'T12:00:00');
+    for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const base=(DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`]||{})[String(d.getDate())]||{};
+      overrides[key]={
+        owner: blk.owner,
+        event: blk.label ? `☀️ ${blk.label}` : (base.event||`☀️ ${blk.owner}'s Summer`),
+        note: '',
+        _summer: true,
+      };
+    }
+  });
+  closeSummer(); render();
+  showToast(`☀️ Summer plan applied to calendar!`);
+}
+
+// ── nav ───────────────────────────────────────────────────────────────────────
+function changeMonth(dir){
+  cM+=dir;
+  if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
+  if(cY<2026||(cY===2026&&cM<2)){cY=2026;cM=2;}
+  if(cY>2027||(cY===2027&&cM>6)){cY=2027;cM=6;}
+  render();
+}
+function jumpTo(y,m){cY=y;cM=m;render();}
+
+// ── toast ─────────────────────────────────────────────────────────────────────
+let toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2300);
+}
+
+render();
+
+
+  // ═══════════════════════════════════════════════════════
+  //  FIREBASE SYNC
+  // ═══════════════════════════════════════════════════════
+
+  let _ignoreNextRemote = false;  // prevent echo loop
+  let _saveTimer = null;
+
+  // Status helper
+  window._setSyncStatus = function(state, detail) {
+    const dot = document.getElementById('sync-dot');
+    const msg = document.getElementById('sync-msg');
+    const ts  = document.getElementById('sync-time');
+    const now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const states = {
+      connecting: { bg:'#fbbf24', text:'Connecting…',        color:'#92400e' },
+      synced:     { bg:'#4ade80', text:'✓ Synced',           color:'#166534' },
+      saving:     { bg:'#60a5fa', text:'Saving…',            color:'#1e40af' },
+      saved:      { bg:'#4ade80', text:'✓ Saved & Synced',   color:'#166534' },
+      remote:     { bg:'#a78bfa', text:'📲 Updated remotely',color:'#4c1d95' },
+      error:      { bg:'#f87171', text:'⚠ Sync error — check connection', color:'#991b1b' },
+    };
+    const s = states[state] || states.synced;
+    dot.style.background = s.bg;
+    msg.style.color = s.color;
+    msg.textContent = detail || s.text;
+    ts.textContent  = now;
+  };
+
+  // Debounced save — waits 800ms after last change before writing to Firebase
+  function scheduleSave() {
+    _setSyncStatus('saving');
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      if (window._fbSave) {
+        _ignoreNextRemote = true;
+        window._fbSave(overrides, summerPlan);
+        setTimeout(() => { _ignoreNextRemote = false; }, 2000);
+      }
+    }, 800);
+  }
+
+  // Hook into existing save/reset/apply functions to trigger sync
+  const _origSaveDay    = window.saveDay;
+  const _origResetDay   = window.resetDay;
+  const _origApplySummer = window.applySummer;
+
+  window.saveDay = function() {
+    _origSaveDay();
+    scheduleSave();
+  };
+  window.resetDay = function() {
+    _origResetDay();
+    scheduleSave();
+  };
+  window.applySummer = function() {
+    _origApplySummer();
+    scheduleSave();
+  };
+
+  // Start listening once Firebase is ready
+  function initFirebase() {
+    _setSyncStatus('connecting');
+    window._fbListen(function(data) {
+      if (_ignoreNextRemote) return;  // was our own save, skip
+      if (!data) {
+        _setSyncStatus('synced', '✓ Connected — no data yet');
+        return;
+      }
+      // Merge remote data into local state
+      if (data.overrides)  overrides   = data.overrides;
+      if (data.summerPlan) summerPlan   = data.summerPlan;
+      render();
+      // Show who updated and when
+      if (data.updatedAt) {
+        const t = new Date(data.updatedAt).toLocaleString('en-US',
+          {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+        _setSyncStatus('remote', `📲 Last updated ${t}`);
+      } else {
+        _setSyncStatus('synced');
+      }
+    });
+  }
+
+  if (window._fbReady) {
+    initFirebase();
+  } else {
+    window.addEventListener('fbReady', initFirebase);
+  }
+
+</script>
+
+<!-- ═══════════════════════ PASSWORD GATE ═══════════════════════ -->
+<div id="pw-gate" style="
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Nunito',sans-serif;
+">
+  <div style="
+    background:#fff;border-radius:20px;padding:36px 32px 30px;
+    width:90%;max-width:380px;
+    box-shadow:0 28px 70px rgba(0,0,0,.35);
+    text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1);
+  ">
+    <div style="font-size:2.6em;margin-bottom:8px">📅</div>
+    <div style="font-weight:900;font-size:1.45em;color:#0f172a;margin-bottom:4px">Xander's Calendar</div>
+    <div style="font-size:.82em;color:#64748b;margin-bottom:22px">Justin &amp; Brittany · Private Access</div>
+
+    <div id="pw-error" style="
+      display:none;background:#fee2e2;color:#dc2626;
+      border-radius:8px;padding:8px 14px;font-size:.8em;
+      font-weight:700;margin-bottom:12px;
+    ">❌ Wrong password — try again</div>
+
+    <div style="position:relative;margin-bottom:14px">
+      <input id="pw-input" type="password"
+        placeholder="Enter password"
+        style="
+          width:100%;padding:12px 44px 12px 16px;
+          border:2px solid #e2e8f0;border-radius:10px;
+          font-size:1em;font-family:'DM Sans',sans-serif;
+          outline:none;transition:border-color .15s;color:#0f172a;
+        "
+        oninput="this.style.borderColor='#3b82f6'"
+        onkeydown="if(event.key==='Enter')checkPw()"
+      >
+      <button onclick="togglePwVis()" style="
+        position:absolute;right:12px;top:50%;transform:translateY(-50%);
+        background:none;border:none;cursor:pointer;font-size:1.15em;
+        color:#94a3b8;padding:0;line-height:1;
+      " id="pw-eye">👁</button>
+    </div>
+
+    <button onclick="checkPw()" style="
+      width:100%;padding:12px;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+      color:#fff;border:none;border-radius:10px;font-size:1em;
+      font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;
+      transition:opacity .15s;letter-spacing:.02em;
+    " onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+      Unlock Calendar 🔓
+    </button>
+
+    <div style="margin-top:16px;font-size:.72em;color:#94a3b8">
+      Password-protected · For Justin &amp; Brittany only
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pwPop{from{transform:scale(.88) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+#pw-gate *{box-sizing:border-box}
+</style>
+
+<script>
+(function(){
+  // SHA-256 implementation (no external deps)
+  async function sha256(msg){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const HASH = 'f0f98a9650227603cd8d6fe0ce13e3a15526a6d1d56e21447f6617d3861f9e65';
+  const SESSION_KEY = 'xander_cal_auth';
+
+  // Check if already authenticated this session
+  if(sessionStorage.getItem(SESSION_KEY) === HASH){
+    document.getElementById('pw-gate').style.display = 'none';
+    return;
+  }
+
+  // Block scroll on body while gate is up
+  document.body.style.overflow = 'hidden';
+
+  window.checkPw = async function(){
+    const val = document.getElementById('pw-input').value;
+    const hash = await sha256(val);
+    if(hash === HASH){
+      sessionStorage.setItem(SESSION_KEY, HASH);
+      const gate = document.getElementById('pw-gate');
+      gate.style.transition = 'opacity .35s';
+      gate.style.opacity = '0';
+      setTimeout(()=>{ gate.style.display='none'; }, 360);
+      document.body.style.overflow = '';
+    } else {
+      const err = document.getElementById('pw-error');
+      const inp = document.getElementById('pw-input');
+      err.style.display = 'block';
+      inp.value = '';
+      inp.style.borderColor = '#dc2626';
+      inp.focus();
+      // Shake animation
+      inp.style.animation = 'none';
+      inp.offsetHeight; // reflow
+      inp.style.animation = 'shake .4s ease';
+    }
+  };
+
+  window.togglePwVis = function(){
+    const inp = document.getElementById('pw-input');
+    const eye = document.getElementById('pw-eye');
+    if(inp.type === 'password'){
+      inp.type = 'text'; eye.textContent = '🙈';
+    } else {
+      inp.type = 'password'; eye.textContent = '👁';
+    }
+  };
+
+  // Focus input on load
+  window.addEventListener('load', ()=>{
+    setTimeout(()=>document.getElementById('pw-input').focus(), 400);
+  });
+})();
+</script>
+
+<style>
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-5px)}
+  80%{transform:translateX(5px)}
+}
+</style>
+<!-- ═══════════════════════ END PASSWORD GATE ═══════════════════════ -->
+
+</body>
+</html>
