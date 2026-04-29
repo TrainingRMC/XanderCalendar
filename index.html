@@ -28,12 +28,21 @@
   const db  = getDatabase(app);
   const CAL_REF = ref(db, "xander_cal");
 
-  window._fbSave = function(overrides, summerPlan) {
+  window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog) {
     set(CAL_REF, {
-      overrides:  overrides,
-      summerPlan: summerPlan,
-      updatedAt:  new Date().toISOString(),
+      overrides:    overrides,
+      summerPlan:   summerPlan,
+      pendingSwaps: pendingSwaps || {},
+      activityLog:  activityLog  || [],
+      updatedAt:    new Date().toISOString(),
     }).then(() => window._setSyncStatus("saved"))
+      .catch(err => { window._setSyncStatus("error"); console.error(err); });
+  };
+
+  // Direct write helper used by v7+ for any-shape payload
+  window._fbDirectWrite = function(payload) {
+    set(CAL_REF, payload)
+      .then(() => window._setSyncStatus("saved"))
       .catch(err => { window._setSyncStatus("error"); console.error(err); });
   };
 
@@ -201,6 +210,186 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .nav{padding:8px 11px}.month-lbl{font-size:1.05em;min-width:150px}
   .week-grid,.time-row{grid-template-columns:1fr}
 }
+
+/* ── WHO-ARE-YOU PICKER (after password) ── */
+#who-gate{position:fixed;inset:0;z-index:99998;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:none;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
+#who-gate.show{display:flex}
+.who-card{background:#fff;border-radius:20px;padding:34px 30px 28px;width:90%;max-width:400px;box-shadow:0 28px 70px rgba(0,0,0,.35);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1)}
+.who-title{font-weight:900;font-size:1.4em;color:#0f172a;margin-bottom:5px}
+.who-sub{font-size:.85em;color:#64748b;margin-bottom:22px}
+.who-btns{display:flex;gap:10px}
+.who-btn{flex:1;padding:18px 12px;border:2.5px solid var(--border);border-radius:14px;font-size:1em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;background:#fff;transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.who-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.1)}
+.who-btn.j{color:var(--j-d);border-color:var(--j-m)}
+.who-btn.j:hover{background:var(--j-l);border-color:var(--j)}
+.who-btn.b{color:var(--b-d);border-color:var(--b-m)}
+.who-btn.b:hover{background:var(--b-l);border-color:var(--b)}
+.who-emoji{font-size:1.8em;line-height:1}
+
+/* ── CURRENT USER BADGE (in header) ── */
+.user-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:5px 12px;border-radius:18px;font-size:.78em;font-weight:700;cursor:pointer;transition:background .14s}
+.user-badge:hover{background:rgba(255,255,255,.28)}
+.user-badge.b{background:rgba(236,72,153,.3);border-color:rgba(236,72,153,.55)}
+.user-badge .switch{font-size:.7em;opacity:.7;margin-left:4px}
+
+/* ── ACTIVITY LOG DRAWER ── */
+#log-toggle{position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;border:none;border-radius:50px;padding:11px 18px;font-size:.85em;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:500;display:flex;align-items:center;gap:7px;transition:transform .14s}
+#log-toggle:hover{transform:translateY(-2px)}
+#log-toggle .badge-cnt{background:#f59e0b;color:#fff;font-size:.78em;border-radius:10px;padding:1px 7px;font-weight:800}
+
+#log-drawer{position:fixed;top:0;right:-440px;width:420px;max-width:95vw;height:100vh;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18);z-index:600;transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#log-drawer.open{right:0}
+.log-hdr{background:linear-gradient(135deg,#0f2a50,#1d4ed8);color:#fff;padding:16px 18px 13px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.log-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.1em}
+.log-close{background:rgba(255,255,255,.18);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1.1em;line-height:1;display:flex;align-items:center;justify-content:center}
+.log-tabs{display:flex;background:#f1f5f9;border-bottom:1px solid var(--border);flex-shrink:0}
+.log-tab{flex:1;padding:11px;border:none;background:transparent;font-size:.82em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;color:var(--muted);position:relative;transition:color .14s}
+.log-tab.active{color:var(--j-d);background:#fff}
+.log-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;background:var(--j)}
+.log-tab .ct{display:inline-block;background:var(--gold);color:#fff;border-radius:9px;padding:0 6px;font-size:.85em;margin-left:4px;font-weight:800;min-width:18px}
+.log-tab .ct.zero{background:#cbd5e0}
+.log-body{flex:1;overflow-y:auto;padding:12px 14px}
+.log-entry{padding:10px 12px;border-radius:9px;margin-bottom:7px;font-size:.83em;border-left:3px solid var(--border);background:#f8fafc;line-height:1.4}
+.log-entry.j{border-left-color:var(--j);background:#eff6ff}
+.log-entry.b{border-left-color:var(--b);background:#fdf2f8}
+.log-entry .who{font-weight:800;font-family:'Nunito',sans-serif;font-size:.95em}
+.log-entry .who.j{color:var(--j-d)}.log-entry .who.b{color:var(--b-d)}
+.log-entry .what{color:var(--text);margin-top:2px}
+.log-entry .when{font-size:.75em;color:var(--muted);margin-top:3px;font-style:italic}
+.log-empty{text-align:center;color:var(--muted);font-size:.85em;padding:30px 10px;font-style:italic}
+
+/* ── PENDING SWAP CARD ── */
+.swap-card{background:#fff;border:2px solid var(--gold);border-radius:11px;padding:13px;margin-bottom:9px;box-shadow:0 2px 8px rgba(245,158,11,.15)}
+.swap-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.swap-by{font-family:'Nunito',sans-serif;font-weight:800;font-size:.88em}
+.swap-when{font-size:.72em;color:var(--muted);font-style:italic}
+.swap-date{font-size:.95em;font-weight:700;color:var(--text);margin-bottom:5px}
+.swap-change{font-size:.82em;color:var(--text);background:#fffbeb;border-radius:6px;padding:6px 9px;margin-bottom:8px;line-height:1.5}
+.swap-change b{font-weight:700}
+.swap-arrow{color:var(--gold);margin:0 5px;font-weight:700}
+.swap-actions{display:flex;gap:6px;margin-top:8px}
+.swap-btn{flex:1;padding:8px;border:none;border-radius:7px;font-weight:700;font-size:.82em;cursor:pointer;font-family:'Nunito',sans-serif;transition:opacity .14s}
+.swap-btn:hover{opacity:.9}
+.swap-approve{background:#10b981;color:#fff}
+.swap-decline{background:#ef4444;color:#fff}
+.swap-cancel{background:#f1f5f9;color:var(--text)}
+
+/* ── PENDING DOT ON CALENDAR DAY ── */
+.pending-dot{position:absolute;top:5px;left:5px;width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 1.5px #fff;animation:pulseGold 1.5s ease-in-out infinite}
+@keyframes pulseGold{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.15)}}
+
+/* ── EDIT MODAL: PROPOSE-VS-EDIT BANNER ── */
+.propose-banner{background:#fef3c7;border:1.5px solid #fbbf24;border-radius:8px;padding:9px 12px;margin-bottom:13px;font-size:.78em;color:#92400e;line-height:1.4}
+.propose-banner b{font-weight:800}
+
+/* dim log toggle when nothing pending */
+#log-toggle.no-pending .badge-cnt{display:none}
+
+
+/* ── BLOCKING SWAP MODAL ── */
+#swap-block-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:9990;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px);overflow-y:auto}
+#swap-block-overlay.show{display:flex}
+.swap-block-modal{background:#fff;border-radius:18px;width:100%;max-width:480px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:92vh;overflow:hidden}
+.swap-block-hdr{background:linear-gradient(135deg,#d97706,#b45309);color:#fff;padding:18px 20px 14px;flex-shrink:0}
+.swap-block-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em;margin-bottom:3px}
+.swap-block-sub{font-size:.83em;opacity:.92}
+.swap-block-body{padding:14px 18px;overflow-y:auto;flex:1}
+.swap-block-progress{background:#fef3c7;color:#92400e;font-size:.78em;font-weight:700;padding:7px 16px;text-align:center;border-bottom:1px solid #fde68a;flex-shrink:0}
+
+/* ── MONTH SWAP REMINDER (left side) ── */
+.month-reminder{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:11px;padding:10px 14px;margin:9px 14px 0;display:flex;align-items:center;gap:11px;cursor:pointer;transition:transform .14s,box-shadow .14s}
+.month-reminder:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,158,11,.25)}
+.month-reminder-icon{font-size:1.6em;line-height:1;flex-shrink:0}
+.month-reminder-text{flex:1;line-height:1.35}
+.month-reminder-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.88em;color:#78350f}
+.month-reminder-s{font-size:.74em;color:#92400e;margin-top:1px}
+.month-reminder-arrow{color:#92400e;font-weight:900;font-size:1.1em}
+
+/* ── SUMMER PLAN BANNER (Justin reminder + Brittany review prompt) ── */
+.summer-alert{margin:9px 14px 0;border-radius:11px;padding:13px 16px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;transition:transform .14s,box-shadow .14s}
+.summer-alert:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(0,0,0,.14)}
+.summer-alert.justin{background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:1.5px solid var(--j)}
+.summer-alert.brittany{background:linear-gradient(135deg,#fce7f3,#fbcfe8);border:1.5px solid var(--b)}
+.summer-alert.urgent{background:linear-gradient(135deg,#fee2e2,#fecaca);border:1.5px solid #dc2626}
+.summer-alert-icon{font-size:1.8em;line-height:1;flex-shrink:0}
+.summer-alert-body{flex:1;line-height:1.4}
+.summer-alert-t{font-family:'Nunito',sans-serif;font-weight:900;font-size:.95em}
+.summer-alert.justin .summer-alert-t{color:var(--j-d)}
+.summer-alert.brittany .summer-alert-t{color:var(--b-d)}
+.summer-alert.urgent .summer-alert-t{color:#991b1b}
+.summer-alert-s{font-size:.78em;margin-top:3px;color:var(--text)}
+.summer-alert-cta{display:inline-block;margin-top:6px;font-size:.78em;font-weight:800;padding:5px 11px;border-radius:7px;color:#fff;font-family:'Nunito',sans-serif}
+.summer-alert.justin .summer-alert-cta{background:var(--j)}
+.summer-alert.brittany .summer-alert-cta{background:var(--b)}
+.summer-alert.urgent .summer-alert-cta{background:#dc2626}
+
+/* ── SUMMER PLAN PROPOSAL MODAL (Brittany sees this) ── */
+#summer-prop-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9985;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px);overflow-y:auto}
+#summer-prop-overlay.show{display:flex}
+.summer-prop-modal{background:#fff;border-radius:18px;width:100%;max-width:520px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:94vh;overflow:hidden}
+.summer-prop-hdr{background:linear-gradient(135deg,#78350f,#d97706);color:#fff;padding:18px 22px 14px;flex-shrink:0}
+.summer-prop-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
+.summer-prop-sub{font-size:.83em;opacity:.9;margin-top:3px}
+.summer-prop-body{padding:14px 20px;overflow-y:auto;flex:1}
+.sp-blocks{margin:6px 0 12px}
+.sp-block{background:#f8fafc;border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.sp-block-owner{padding:3px 9px;border-radius:6px;font-size:.75em;font-weight:800;color:#fff;font-family:'Nunito',sans-serif}
+.sp-block-owner.j{background:var(--j)}
+.sp-block-owner.b{background:var(--b)}
+.sp-block-dates{font-size:.85em;font-weight:700;flex:1}
+.sp-block-days{font-size:.74em;color:var(--muted)}
+.sp-block-label{font-size:.75em;color:var(--muted);font-style:italic;margin-top:2px}
+.sp-justify{margin-top:11px}
+.sp-justify-lbl{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px;letter-spacing:.05em}
+.sp-justify-ta{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.88em;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px}
+.sp-justify-ta:focus{outline:none;border-color:var(--j)}
+.summer-prop-ftr{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0;background:#fff}
+.sp-stage-banner{background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:.78em;padding:8px 12px;border-radius:7px;margin-bottom:11px;line-height:1.4}
+.sp-history{margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
+.sp-history-title{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.sp-history-item{font-size:.78em;color:var(--text);padding:5px 9px;background:#f8fafc;border-radius:6px;margin-bottom:4px;border-left:2.5px solid var(--border)}
+.sp-history-item.j{border-left-color:var(--j)}
+.sp-history-item.b{border-left-color:var(--b)}
+.sp-history-when{color:var(--muted);font-style:italic;font-size:.92em}
+
+
+/* ── EXPORT TO PHONE BUTTON & MODAL ── */
+#export-btn{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.79em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:background .14s;margin-left:6px}
+#export-btn:hover{background:#4f46e5}
+
+#export-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9988;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px);overflow-y:auto}
+#export-overlay.show{display:flex}
+.export-modal{background:#fff;border-radius:18px;width:100%;max-width:520px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:94vh;overflow:hidden}
+.export-hdr{background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;padding:18px 22px 14px;flex-shrink:0}
+.export-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
+.export-sub{font-size:.83em;opacity:.92;margin-top:2px}
+.export-body{padding:14px 18px 16px;overflow-y:auto;flex:1}
+.export-step{margin-bottom:14px;padding:11px 13px;background:#f8fafc;border:1px solid var(--border);border-radius:10px}
+.export-step-num{display:inline-block;background:var(--j);color:#fff;width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-weight:900;font-size:.8em;font-family:'Nunito',sans-serif;margin-right:7px;vertical-align:middle}
+.export-step-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.92em;display:inline-block;vertical-align:middle}
+.export-step-body{margin-top:8px;font-size:.85em;line-height:1.55;color:var(--text)}
+.export-step-body code{background:#fff;border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.92em;font-family:'SF Mono',Monaco,monospace}
+.export-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:9px 0 4px}
+.export-opt{padding:9px 6px;border:1.5px solid var(--border);border-radius:9px;font-size:.78em;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#fff;transition:all .14s;text-align:center}
+.export-opt:hover{transform:translateY(-1px)}
+.export-opt.active.j{background:var(--j);color:#fff;border-color:var(--j-d)}
+.export-opt.active.b{background:var(--b);color:#fff;border-color:var(--b-d)}
+.export-opt.active.both{background:#0f172a;color:#fff;border-color:#0f172a}
+.export-url-box{display:flex;gap:5px;margin-top:8px}
+.export-url-inp{flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.78em;font-family:'SF Mono',Monaco,monospace;background:#f8fafc;color:var(--text);min-width:0}
+.export-url-inp:focus{outline:none;border-color:var(--j);background:#fff}
+.export-copy-btn{padding:8px 14px;background:var(--j);color:#fff;border:none;border-radius:7px;font-weight:700;font-size:.78em;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap;transition:background .14s}
+.export-copy-btn:hover{background:var(--j-d)}
+.export-copy-btn.copied{background:#10b981}
+.export-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:9px 12px;border-radius:8px;font-size:.78em;line-height:1.45;margin-top:11px}
+.export-warn b{font-weight:800}
+.export-config-warn{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px 13px;border-radius:9px;font-size:.82em;line-height:1.45;margin-bottom:11px}
+.export-config-warn b{font-weight:800}
+.config-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.83em;font-family:'SF Mono',Monaco,monospace;margin-top:6px;background:#fff}
+.config-input:focus{outline:none;border-color:var(--j)}
+.config-row{margin-bottom:9px}
+.config-lbl{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+
 </style>
 </head>
 <body>
@@ -211,7 +400,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="hdr-sub">Center Grove Schools · Indiana Parenting Time Guidelines</div>
       <div class="hdr-title">📅 Xander's Parenting Calendar</div>
     </div>
-    <div class="hdr-info"><b>Xander Harrington</b><br>Born May 27, 2012 · Age 13</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div class="hdr-info"><b>Xander</b><br>Born May 27, 2012 · Age 13</div>
+      <div class="user-badge" id="user-badge" onclick="switchUser()" title="Click to switch user">
+        <span id="user-badge-text">Loading…</span>
+        <span class="switch">⇄ switch</span>
+      </div>
+    </div>
   </div>
   <div class="badges">
     <div class="badge badge-j">👨 Justin — Father (Noncustodial)</div>
@@ -223,6 +418,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <span style="font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Key:</span>
   <div class="lg"><div class="ls" style="background:var(--j-l);border-color:var(--j-m)"></div>Justin</div>
   <div class="lg"><div class="ls" style="background:var(--b-l);border-color:var(--b-m)"></div>Brittany</div>
+  <div class="lg"><div class="ls" style="background:var(--gold-l);border-color:var(--gold)"></div>Xander Birthday</div>
+  <div class="lg"><div class="ls" style="background:#dbeafe;border-color:#3b82f6"></div>Justin's Birthday</div>
+  <div class="lg"><div class="ls" style="background:#fce7f3;border-color:#ec4899"></div>Brittany's Birthday</div>
+  <div class="lg"><div class="ls" style="background:#ede9fe;border-color:#a78bfa"></div>Tue/Thu Justin</div>
   <div class="lg"><div style="width:9px;height:9px;border-radius:50%;background:var(--gold);flex-shrink:0"></div>Edited</div>
   <div class="lg"><div class="ls" style="background:#fff;box-shadow:0 0 0 2px var(--gold)"></div>Today</div>
   <div class="legend-hint">Tap any day to edit · Auto-syncs via Firebase</div>
@@ -240,6 +439,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <button class="year-tab" onclick="setYear(2026)" id="ytab-2026">2026</button>
   <button class="year-tab" onclick="setYear(2027)" id="ytab-2027">2027</button>
   <button class="year-tab" onclick="setYear(2028)" id="ytab-2028">2028</button>
+  <button id="export-btn" onclick="openExport()">📲 Add to Phone</button>
 </div>
 
 <!-- MONTH GRID for selected year -->
@@ -327,6 +527,45 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+
+<!-- ═══════════════════════ BLOCKING SWAP REVIEW MODAL ═══════════════════════ -->
+<div id="swap-block-overlay">
+  <div class="swap-block-modal">
+    <div class="swap-block-hdr">
+      <div class="swap-block-title">⚠️ Action Required</div>
+      <div class="swap-block-sub" id="swap-block-sub">Pending change needs your decision</div>
+    </div>
+    <div class="swap-block-progress" id="swap-block-progress"></div>
+    <div class="swap-block-body" id="swap-block-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SUMMER PLAN PROPOSAL/REVIEW MODAL ═══════════════════════ -->
+<div id="summer-prop-overlay">
+  <div class="summer-prop-modal">
+    <div class="summer-prop-hdr">
+      <div class="summer-prop-title" id="sp-title">☀️ Summer Plan Proposal</div>
+      <div class="summer-prop-sub" id="sp-sub"></div>
+    </div>
+    <div class="summer-prop-body" id="sp-body"></div>
+    <div class="summer-prop-ftr" id="sp-ftr"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ EXPORT TO PHONE MODAL ═══════════════════════ -->
+<div id="export-overlay">
+  <div class="export-modal">
+    <div class="export-hdr">
+      <div class="export-title">📲 Add Calendar to Your Phone</div>
+      <div class="export-sub">Live subscription · auto-updates when calendar changes</div>
+    </div>
+    <div class="export-body" id="export-body">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -408,8 +647,8 @@ function renderBanner(){
     const yr=isSummer2026?2026:2027;
     const range=yr===2026?'May 22 – Aug 2, 2026':'May 27 – Aug 2, 2027';
     el.innerHTML=`<div class="sum-banner">
-      <div><div class="sum-t">☀️ Summer ${yr} — Vacation weeks</div>
-      <div class="sum-s">${range} · Select by April 1</div></div>
+      <div><div class="sum-t">☀️ Summer ${yr} — Plan Justin's vacation weeks</div>
+      <div class="sum-s">${range} · Justin gets half · Typically 2-week blocks · Select by April 1</div></div>
       <button class="btn-sum" onclick="openSummer(${yr})">Plan Summer Weeks ▶</button>
     </div>`;
   } else { el.innerHTML=''; }
@@ -751,9 +990,1413 @@ function showToast(msg){
   clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('show'),2300);
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  USER IDENTITY (who-are-you picker)
+// ═══════════════════════════════════════════════════════
+
+const USER_KEY = 'xander_cal_user';
+let currentUser = sessionStorage.getItem(USER_KEY) || null;
+let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
+let activityLog  = [];   // array of {ts, by, type, msg}
+
+function setUser(name) {
+  currentUser = name;
+  sessionStorage.setItem(USER_KEY, name);
+  document.getElementById('who-gate').classList.remove('show');
+  updateUserBadge();
+  document.getElementById('log-toggle').style.display = 'flex';
+}
+
+function switchUser() {
+  if (confirm('Switch to the other parent? Your edits will be tracked under their name until you switch back.')) {
+    sessionStorage.removeItem(USER_KEY);
+    currentUser = null;
+    document.getElementById('who-gate').classList.add('show');
+  }
+}
+
+function updateUserBadge() {
+  const badge = document.getElementById('user-badge');
+  const text  = document.getElementById('user-badge-text');
+  if (!currentUser) return;
+  text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
+  badge.classList.toggle('b', currentUser === 'Brittany');
+}
+
+function showWhoPickerIfNeeded() {
+  // Only show after password gate is gone
+  if (!currentUser) {
+    document.getElementById('who-gate').classList.add('show');
+  } else {
+    updateUserBadge();
+    document.getElementById('log-toggle').style.display = 'flex';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SWAP REQUEST WORKFLOW
+// ═══════════════════════════════════════════════════════
+
+function makeSwapId() {
+  return 'swap_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+}
+
+// OVERRIDE saveDay: instead of direct write, create a pending swap
+const _origSaveDayDirect = window.saveDay;
+window.saveDay = function() {
+  if (!editKey) return;
+  if (!currentUser) {
+    alert('Please select who you are first.');
+    return;
+  }
+
+  const owner = document.getElementById('m-owner').value;
+  const event = document.getElementById('m-event').value;
+  const note  = document.getElementById('m-note').value;
+  const from  = document.getElementById('t-from').value;
+  const to    = document.getElementById('t-to').value;
+
+  // Get current state of day (default + any existing override)
+  const [yStr, mStr, dStr] = editKey.split('-');
+  const y = parseInt(yStr), m = parseInt(mStr)-1, d = parseInt(dStr);
+  const cur = getInfo(y, m, d) || {owner:'Brittany', event:'', note:''};
+  const curOv = overrides[editKey] || {};
+
+  // Did anything actually change?
+  const newOwner = owner;
+  const newEvent = event;
+  const newNote  = note;
+  const newTm    = timeMode;
+  const newFrom  = from;
+  const newTo    = to;
+
+  const noChange = (
+    cur.owner === newOwner &&
+    (cur.event||'') === newEvent &&
+    (curOv.note||'') === newNote &&
+    (curOv.timeMode||'all') === newTm &&
+    (curOv.timeFrom||'') === newFrom &&
+    (curOv.timeTo||'') === newTo
+  );
+  if (noChange) {
+    closeDay();
+    showToast('No changes made');
+    return;
+  }
+
+  // Create pending swap
+  const swapId = makeSwapId();
+  pendingSwaps[swapId] = {
+    date: editKey,
+    by: currentUser,
+    fromOwner: cur.owner,
+    toOwner: newOwner,
+    fromEvent: cur.event || '',
+    toEvent: newEvent,
+    fromNote: curOv.note || '',
+    toNote: newNote,
+    timeMode: newTm,
+    timeFrom: newFrom,
+    timeTo: newTo,
+    createdAt: new Date().toISOString(),
+  };
+
+  logAction(currentUser, 'proposed',
+    `Proposed change to ${formatLogDate(editKey)}: ${cur.owner} → ${newOwner}` +
+    (newEvent && newEvent !== (cur.event||'') ? ` · "${newEvent}"` : '')
+  );
+
+  closeDay();
+  render();
+  scheduleSave();
+  showToast('📤 Change proposed — awaiting approval');
+};
+
+// OVERRIDE resetDay: also goes through swap workflow if it changes anything
+const _origResetDayDirect = window.resetDay;
+window.resetDay = function() {
+  if (!editKey || !currentUser) return;
+  if (!overrides[editKey]) {
+    closeDay();
+    showToast('Already at default');
+    return;
+  }
+
+  // Reset is treated like a direct edit — propose to remove override
+  const [yStr, mStr, dStr] = editKey.split('-');
+  const y = parseInt(yStr), m = parseInt(mStr)-1, d = parseInt(dStr);
+  const baseInfo = (DEFAULT[`${y}-${String(m+1).padStart(2,'0')}`]||{})[String(d)] || {owner:'Brittany',event:''};
+  const curOv = overrides[editKey];
+
+  const swapId = makeSwapId();
+  pendingSwaps[swapId] = {
+    date: editKey,
+    by: currentUser,
+    fromOwner: curOv.owner || baseInfo.owner,
+    toOwner: baseInfo.owner,
+    fromEvent: curOv.event || baseInfo.event || '',
+    toEvent: baseInfo.event || '',
+    fromNote: curOv.note || '',
+    toNote: '',
+    timeMode: 'all',
+    timeFrom: '',
+    timeTo: '',
+    isReset: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  logAction(currentUser, 'proposed', `Proposed reset of ${formatLogDate(editKey)} to default`);
+  closeDay();
+  render();
+  scheduleSave();
+  showToast('📤 Reset proposed — awaiting approval');
+};
+
+// OVERRIDE applySummer: summer plan changes also go through approval as one batch
+const _origApplySummerDirect = window.applySummer;
+window.applySummer = function() {
+  if (!currentUser) { alert('Please select who you are first.'); return; }
+
+  // For summer plan, we apply directly but log the action
+  // (treating summer planner as a high-level config that needs collaboration anyway)
+  _origApplySummerDirect();
+  logAction(currentUser, 'summer', `Applied Summer ${activeSummerYear} plan with ${summerPlan.filter(b=>b.start&&b.start.startsWith(String(activeSummerYear))).length} blocks`);
+  scheduleSave();
+};
+
+function approveSwap(swapId) {
+  const swap = pendingSwaps[swapId];
+  if (!swap) return;
+  if (swap.by === currentUser) {
+    if (!confirm("This is your own proposal. You can't approve your own change. Cancel it instead?")) return;
+    return cancelSwap(swapId);
+  }
+
+  // Apply the change to overrides
+  if (swap.isReset) {
+    delete overrides[swap.date];
+  } else {
+    overrides[swap.date] = {
+      owner: swap.toOwner,
+      event: swap.toEvent,
+      note: swap.toNote,
+      timeMode: swap.timeMode || 'all',
+      timeFrom: swap.timeFrom || '',
+      timeTo: swap.timeTo || '',
+      _manual: true,
+      approvedBy: currentUser,
+      approvedAt: new Date().toISOString(),
+      proposedBy: swap.by,
+    };
+  }
+
+  logAction(currentUser, 'approved',
+    `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+  );
+
+  delete pendingSwaps[swapId];
+  render();
+  renderLogBody();
+  scheduleSave();
+  showToast('✓ Swap approved & applied');
+}
+
+function declineSwap(swapId) {
+  const swap = pendingSwaps[swapId];
+  if (!swap) return;
+  if (swap.by === currentUser) return cancelSwap(swapId);
+  if (!confirm(`Decline ${swap.by}'s proposed change to ${formatLogDate(swap.date)}?`)) return;
+
+  logAction(currentUser, 'declined',
+    `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+  );
+  delete pendingSwaps[swapId];
+  render();
+  renderLogBody();
+  scheduleSave();
+  showToast('✗ Swap declined');
+}
+
+function cancelSwap(swapId) {
+  const swap = pendingSwaps[swapId];
+  if (!swap) return;
+  if (!confirm(`Cancel your proposed change to ${formatLogDate(swap.date)}?`)) return;
+
+  logAction(currentUser, 'canceled', `Canceled own proposal for ${formatLogDate(swap.date)}`);
+  delete pendingSwaps[swapId];
+  render();
+  renderLogBody();
+  scheduleSave();
+  showToast('Proposal canceled');
+}
+
+// ═══════════════════════════════════════════════════════
+//  ACTIVITY LOG
+// ═══════════════════════════════════════════════════════
+
+function logAction(by, type, msg) {
+  activityLog.unshift({
+    ts: new Date().toISOString(),
+    by: by,
+    type: type,
+    msg: msg
+  });
+  // Keep last 200 entries
+  if (activityLog.length > 200) activityLog = activityLog.slice(0, 200);
+}
+
+function formatLogDate(dateKey) {
+  const [y,m,d] = dateKey.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+function formatLogTime(iso) {
+  const t = new Date(iso);
+  const now = new Date();
+  const diff = (now - t) / 60000; // minutes
+  if (diff < 1)  return 'just now';
+  if (diff < 60) return `${Math.floor(diff)}m ago`;
+  if (diff < 1440) return `${Math.floor(diff/60)}h ago`;
+  if (diff < 4320) return `${Math.floor(diff/1440)}d ago`;
+  return t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+let logTab = 'pending';
+
+function toggleLogDrawer() {
+  const d = document.getElementById('log-drawer');
+  d.classList.toggle('open');
+  if (d.classList.contains('open')) renderLogBody();
+}
+function closeLogDrawer() {
+  document.getElementById('log-drawer').classList.remove('open');
+}
+function switchLogTab(tab) {
+  logTab = tab;
+  document.getElementById('tab-pending').classList.toggle('active', tab==='pending');
+  document.getElementById('tab-history').classList.toggle('active', tab==='history');
+  renderLogBody();
+}
+
+function renderLogBody() {
+  const body = document.getElementById('log-body');
+  const pendingArr = Object.entries(pendingSwaps).sort((a,b)=>(b[1].createdAt||'').localeCompare(a[1].createdAt||''));
+
+  // Update counters
+  document.getElementById('ct-pending').textContent = pendingArr.length;
+  document.getElementById('ct-pending').classList.toggle('zero', pendingArr.length===0);
+  document.getElementById('ct-history').textContent = activityLog.length;
+  document.getElementById('ct-history').classList.toggle('zero', activityLog.length===0);
+
+  // Update floating button badge
+  const tog = document.getElementById('log-toggle');
+  document.getElementById('pending-count').textContent = pendingArr.length;
+  tog.classList.toggle('no-pending', pendingArr.length===0);
+  if (pendingArr.length > 0) {
+    tog.style.background = '#f59e0b';
+  } else {
+    tog.style.background = '#0f172a';
+  }
+
+  if (logTab === 'pending') {
+    if (pendingArr.length === 0) {
+      body.innerHTML = '<div class="log-empty">✨ No pending swaps<br><span style="font-size:.85em">Edits proposed by either parent will show up here for approval</span></div>';
+      return;
+    }
+    body.innerHTML = pendingArr.map(([id, s]) => {
+      const isMine = s.by === currentUser;
+      const ownerChange = s.fromOwner !== s.toOwner
+        ? `<b>${s.fromOwner}</b> <span class="swap-arrow">→</span> <b>${s.toOwner}</b>`
+        : `Owner stays <b>${s.toOwner}</b>`;
+      const eventChange = (s.toEvent && s.toEvent !== s.fromEvent) ? `<br>Event: "${s.toEvent}"` : '';
+      const noteChange  = (s.toNote && s.toNote !== s.fromNote)  ? `<br>Note: "${s.toNote}"` : '';
+      const timeChange  = s.timeMode && s.timeMode !== 'all' && (s.timeFrom || s.timeTo)
+        ? `<br>⏰ ${buildTimeStr(s.timeFrom, s.timeTo, s.timeMode)}`
+        : '';
+      const resetMsg    = s.isReset ? '<br><i>(reset to default)</i>' : '';
+
+      const actions = isMine
+        ? `<button class="swap-btn swap-cancel" onclick="cancelSwap('${id}')">Cancel</button>`
+        : `<button class="swap-btn swap-decline" onclick="declineSwap('${id}')">✗ Decline</button>
+           <button class="swap-btn swap-approve" onclick="approveSwap('${id}')">✓ Approve</button>`;
+
+      return `<div class="swap-card">
+        <div class="swap-card-hdr">
+          <span class="swap-by" style="color:${s.by==='Justin'?'var(--j-d)':'var(--b-d)'}">
+            ${s.by==='Justin'?'👨':'👩'} ${s.by}${isMine?' (you)':''} proposes:
+          </span>
+          <span class="swap-when">${formatLogTime(s.createdAt)}</span>
+        </div>
+        <div class="swap-date">📅 ${formatLogDate(s.date)}</div>
+        <div class="swap-change">${ownerChange}${eventChange}${noteChange}${timeChange}${resetMsg}</div>
+        <div class="swap-actions">${actions}</div>
+      </div>`;
+    }).join('');
+  } else {
+    if (activityLog.length === 0) {
+      body.innerHTML = '<div class="log-empty">No activity yet<br><span style="font-size:.85em">All edits and approvals will appear here</span></div>';
+      return;
+    }
+    body.innerHTML = activityLog.slice(0, 100).map(e => {
+      const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
+      const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '⚙️');
+      return `<div class="log-entry ${cls}">
+        <div class="who ${cls}">${emoji} ${e.by||'System'}</div>
+        <div class="what">${e.msg}</div>
+        <div class="when">${formatLogTime(e.ts)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOOK INTO RENDERGRID — show pending dot on days with pending swaps
+// ═══════════════════════════════════════════════════════
+
+const _origRenderGrid = renderGrid;
+renderGrid = function() {
+  _origRenderGrid();
+  // Add pending dots
+  const pendingByDate = {};
+  Object.values(pendingSwaps).forEach(s => {
+    pendingByDate[s.date] = (pendingByDate[s.date] || 0) + 1;
+  });
+  document.querySelectorAll('#grid .dc:not(.empty)').forEach((cell) => {
+    // Find the cell's date number
+    const dn = cell.querySelector('.d-num');
+    if (!dn) return;
+    const day = parseInt(dn.textContent);
+    if (!day) return;
+    const key = `${cY}-${String(cM+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    if (pendingByDate[key]) {
+      const dot = document.createElement('div');
+      dot.className = 'pending-dot';
+      dot.title = `${pendingByDate[key]} pending swap`;
+      cell.appendChild(dot);
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════
+//  HOOK INTO scheduleSave + initFirebase to handle new fields
+// ═══════════════════════════════════════════════════════
+
+const _origScheduleSave = scheduleSave;
+scheduleSave = function() {
+  _setSyncStatus('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window._fbSave) {
+      _ignoreNext = true;
+      window._fbSave(overrides, summerPlan, pendingSwaps, activityLog);
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    }
+  }, 800);
+};
+
+// Override initFirebase to load activity log + pending swaps
+const _origInitFirebase = initFirebase;
+initFirebase = function() {
+  _setSyncStatus('connecting');
+  window._fbListen(function(data) {
+    if (_ignoreNext) return;
+    if (!data) {
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)    overrides    = data.overrides;
+    if (data.summerPlan)   summerPlan   = data.summerPlan;
+    if (data.pendingSwaps) pendingSwaps = data.pendingSwaps;
+    if (data.activityLog)  activityLog  = data.activityLog;
+    render();
+    renderLogBody();
+    if (data.updatedAt) {
+      const t = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${t}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════
+//  Add propose-banner to edit modal title area
+// ═══════════════════════════════════════════════════════
+const _origOpenDay = openDay;
+openDay = function(y,m,d) {
+  _origOpenDay(y,m,d);
+  // Add propose banner if not already there
+  let banner = document.getElementById('propose-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'propose-banner';
+    banner.className = 'propose-banner';
+    const sub = document.getElementById('m-sub');
+    sub.parentNode.insertBefore(banner, sub.nextSibling);
+  }
+  banner.innerHTML = `<b>📤 Changes are proposals.</b> Saving will send this for ${currentUser==='Justin'?'Brittany':'Justin'} to approve before it appears on the calendar.`;
+};
+
+// Close drawer on backdrop click
+document.addEventListener('click', function(e) {
+  const drawer = document.getElementById('log-drawer');
+  const tog    = document.getElementById('log-toggle');
+  if (drawer.classList.contains('open') &&
+      !drawer.contains(e.target) && !tog.contains(e.target)) {
+    drawer.classList.remove('open');
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  BLOCKING SWAP MODAL — forces decision when swaps await
+// ═══════════════════════════════════════════════════════
+
+let _swapBlockShownFor = new Set(); // swap IDs already presented this session
+let _swapBlockActive = false;
+
+function checkBlockingSwaps() {
+  if (!currentUser) return;
+  if (_swapBlockActive) return;
+  // Don't show during password gate / who picker
+  if (document.getElementById('pw-gate').style.display !== 'none') return;
+  if (document.getElementById('who-gate').classList.contains('show')) return;
+  // Don't show while summer prop modal is open
+  if (document.getElementById('summer-prop-overlay').classList.contains('show')) return;
+
+  // Find swaps proposed BY the OTHER parent that current user has not yet decided on
+  const otherParent = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const myReviewQueue = Object.entries(pendingSwaps)
+    .filter(([id, s]) => s.by === otherParent && !_swapBlockShownFor.has(id))
+    .sort((a,b) => (a[1].createdAt||'').localeCompare(b[1].createdAt||''));
+
+  if (myReviewQueue.length === 0) return;
+
+  showBlockingSwap(myReviewQueue, 0);
+}
+
+function showBlockingSwap(queue, idx) {
+  if (idx >= queue.length) {
+    _swapBlockActive = false;
+    document.getElementById('swap-block-overlay').classList.remove('show');
+    return;
+  }
+  _swapBlockActive = true;
+  const [id, s] = queue[idx];
+  _swapBlockShownFor.add(id);
+
+  const ownerChange = s.fromOwner !== s.toOwner
+    ? `<b>${s.fromOwner}</b> <span style="color:#d97706;font-weight:900">→</span> <b>${s.toOwner}</b>`
+    : `Owner stays <b>${s.toOwner}</b>`;
+  const eventLine = (s.toEvent && s.toEvent !== s.fromEvent) ? `<div style="margin-top:6px"><b>Event:</b> "${s.toEvent}"</div>` : '';
+  const noteLine  = (s.toNote && s.toNote !== s.fromNote) ? `<div style="margin-top:4px"><b>Note:</b> "${s.toNote}"</div>` : '';
+  const timeLine  = s.timeMode && s.timeMode !== 'all' && (s.timeFrom || s.timeTo)
+    ? `<div style="margin-top:4px"><b>⏰</b> ${buildTimeStr(s.timeFrom, s.timeTo, s.timeMode)}</div>` : '';
+  const resetLine = s.isReset ? `<div style="margin-top:6px;color:#92400e;font-style:italic">(this is a reset to default)</div>` : '';
+
+  document.getElementById('swap-block-sub').textContent =
+    `${s.by} proposed a change · waiting on you`;
+  document.getElementById('swap-block-progress').textContent =
+    queue.length > 1 ? `Decision ${idx+1} of ${queue.length}` : `1 pending decision`;
+  document.getElementById('swap-block-body').innerHTML = `
+    <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Date</div>
+    <div style="font-size:1.05em;font-weight:800;color:var(--text);margin-bottom:13px">📅 ${formatLogDate(s.date)}</div>
+
+    <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Proposed Change</div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:11px 13px;font-size:.92em;line-height:1.5;margin-bottom:14px">
+      ${ownerChange}${eventLine}${noteLine}${timeLine}${resetLine}
+    </div>
+
+    <div style="font-size:.78em;color:var(--muted);margin-bottom:11px;font-style:italic">
+      Proposed by <b style="color:${s.by==='Justin'?'var(--j-d)':'var(--b-d)'};font-style:normal">${s.by}</b> · ${formatLogTime(s.createdAt)}
+    </div>
+
+    <div style="display:flex;gap:7px;margin-top:6px">
+      <button class="swap-btn swap-decline" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'decline')">✗ Decline</button>
+      <button class="swap-btn swap-approve" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'approve')">✓ Approve</button>
+    </div>
+    ${queue.length > 1 ? `<div style="text-align:center;margin-top:9px"><button class="swap-btn swap-cancel" style="font-size:.78em;padding:6px 11px" onclick="handleBlockingDecision('${id}', 'skip')">Skip for now</button></div>` : ''}
+  `;
+  document.getElementById('swap-block-overlay').classList.add('show');
+
+  // Stash queue + idx for the decision handler
+  window._currentSwapQueue = queue;
+  window._currentSwapIdx = idx;
+}
+
+function handleBlockingDecision(swapId, decision) {
+  if (decision === 'approve') approveSwap(swapId);
+  else if (decision === 'decline') declineSwap(swapId);
+  // 'skip' just advances
+
+  // Show next item in queue
+  const next = (window._currentSwapIdx || 0) + 1;
+  // Rebuild queue (in case items were removed)
+  const otherParent = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const remaining = Object.entries(pendingSwaps)
+    .filter(([id, s]) => s.by === otherParent && !_swapBlockShownFor.has(id))
+    .sort((a,b) => (a[1].createdAt||'').localeCompare(b[1].createdAt||''));
+
+  if (remaining.length > 0) {
+    showBlockingSwap(remaining, 0);
+  } else {
+    _swapBlockActive = false;
+    document.getElementById('swap-block-overlay').classList.remove('show');
+  }
+}
+
+// Override approveSwap/declineSwap to skip the confirm() when called from blocking modal
+const _origApprove = approveSwap;
+approveSwap = function(swapId) {
+  // If we're in blocking modal, skip the "your own proposal" confirm path
+  // (blocking modal already filters those out)
+  const swap = pendingSwaps[swapId];
+  if (!swap) return;
+  if (swap.by === currentUser && _swapBlockActive) {
+    return;
+  }
+  if (_swapBlockActive) {
+    // Apply directly without the original's confirm prompt
+    if (swap.isReset) {
+      delete overrides[swap.date];
+    } else {
+      overrides[swap.date] = {
+        owner: swap.toOwner,
+        event: swap.toEvent,
+        note: swap.toNote,
+        timeMode: swap.timeMode || 'all',
+        timeFrom: swap.timeFrom || '',
+        timeTo: swap.timeTo || '',
+        _manual: true,
+        approvedBy: currentUser,
+        approvedAt: new Date().toISOString(),
+        proposedBy: swap.by,
+      };
+    }
+    logAction(currentUser, 'approved',
+      `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+    );
+    delete pendingSwaps[swapId];
+    render();
+    renderLogBody();
+    scheduleSave();
+    showToast('✓ Approved');
+    return;
+  }
+  return _origApprove(swapId);
+};
+
+const _origDecline = declineSwap;
+declineSwap = function(swapId) {
+  if (_swapBlockActive) {
+    const swap = pendingSwaps[swapId];
+    if (!swap) return;
+    logAction(currentUser, 'declined',
+      `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+    );
+    delete pendingSwaps[swapId];
+    render();
+    renderLogBody();
+    scheduleSave();
+    showToast('✗ Declined');
+    return;
+  }
+  return _origDecline(swapId);
+};
+
+// ═══════════════════════════════════════════════════════
+//  MONTH-LEVEL SWAP REMINDER (banner above stats)
+// ═══════════════════════════════════════════════════════
+
+function renderMonthReminder() {
+  // Remove existing reminder if any
+  const existing = document.getElementById('month-reminder');
+  if (existing) existing.remove();
+
+  if (!currentUser) return;
+
+  // Find pending swaps for the currently-viewed month
+  const monthPrefix = `${cY}-${String(cM+1).padStart(2,'0')}`;
+  const monthSwaps = Object.entries(pendingSwaps)
+    .filter(([id, s]) => s.date && s.date.startsWith(monthPrefix));
+
+  if (monthSwaps.length === 0) return;
+
+  const forMe = monthSwaps.filter(([id,s]) => s.by !== currentUser).length;
+  const myProposals = monthSwaps.filter(([id,s]) => s.by === currentUser).length;
+
+  const banner = document.createElement('div');
+  banner.id = 'month-reminder';
+  banner.className = 'month-reminder';
+  banner.onclick = () => { document.getElementById('log-drawer').classList.add('open'); switchLogTab('pending'); renderLogBody(); };
+
+  let msg = '';
+  if (forMe > 0 && myProposals > 0) {
+    msg = `${forMe} need your decision · ${myProposals} of yours awaiting reply`;
+  } else if (forMe > 0) {
+    msg = `${forMe} pending change${forMe===1?'':'s'} need${forMe===1?'s':''} your decision`;
+  } else {
+    msg = `${myProposals} of your proposal${myProposals===1?' is':'s are'} awaiting reply from ${currentUser==='Justin'?'Brittany':'Justin'}`;
+  }
+
+  banner.innerHTML = `
+    <div class="month-reminder-icon">⚠️</div>
+    <div class="month-reminder-text">
+      <div class="month-reminder-t">${monthSwaps.length} pending swap${monthSwaps.length===1?'':'s'} this month</div>
+      <div class="month-reminder-s">${msg}</div>
+    </div>
+    <div class="month-reminder-arrow">→</div>
+  `;
+
+  // Insert before stats
+  const stats = document.getElementById('stats');
+  stats.parentNode.insertBefore(banner, stats);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SUMMER PLAN PROPOSAL WORKFLOW
+//  Justin (noncustodial) proposes summer plan by April 1
+//  → Brittany reviews, can Approve OR "Suggest Changes" (with justification)
+//  → Justin reviews her counter-proposal, can Approve or counter again
+//  → Justin has final call
+//
+//  We track this in `summerProposal` object on Firebase:
+//  {
+//    year: 2026,
+//    stage: 'pending_brittany' | 'pending_justin' | 'approved',
+//    blocks: [...],     // current proposed blocks
+//    history: [         // chain of who-proposed-what
+//      {by, blocks, ts, justification}
+//    ]
+//  }
+// ═══════════════════════════════════════════════════════
+
+let summerProposal = null; // {year, stage, blocks, history}
+let _summerPropShownFor = null; // year we already showed the modal for this session
+
+function getSummerYear() {
+  // The active summer year for proposals is the upcoming summer
+  // From Jan-July of year Y → summer of Y
+  // From Aug-Dec of year Y → summer of Y+1
+  const t = new Date();
+  return t.getMonth() < 7 ? t.getFullYear() : t.getFullYear() + 1;
+}
+
+function summerDeadline(yr) {
+  return new Date(yr, 3, 1); // April 1 of that year
+}
+
+function isJustinSummerOverdue() {
+  if (!summerProposal || summerProposal.year !== getSummerYear()) return false;
+  return false; // not overdue if proposal exists
+}
+
+function shouldRemindJustin() {
+  if (currentUser !== 'Justin') return false;
+  const yr = getSummerYear();
+  // Reminders run from March 1 through April 1
+  const t = new Date();
+  const start = new Date(yr, 2, 1); // March 1
+  const end = new Date(yr, 3, 1); // April 1
+  if (t < start || t > end) return false;
+  // No reminder if Justin already proposed
+  if (summerProposal && summerProposal.year === yr && summerProposal.history.some(h=>h.by==='Justin')) return false;
+  return true;
+}
+
+function shouldRemindJustinPostDeadline() {
+  if (currentUser !== 'Justin') return false;
+  const yr = getSummerYear();
+  const t = new Date();
+  const deadline = new Date(yr, 3, 1);
+  if (t <= deadline) return false;
+  // Past April 1 — only show if Justin still has not proposed
+  if (summerProposal && summerProposal.year === yr && summerProposal.history.some(h=>h.by==='Justin')) return false;
+  // Only relevant if we're still before summer
+  const summerEnd = new Date(yr, 7, 15);
+  if (t > summerEnd) return false;
+  return true;
+}
+
+function shouldShowBrittanyReview() {
+  if (currentUser !== 'Brittany') return false;
+  if (!summerProposal) return false;
+  return summerProposal.stage === 'pending_brittany';
+}
+
+function shouldShowJustinReview() {
+  if (currentUser !== 'Justin') return false;
+  if (!summerProposal) return false;
+  return summerProposal.stage === 'pending_justin';
+}
+
+function renderSummerAlert() {
+  // Remove any existing
+  const existing = document.getElementById('summer-alert');
+  if (existing) existing.remove();
+  if (!currentUser) return;
+
+  const yr = getSummerYear();
+  const t = new Date();
+  let alertHtml = null;
+
+  if (shouldShowBrittanyReview()) {
+    alertHtml = `
+      <div id="summer-alert" class="summer-alert brittany" onclick="openSummerProposalReview()">
+        <div class="summer-alert-icon">☀️</div>
+        <div class="summer-alert-body">
+          <div class="summer-alert-t">Justin submitted Summer ${summerProposal.year} plan</div>
+          <div class="summer-alert-s">Review and accept, or suggest changes with reasoning</div>
+          <span class="summer-alert-cta">Review proposal →</span>
+        </div>
+      </div>`;
+  } else if (shouldShowJustinReview()) {
+    alertHtml = `
+      <div id="summer-alert" class="summer-alert justin" onclick="openSummerProposalReview()">
+        <div class="summer-alert-icon">☀️</div>
+        <div class="summer-alert-body">
+          <div class="summer-alert-t">Brittany suggested changes to Summer ${summerProposal.year}</div>
+          <div class="summer-alert-s">Review her suggestions — you have final say as noncustodial parent</div>
+          <span class="summer-alert-cta">Review →</span>
+        </div>
+      </div>`;
+  } else if (shouldRemindJustinPostDeadline()) {
+    const overdueDays = Math.floor((t - new Date(yr,3,1)) / 86400000);
+    alertHtml = `
+      <div id="summer-alert" class="summer-alert urgent" onclick="openSummer(${yr})">
+        <div class="summer-alert-icon">⏰</div>
+        <div class="summer-alert-body">
+          <div class="summer-alert-t">Summer ${yr} plan is ${overdueDays} day${overdueDays===1?'':'s'} overdue</div>
+          <div class="summer-alert-s">April 1 deadline passed — submit your plan now to preserve your selection rights</div>
+          <span class="summer-alert-cta">Submit Summer Plan →</span>
+        </div>
+      </div>`;
+  } else if (shouldRemindJustin()) {
+    const daysLeft = Math.ceil((new Date(yr,3,1) - t) / 86400000);
+    alertHtml = `
+      <div id="summer-alert" class="summer-alert justin" onclick="openSummer(${yr})">
+        <div class="summer-alert-icon">☀️</div>
+        <div class="summer-alert-body">
+          <div class="summer-alert-t">Summer ${yr} plan due in ${daysLeft} day${daysLeft===1?'':'s'}</div>
+          <div class="summer-alert-s">As noncustodial parent, you select your summer days by April 1. Submit your plan to lock in your weeks.</div>
+          <span class="summer-alert-cta">Plan Summer ${yr} →</span>
+        </div>
+      </div>`;
+  }
+
+  if (alertHtml) {
+    const stats = document.getElementById('stats');
+    stats.insertAdjacentHTML('beforebegin', alertHtml);
+  }
+}
+
+// Replace summer planner Apply button behavior — for Justin, this becomes a PROPOSAL
+const _origApplySummerNew = window.applySummer;
+window.applySummer = function() {
+  if (!currentUser) { alert('Please select who you are first.'); return; }
+
+  const yr = activeSummerYear;
+  const yearBlocks = summerPlan.filter(b => b.start && b.start.startsWith(String(yr)));
+
+  // If Justin is submitting his initial proposal (no existing proposal for this year)
+  // OR he is countering Brittany's suggestion → goes through workflow
+  if (currentUser === 'Justin') {
+    if (!summerProposal || summerProposal.year !== yr) {
+      // Justin's INITIAL proposal
+      summerProposal = {
+        year: yr,
+        stage: 'pending_brittany',
+        blocks: JSON.parse(JSON.stringify(yearBlocks)),
+        history: [{
+          by: 'Justin',
+          blocks: JSON.parse(JSON.stringify(yearBlocks)),
+          ts: new Date().toISOString(),
+          justification: '',
+          isInitial: true
+        }]
+      };
+      logAction('Justin', 'summer', `Submitted initial Summer ${yr} plan to Brittany for review`);
+    } else if (summerProposal.stage === 'pending_justin') {
+      // Justin is countering Brittany's suggestion — final say
+      summerProposal.blocks = JSON.parse(JSON.stringify(yearBlocks));
+      summerProposal.stage = 'approved';
+      summerProposal.history.push({
+        by: 'Justin',
+        blocks: JSON.parse(JSON.stringify(yearBlocks)),
+        ts: new Date().toISOString(),
+        justification: '',
+        isFinal: true
+      });
+      logAction('Justin', 'summer', `Approved final Summer ${yr} plan (after Brittany's suggestion)`);
+      // Apply to calendar
+      _applySummerToCalendar(yr, yearBlocks);
+    } else {
+      // Already approved or pending Brittany — just save
+      _applySummerToCalendar(yr, yearBlocks);
+    }
+  } else {
+    // Brittany editing summer (rare path) — just applies
+    _applySummerToCalendar(yr, yearBlocks);
+    logAction('Brittany', 'summer', `Edited Summer ${yr} plan directly (custodial parent override)`);
+  }
+
+  closeSummer();
+  render();
+  scheduleSave();
+  showToast(currentUser === 'Justin' && summerProposal && summerProposal.stage === 'pending_brittany'
+    ? '☀️ Submitted to Brittany for review' : '☀️ Summer plan saved');
+};
+
+function _applySummerToCalendar(yr, blocks) {
+  const minD = yr === 2027 ? '2027-05-27' : (yr === 2026 ? '2026-05-22' : `${yr}-05-22`);
+  const maxD = yr === 2027 ? '2027-08-02' : (yr === 2026 ? '2026-08-02' : `${yr}-08-02`);
+  const s = new Date(minD+'T12:00:00'), e = new Date(maxD+'T12:00:00');
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) {
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (overrides[key]?._summer) delete overrides[key];
+  }
+  blocks.forEach(blk => {
+    if (!blk.start || !blk.end) return;
+    const bs = new Date(blk.start+'T12:00:00'), be = new Date(blk.end+'T12:00:00');
+    for (let d = new Date(bs); d <= be; d.setDate(d.getDate()+1)) {
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const base = (DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`]||{})[String(d.getDate())]||{};
+      overrides[key] = {
+        owner: blk.owner,
+        event: blk.label ? `☀️ ${blk.label}` : (base.event || `☀️ ${blk.owner}'s Summer`),
+        note:'', timeMode:'all', timeFrom:'', timeTo:'', _summer:true
+      };
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SUMMER PROPOSAL REVIEW MODAL (Brittany sees Justin's proposal,
+//  then Justin sees Brittany's counter-proposal)
+// ═══════════════════════════════════════════════════════
+
+let _spReviewMode = null; // 'brittany_review' | 'justin_review'
+let _spEditableBlocks = [];
+
+function openSummerProposalReview() {
+  if (!summerProposal) return;
+  if (currentUser === 'Brittany' && summerProposal.stage === 'pending_brittany') {
+    _spReviewMode = 'brittany_review';
+  } else if (currentUser === 'Justin' && summerProposal.stage === 'pending_justin') {
+    _spReviewMode = 'justin_review';
+  } else {
+    return;
+  }
+  _spEditableBlocks = JSON.parse(JSON.stringify(summerProposal.blocks));
+  renderSummerProposalModal();
+  document.getElementById('summer-prop-overlay').classList.add('show');
+}
+
+function closeSummerProposalReview() {
+  document.getElementById('summer-prop-overlay').classList.remove('show');
+  _spReviewMode = null;
+}
+
+function renderSummerProposalModal() {
+  const yr = summerProposal.year;
+  const proposer = summerProposal.history[summerProposal.history.length-1].by;
+
+  document.getElementById('sp-title').textContent =
+    _spReviewMode === 'brittany_review'
+      ? `☀️ Justin's Summer ${yr} Proposal`
+      : `☀️ Brittany's Suggested Changes — Summer ${yr}`;
+
+  document.getElementById('sp-sub').textContent =
+    _spReviewMode === 'brittany_review'
+      ? 'Justin proposes these summer dates · Approve or suggest changes'
+      : 'Brittany suggests these adjustments · You have final say';
+
+  // Stage banner
+  const stageBanner = _spReviewMode === 'brittany_review'
+    ? `<div class="sp-stage-banner">📥 Submitted by Justin · Per IPG, noncustodial parent selects summer dates by April 1. Brittany may suggest changes (with reasoning) but Justin has final approval.</div>`
+    : `<div class="sp-stage-banner">📥 Counter-suggested by Brittany · As noncustodial parent, you have the final call. Approve her suggestions, or revise and finalize.</div>`;
+
+  // Build blocks list (display-only or editable)
+  let blocksHtml = '<div class="sp-blocks">';
+  _spEditableBlocks.forEach((blk, i) => {
+    const days = blk.start && blk.end ? daysBetween(blk.start, blk.end) : 0;
+    blocksHtml += `
+      <div class="sp-block">
+        <div class="sp-block-owner ${blk.owner==='Justin'?'j':'b'}">${blk.owner==='Justin'?'👨':'👩'}</div>
+        <div style="flex:1;min-width:0">
+          <div class="sp-block-dates">${fmtDate(blk.start)} → ${fmtDate(blk.end)}</div>
+          <div class="sp-block-days">${days} day${days===1?'':'s'}${blk.label?` · ${blk.label}`:''}</div>
+        </div>
+      </div>`;
+  });
+  blocksHtml += '</div>';
+
+  // History
+  let historyHtml = '';
+  if (summerProposal.history.length > 0) {
+    historyHtml = `<div class="sp-history">
+      <div class="sp-history-title">Proposal History</div>
+      ${summerProposal.history.map(h => `
+        <div class="sp-history-item ${h.by==='Justin'?'j':'b'}">
+          <b>${h.by==='Justin'?'👨':'👩'} ${h.by}</b> ${h.isInitial?'submitted initial plan':(h.isFinal?'approved final plan':'suggested changes')}
+          <span class="sp-history-when"> · ${formatLogTime(h.ts)}</span>
+          ${h.justification ? `<div style="margin-top:3px;font-size:.92em;color:var(--text)"><i>"${h.justification}"</i></div>` : ''}
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  // Body
+  let body = stageBanner + blocksHtml;
+
+  if (_spReviewMode === 'brittany_review') {
+    body += `
+      <div class="sp-justify" id="sp-justify-section" style="display:none">
+        <div class="sp-justify-lbl">📝 Reason for suggested changes (required)</div>
+        <textarea class="sp-justify-ta" id="sp-justify-text"
+          placeholder="e.g. The first week conflicts with my family reunion. I'd like to swap weeks 1 and 3 so I have Xander for the reunion."></textarea>
+        <div style="font-size:.74em;color:var(--muted);margin-top:5px;font-style:italic">
+          Justin will see your reasoning when reviewing your suggestion.
+        </div>
+        <div style="margin-top:11px;padding:10px 12px;background:#f8fafc;border-radius:8px;font-size:.82em;color:var(--text);line-height:1.5">
+          <b>Note:</b> To suggest specific date changes, close this dialog, then open the Summer Planner from the calendar to edit dates and re-submit.
+        </div>
+      </div>
+    `;
+  }
+
+  body += historyHtml;
+  document.getElementById('sp-body').innerHTML = body;
+
+  // Footer buttons
+  let ftr = '';
+  if (_spReviewMode === 'brittany_review') {
+    ftr = `
+      <button class="btn btn-cancel" onclick="closeSummerProposalReview()">Close</button>
+      <button class="btn" style="background:#fef3c7;color:#92400e" onclick="brittanyShowSuggest()">📝 Suggest Changes</button>
+      <button class="btn btn-save" style="flex:1" onclick="brittanyApproveSummer()">✓ Approve Plan</button>
+    `;
+  } else {
+    ftr = `
+      <button class="btn btn-cancel" onclick="closeSummerProposalReview()">Close</button>
+      <button class="btn" style="background:#fef3c7;color:#92400e" onclick="closeSummerProposalReview();openSummer(${yr})">📝 Revise & Re-submit</button>
+      <button class="btn btn-save" style="flex:1;background:#10b981" onclick="justinApproveFinal()">✓ Accept Brittany's Suggestion (Final)</button>
+    `;
+  }
+  document.getElementById('sp-ftr').innerHTML = ftr;
+}
+
+function brittanyShowSuggest() {
+  document.getElementById('sp-justify-section').style.display = 'block';
+  // Replace footer
+  const yr = summerProposal.year;
+  document.getElementById('sp-ftr').innerHTML = `
+    <button class="btn btn-cancel" onclick="closeSummerProposalReview()">Close</button>
+    <button class="btn btn-save" style="flex:1;background:#d97706" onclick="brittanySubmitSuggestion(${yr})">📤 Send Suggestion to Justin</button>
+  `;
+  document.getElementById('sp-justify-text').focus();
+}
+
+function brittanyApproveSummer() {
+  const yr = summerProposal.year;
+  summerProposal.stage = 'approved';
+  summerProposal.history.push({
+    by: 'Brittany',
+    blocks: JSON.parse(JSON.stringify(summerProposal.blocks)),
+    ts: new Date().toISOString(),
+    justification: '',
+    isApproval: true
+  });
+  // Apply to calendar
+  _applySummerToCalendar(yr, summerProposal.blocks);
+  // Sync summerPlan to match
+  summerPlan = summerPlan.filter(b => !b.start || !b.start.startsWith(String(yr)));
+  summerPlan = summerPlan.concat(summerProposal.blocks);
+  logAction('Brittany', 'summer', `Approved Justin's Summer ${yr} plan`);
+  closeSummerProposalReview();
+  render();
+  scheduleSave();
+  showToast('✓ Summer plan approved & applied');
+}
+
+function brittanySubmitSuggestion(yr) {
+  const reason = document.getElementById('sp-justify-text').value.trim();
+  if (!reason) {
+    alert('Please provide a reason for your suggested changes so Justin understands the request.');
+    return;
+  }
+  // Brittany's "suggestion" is currently the same blocks (she'd need summer planner to actually edit)
+  // — but we capture her justification so Justin sees it
+  summerProposal.stage = 'pending_justin';
+  summerProposal.history.push({
+    by: 'Brittany',
+    blocks: JSON.parse(JSON.stringify(summerProposal.blocks)),
+    ts: new Date().toISOString(),
+    justification: reason
+  });
+  logAction('Brittany', 'summer', `Suggested changes to Summer ${yr} plan: "${reason.slice(0,80)}${reason.length>80?'…':''}"`);
+  closeSummerProposalReview();
+  render();
+  scheduleSave();
+  showToast('📤 Suggestion sent to Justin');
+}
+
+function justinApproveFinal() {
+  const yr = summerProposal.year;
+  summerProposal.stage = 'approved';
+  summerProposal.history.push({
+    by: 'Justin',
+    blocks: JSON.parse(JSON.stringify(summerProposal.blocks)),
+    ts: new Date().toISOString(),
+    justification: '',
+    isFinal: true
+  });
+  _applySummerToCalendar(yr, summerProposal.blocks);
+  summerPlan = summerPlan.filter(b => !b.start || !b.start.startsWith(String(yr)));
+  summerPlan = summerPlan.concat(summerProposal.blocks);
+  logAction('Justin', 'summer', `Approved final Summer ${yr} plan`);
+  closeSummerProposalReview();
+  render();
+  scheduleSave();
+  showToast('✓ Summer plan finalized');
+}
+
+// Auto-popup for Brittany when Justin submits
+function maybeAutoShowSummerProposal() {
+  if (!currentUser) return;
+  if (!summerProposal) return;
+  if (_summerPropShownFor === summerProposal.year + '_' + summerProposal.stage) return;
+
+  if (shouldShowBrittanyReview() || shouldShowJustinReview()) {
+    _summerPropShownFor = summerProposal.year + '_' + summerProposal.stage;
+    setTimeout(() => openSummerProposalReview(), 600);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  HOOK INTO render() to add month reminder + summer alert
+// ═══════════════════════════════════════════════════════
+
+const _origRender = render;
+render = function() {
+  _origRender();
+  renderMonthReminder();
+  renderSummerAlert();
+};
+
+// ═══════════════════════════════════════════════════════
+//  HOOK INTO scheduleSave + initFirebase to handle summerProposal
+// ═══════════════════════════════════════════════════════
+
+const _origScheduleSaveV7 = scheduleSave;
+scheduleSave = function() {
+  _setSyncStatus('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window._fbSave) {
+      _ignoreNext = true;
+      window._fbSave(overrides, summerPlan, pendingSwaps, activityLog, summerProposal);
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    }
+  }, 800);
+};
+
+// Update _fbSave to accept summerProposal (5th arg)
+const _origFbSave = window._fbSave;
+window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog, summerProposal) {
+  // We need to call the Firebase set with all 5 keys
+  // The original _fbSave only takes 4 — wrap it with a direct write
+  if (window._fbDirectWrite) {
+    window._fbDirectWrite({
+      overrides: overrides,
+      summerPlan: summerPlan,
+      pendingSwaps: pendingSwaps || {},
+      activityLog: activityLog || [],
+      summerProposal: summerProposal || null,
+      updatedAt: new Date().toISOString(),
+    });
+  } else {
+    _origFbSave(overrides, summerPlan, pendingSwaps, activityLog);
+  }
+};
+
+const _origInitFirebaseV7 = initFirebase;
+initFirebase = function() {
+  _setSyncStatus('connecting');
+  window._fbListen(function(data) {
+    if (_ignoreNext) return;
+    if (!data) {
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)      overrides      = data.overrides;
+    if (data.summerPlan)     summerPlan     = data.summerPlan;
+    if (data.pendingSwaps)   pendingSwaps   = data.pendingSwaps;
+    if (data.activityLog)    activityLog    = data.activityLog;
+    if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+
+    render();
+    renderLogBody();
+
+    // Trigger blocking modal if there are pending swaps for me
+    setTimeout(() => checkBlockingSwaps(), 400);
+    // Trigger summer proposal modal if applicable
+    setTimeout(() => maybeAutoShowSummerProposal(), 700);
+
+    if (data.updatedAt) {
+      const t = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${t}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════
+//  Trigger blocking modal whenever currentUser becomes set
+// ═══════════════════════════════════════════════════════
+
+const _origSetUser = setUser;
+setUser = function(name) {
+  _origSetUser(name);
+  setTimeout(() => {
+    render();
+    checkBlockingSwaps();
+    maybeAutoShowSummerProposal();
+  }, 200);
+};
+
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT TO PHONE — iCal subscription URLs
+// ═══════════════════════════════════════════════════════
+
+const EXPORT_KEY = 'xander_cal_export_config';
+let exportConfig = JSON.parse(localStorage.getItem(EXPORT_KEY) || '{}');
+let exportFilter = 'all'; // 'all' | 'justin' | 'brittany'
+
+function openExport() {
+  exportFilter = currentUser === 'Justin' ? 'justin'
+              : currentUser === 'Brittany' ? 'brittany'
+              : 'all';
+  renderExportModal();
+  document.getElementById('export-overlay').classList.add('show');
+}
+
+function closeExport() {
+  document.getElementById('export-overlay').classList.remove('show');
+}
+
+function setExportFilter(f) {
+  exportFilter = f;
+  renderExportModal();
+}
+
+function saveExportConfig(field, value) {
+  exportConfig[field] = value.trim();
+  localStorage.setItem(EXPORT_KEY, JSON.stringify(exportConfig));
+  renderExportModal();
+}
+
+function buildExportUrl() {
+  const base = (exportConfig.workerUrl || '').replace(/\/$/, '');
+  const token = exportConfig.token || '';
+  if (!base || !token) return '';
+  // webcal:// makes iPhones auto-prompt to subscribe
+  const httpsUrl = `${base}/xander.ics?who=${exportFilter}&token=${encodeURIComponent(token)}`;
+  return httpsUrl.replace(/^https?:\/\//, 'webcal://');
+}
+
+function buildHttpsUrl() {
+  const base = (exportConfig.workerUrl || '').replace(/\/$/, '');
+  const token = exportConfig.token || '';
+  if (!base || !token) return '';
+  return `${base}/xander.ics?who=${exportFilter}&token=${encodeURIComponent(token)}`;
+}
+
+function copyExportUrl(useHttps) {
+  const url = useHttps ? buildHttpsUrl() : buildExportUrl();
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById(useHttps ? 'copy-https' : 'copy-webcal');
+    if (btn) {
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = useHttps ? 'Copy URL' : 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(() => alert('Could not copy. URL: ' + url));
+}
+
+function renderExportModal() {
+  const body = document.getElementById('export-body');
+  const isConfigured = exportConfig.workerUrl && exportConfig.token;
+
+  let html = '';
+
+  if (!isConfigured) {
+    html += `
+      <div class="export-config-warn">
+        <b>⚙️ One-time setup needed</b><br>
+        You'll need to deploy the Cloudflare Worker first (see project README), then enter your worker URL and token below.
+      </div>
+      <div class="config-row">
+        <div class="config-lbl">Cloudflare Worker URL</div>
+        <input type="text" class="config-input" id="cfg-url"
+          placeholder="https://xander-cal.your-subdomain.workers.dev"
+          value="${exportConfig.workerUrl || ''}"
+          onchange="saveExportConfig('workerUrl', this.value)">
+      </div>
+      <div class="config-row">
+        <div class="config-lbl">Secret Token</div>
+        <input type="text" class="config-input" id="cfg-token"
+          placeholder="Token you set in Cloudflare → Settings → Variables"
+          value="${exportConfig.token || ''}"
+          onchange="saveExportConfig('token', this.value)">
+        <div style="font-size:.72em;color:var(--muted);margin-top:4px;font-style:italic">
+          Stored only on this device · won't be uploaded anywhere
+        </div>
+      </div>
+    `;
+  }
+
+  // Filter selector
+  html += `
+    <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:${isConfigured?'2px':'14px'} 0 6px">
+      Which days to show on phone?
+    </div>
+    <div class="export-options">
+      <button class="export-opt both${exportFilter==='all'?' active':''}" onclick="setExportFilter('all')">
+        📅<br>All Days
+      </button>
+      <button class="export-opt j${exportFilter==='justin'?' active':''}" onclick="setExportFilter('justin')">
+        👨<br>Justin's Only
+      </button>
+      <button class="export-opt b${exportFilter==='brittany'?' active':''}" onclick="setExportFilter('brittany')">
+        👩<br>Brittany's Only
+      </button>
+    </div>
+  `;
+
+  if (isConfigured) {
+    const webcalUrl = buildExportUrl();
+    const httpsUrl = buildHttpsUrl();
+
+    html += `
+      <div class="export-step">
+        <span class="export-step-num">1</span>
+        <span class="export-step-t">Tap to subscribe (iPhone)</span>
+        <div class="export-step-body">
+          On your iPhone, tap the link below. iOS will ask if you want to add it to Calendar.
+          <div class="export-url-box">
+            <input type="text" class="export-url-inp" readonly value="${webcalUrl}" onclick="this.select()">
+            <button class="export-copy-btn" id="copy-webcal" onclick="copyExportUrl(false)">Copy</button>
+          </div>
+          <div style="margin-top:8px">
+            <a href="${webcalUrl}" style="display:inline-block;background:var(--j);color:#fff;text-decoration:none;padding:8px 14px;border-radius:7px;font-weight:700;font-size:.83em;font-family:'Nunito',sans-serif">
+              📲 Tap here on iPhone to subscribe
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-step">
+        <span class="export-step-num">2</span>
+        <span class="export-step-t">Or add manually</span>
+        <div class="export-step-body">
+          <b>iPhone:</b> Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar → paste the URL below.<br>
+          <b>Google Calendar:</b> Settings → Add calendar → From URL → paste the URL.
+          <div class="export-url-box">
+            <input type="text" class="export-url-inp" readonly value="${httpsUrl}" onclick="this.select()">
+            <button class="export-copy-btn" id="copy-https" onclick="copyExportUrl(true)">Copy URL</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-warn">
+        <b>🔄 Auto-updates:</b> iPhone refreshes subscribed calendars roughly every 1 hour.
+        For faster updates: Settings → Calendar → Accounts → Subscribed Calendars → Fetch New Data → set to <b>Every 15 Minutes</b>.
+      </div>
+
+      <div style="margin-top:14px;text-align:right">
+        <button class="btn btn-cancel" onclick="closeExport()" style="padding:8px 18px">Done</button>
+      </div>
+    `;
+  } else {
+    html += `
+      <div style="margin-top:14px;text-align:right">
+        <button class="btn btn-cancel" onclick="closeExport()" style="padding:8px 18px">Close</button>
+      </div>
+    `;
+  }
+
+  body.innerHTML = html;
+}
+
+// Close on backdrop click
+document.getElementById('export-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeExport();
+});
+
 // Init
 render();
+showWhoPickerIfNeeded();
+// If user already known from sessionStorage, run blocking + summer checks
+setTimeout(() => {
+  if (currentUser) {
+    checkBlockingSwaps();
+    maybeAutoShowSummerProposal();
+  }
+}, 1000);
 </script>
+
+
+
+<!-- ═══════════════════════ ACTIVITY LOG DRAWER ═══════════════════════ -->
+<button id="log-toggle" class="no-pending" onclick="toggleLogDrawer()" style="display:none">
+  <span>📋 Activity</span>
+  <span class="badge-cnt" id="pending-count">0</span>
+</button>
+
+<div id="log-drawer">
+  <div class="log-hdr">
+    <div class="log-title">📋 Activity & Pending</div>
+    <button class="log-close" onclick="closeLogDrawer()">×</button>
+  </div>
+  <div class="log-tabs">
+    <button class="log-tab active" id="tab-pending" onclick="switchLogTab('pending')">
+      Pending Swaps <span class="ct zero" id="ct-pending">0</span>
+    </button>
+    <button class="log-tab" id="tab-history" onclick="switchLogTab('history')">
+      History <span class="ct zero" id="ct-history">0</span>
+    </button>
+  </div>
+  <div class="log-body" id="log-body"></div>
+</div>
+
+<!-- ═══════════════════════ WHO ARE YOU PICKER ═══════════════════════ -->
+<div id="who-gate">
+  <div class="who-card">
+    <div style="font-size:2.4em;margin-bottom:6px">👋</div>
+    <div class="who-title">Who's using the calendar?</div>
+    <div class="who-sub">Tap your name so changes are tracked correctly</div>
+    <div class="who-btns">
+      <button class="who-btn j" onclick="setUser('Justin')">
+        <div class="who-emoji">👨</div>
+        <div>Justin</div>
+      </button>
+      <button class="who-btn b" onclick="setUser('Brittany')">
+        <div class="who-emoji">👩</div>
+        <div>Brittany</div>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════ PASSWORD GATE ═══════════════════════ -->
 <div id="pw-gate" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;">
@@ -785,7 +2428,11 @@ render();
   }
   const HASH='f0f98a9650227603cd8d6fe0ce13e3a15526a6d1d56e21447f6617d3861f9e65';
   const SK='xander_cal_auth';
-  if(sessionStorage.getItem(SK)===HASH){document.getElementById('pw-gate').style.display='none';return;}
+  if(sessionStorage.getItem(SK)===HASH){
+    document.getElementById('pw-gate').style.display='none';
+    // who-picker will run via render() init code
+    return;
+  }
   document.body.style.overflow='hidden';
   window.checkPw=async function(){
     const val=document.getElementById('pw-input').value;
@@ -796,6 +2443,10 @@ render();
       g.style.transition='opacity .35s';g.style.opacity='0';
       setTimeout(()=>{g.style.display='none';},360);
       document.body.style.overflow='';
+      // After password unlock, show who-picker if user not yet selected
+      if (typeof showWhoPickerIfNeeded === 'function') {
+        setTimeout(() => showWhoPickerIfNeeded(), 380);
+      }
     } else {
       const err=document.getElementById('pw-error');
       const inp=document.getElementById('pw-input');
