@@ -57,18 +57,75 @@
 
 <style>
 :root {
-  --j:#2563eb; --j-l:#dbeafe; --j-m:#93c5fd; --j-d:#1e40af;
-  --b:#ec4899; --b-l:#fce7f3; --b-m:#f9a8d4; --b-d:#9d174d;
-  --gold:#f59e0b; --gold-l:#fef3c7;
-  --bg:#f1f5f9; --card:#fff; --border:#e2e8f0;
-  --text:#0f172a; --muted:#64748b; --r:10px;
+  /* Justin (Father) - refined blue */
+  --j:#3b82f6; --j-l:#dbeafe; --j-m:#93c5fd; --j-d:#1e40af; --j-soft:rgba(59,130,246,.12);
+  /* Brittany (Mother) - refined rose */
+  --b:#ec4899; --b-l:#fce7f3; --b-m:#f9a8d4; --b-d:#9d174d; --b-soft:rgba(236,72,153,.12);
+  /* Accents */
+  --gold:#f59e0b; --gold-l:#fef3c7; --gold-soft:rgba(245,158,11,.18);
+  --emerald:#10b981; --emerald-soft:rgba(16,185,129,.15);
+  /* Light mode (default) */
+  --bg:#f8fafc; --bg-2:#f1f5f9; --card:#fff; --card-elev:#fff; --input-bg:#fff; --border:#e2e8f0; --border-subtle:#f1f5f9;
+  --text:#0f172a; --text-2:#1e293b; --muted:#64748b; --muted-2:#94a3b8;
+  --hdr-grad:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 100%);
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04),0 1px 3px rgba(15,23,42,.06);
+  --shadow-md:0 4px 6px -1px rgba(15,23,42,.06),0 2px 4px -2px rgba(15,23,42,.04);
+  --shadow-lg:0 10px 15px -3px rgba(15,23,42,.08),0 4px 6px -4px rgba(15,23,42,.05);
+  --shadow-xl:0 20px 25px -5px rgba(15,23,42,.1),0 8px 10px -6px rgba(15,23,42,.05);
+  --r:12px; --r-sm:8px; --r-lg:16px;
+}
+
+/* DARK MODE */
+:root[data-theme="dark"] {
+  /* Apple-style layered surfaces (each level slightly lighter than the one beneath) */
+  --bg:#000;                    /* True black system background */
+  --bg-2:#1c1c1e;               /* First elevation - cards, headers */
+  --card:#2c2c2e;               /* Second elevation - input surfaces, modal interiors */
+  --card-elev:#3a3a3c;          /* Third elevation - elevated cards */
+  --input-bg:#3a3a3c;           /* Form fields - properly elevated so they pop */
+  --border:#48484a;             /* Visible borders that separate without being harsh */
+  --border-subtle:#38383a;      /* Subtle dividers between sections */
+
+  /* High-contrast text for legibility */
+  --text:#fff;                  /* Primary text - pure white */
+  --text-2:#ebebf5;             /* Secondary text */
+  --muted:#ebebf599;            /* Muted text - 60% white */
+  --muted-2:#ebebf566;          /* Tertiary - 40% white */
+
+  /* Color tints stay vibrant on dark */
+  --j-l:rgba(10,132,255,.18);
+  --j-soft:rgba(10,132,255,.25);
+  --b-l:rgba(255,55,95,.18);
+  --b-soft:rgba(255,55,95,.25);
+  --gold-l:rgba(255,159,10,.22);
+  --gold-soft:rgba(255,159,10,.3);
+  --emerald-soft:rgba(48,209,88,.22);
+
+  /* Header gradient - Apple-style deep navy */
+  --hdr-grad:linear-gradient(135deg,#000 0%,#1c1c1e 50%,#2c2c2e 100%);
+
+  /* Shadows in dark mode are subtle - mostly used for depth, not drama */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.6);
+  --shadow-md:0 2px 8px rgba(0,0,0,.5);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.5);
+  --shadow-xl:0 16px 48px rgba(0,0,0,.6);
+
+  /* Apple system colors for accents */
+  --j:#0a84ff;                  /* SF Blue */
+  --j-d:#0a84ff;
+  --b:#ff375f;                  /* SF Pink */
+  --b-d:#ff375f;
+  --gold:#ff9f0a;               /* SF Orange */
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;transition:background .3s ease,color .3s ease}
 
-.hdr{background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 100%);padding:16px 20px 12px;color:#fff}
+.hdr{background:var(--hdr-grad);padding:18px 22px 14px;color:#fff;position:relative;overflow:hidden}
+.hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(245,158,11,.18),transparent 50%);pointer-events:none}
+.hdr > *{position:relative;z-index:1}
 .hdr-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
-.hdr-title{font-family:'Nunito',sans-serif;font-size:1.5em;font-weight:900;letter-spacing:-.4px}
+.hdr-title{font-family:'Nunito',sans-serif;font-size:1.55em;font-weight:900;letter-spacing:-.6px;line-height:1.05}
+.hdr-title .icon{display:inline-block;font-size:.9em;margin-right:4px;filter:drop-shadow(0 2px 8px rgba(245,158,11,.4))}
 .hdr-sub{font-size:.78em;opacity:.72;margin-top:1px}
 .hdr-info{text-align:right;font-size:.78em;opacity:.85}
 .hdr-info b{font-family:'Nunito',sans-serif}
@@ -77,38 +134,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .badge-j{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35)}
 .badge-b{background:rgba(236,72,153,.28);border:1.5px solid rgba(236,72,153,.55)}
 
-.legend{background:#fff;border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.legend{background:var(--card);border-bottom:1px solid var(--border);padding:9px 18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .lg{display:flex;align-items:center;gap:4px;font-size:.71em;color:var(--text)}
 .ls{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.1);flex-shrink:0}
 .legend-hint{font-size:.68em;color:var(--muted);margin-left:auto}
 
-#sync-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:6px 16px;display:flex;align-items:center;gap:8px;font-size:.73em;font-family:'DM Sans',sans-serif;flex-wrap:wrap}
+#sync-bar{background:var(--emerald-soft);border-bottom:1px solid var(--border-subtle);padding:7px 18px;display:flex;align-items:center;gap:9px;font-size:.74em;font-family:'DM Sans',sans-serif;flex-wrap:wrap;transition:background .3s ease}
 
 /* YEAR TABS */
-.year-tabs{background:#fff;border-bottom:1px solid var(--border);padding:6px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.year-tab{background:#f1f5f9;border:1.5px solid var(--border);border-radius:20px;padding:4px 14px;font-size:.8em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .14s;color:var(--muted)}
-.year-tab:hover{background:var(--j-l);border-color:var(--j-m);color:var(--j-d)}
-.year-tab.active{background:var(--j);border-color:var(--j-d);color:#fff}
-.year-tab-lbl{font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.year-tabs{background:var(--card);border-bottom:1px solid var(--border);padding:9px 18px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.year-tab{background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:5px 15px;font-size:.81em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .18s ease;color:var(--muted)}
+.year-tab:hover{background:var(--j-soft);border-color:var(--j);color:var(--j)}
+.year-tab.active{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff;box-shadow:0 2px 8px var(--j-soft)}
+.year-tab-lbl{font-size:.7em;font-weight:800;color:var(--muted-2);text-transform:uppercase;letter-spacing:.08em}
 
-.nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.month-lbl{font-family:'Nunito',sans-serif;font-size:1.25em;font-weight:800;min-width:180px;text-align:center}
-.nav-btn{background:var(--j);color:#fff;border:none;border-radius:8px;padding:6px 16px;font-size:.86em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .14s,transform .1s}
-.nav-btn:hover{background:var(--j-d);transform:translateY(-1px)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+.month-lbl{font-family:'Nunito',sans-serif;font-size:1.32em;font-weight:900;min-width:200px;text-align:center;letter-spacing:-.5px;color:var(--text)}
+.nav-btn{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:.86em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s ease;box-shadow:0 2px 8px var(--j-soft)}
+.nav-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px var(--j-soft);filter:brightness(1.08)}
+.nav-btn:active{transform:translateY(0)}
 
 /* MONTH GRID ROW - shows all months in selected year */
-.month-grid{background:#fff;border-bottom:1px solid var(--border);padding:8px 14px;display:flex;gap:5px;flex-wrap:wrap}
-.mth-btn{background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.72em;font-weight:600;cursor:pointer;transition:all .14s;color:var(--text)}
-.mth-btn:hover{background:var(--j-l);border-color:var(--j-m);color:var(--j-d)}
-.mth-btn.active{background:var(--j-l);border-color:var(--j);color:var(--j-d);font-weight:800}
+.month-grid{background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap}
+.mth-btn{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:.74em;font-weight:600;cursor:pointer;transition:all .15s ease;color:var(--text-2)}
+.mth-btn:hover{background:var(--j-soft);border-color:var(--j);color:var(--j)}
+.mth-btn.active{background:var(--j-soft);border-color:var(--j);color:var(--j);font-weight:800}
 
-.stats{display:flex;gap:8px;padding:8px 16px;background:#f8fafc;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.stat{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:.77em}
+.stats{display:flex;gap:9px;padding:10px 18px;background:var(--bg-2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:.78em;box-shadow:var(--shadow-sm)}
 .stat-dot{width:9px;height:9px;border-radius:50%}
 .stat-v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.12em}
 .stat-l{color:var(--muted);font-size:.82em}
 
-.sum-banner{margin:9px 14px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sum-banner{margin:10px 16px;background:linear-gradient(135deg,var(--gold-soft),var(--gold-l));border:1px solid var(--gold);border-radius:12px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
 .sum-t{font-weight:700;font-family:'Nunito',sans-serif;font-size:.86em}
 .sum-s{font-size:.73em;color:#92400e;margin-top:1px}
 .btn-sum{background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;font-size:.78em;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap}
@@ -116,45 +174,60 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 .cal-wrap{padding:10px 12px 22px;max-width:980px;margin:0 auto}
 .day-hdrs{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
-.dh{text-align:center;font-family:'Nunito',sans-serif;font-size:.69em;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:3px 0}
-.dh.wknd{color:var(--j-d)}
+.dh{text-align:center;font-family:'Nunito',sans-serif;font-size:.7em;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--muted-2);padding:5px 0}
+.dh.wknd{color:var(--gold)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 
-.dc{border-radius:9px;padding:7px 6px 5px;min-height:108px;border:1.5px solid transparent;cursor:pointer;transition:box-shadow .14s,transform .1s;position:relative;user-select:none;display:flex;flex-direction:column;gap:2px}
-.dc:hover{box-shadow:0 5px 18px rgba(0,0,0,.13);transform:translateY(-2px);z-index:5}
-.dc.empty{background:#e9eef4;cursor:default;border-color:transparent}.dc.empty:hover{box-shadow:none;transform:none}
-.dc.j-reg{background:var(--j-l);border-color:var(--j-m)}
-.dc.j-str{background:#bfdbfe;border-color:var(--j)}
-.dc.b-reg{background:var(--b-l);border-color:var(--b-m)}
-.dc.b-str{background:#fbcfe8;border-color:var(--b)}
-.dc.bday-x{background:var(--gold-l)!important;border-color:var(--gold)!important}
-.dc.pbday-j{background:#dbeafe!important;border-color:#3b82f6!important}
-.dc.pbday-b{background:#fce7f3!important;border-color:#ec4899!important}
-.dc.mid{background:#ede9fe;border-color:#a78bfa}
-.dc.today-ring{outline:2.5px solid var(--gold);outline-offset:-1px}
-.d-num{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.03em;line-height:1}
-.d-today{font-size:.58em;color:#92400e;font-weight:700;vertical-align:middle;margin-left:3px}
-.d-event{font-size:.66em;color:var(--muted);font-weight:600;line-height:1.2;margin-top:1px}
-.d-time{font-size:.64em;color:#7c3aed;font-weight:700;margin-top:1px;background:#ede9fe;border-radius:3px;padding:1px 4px;display:inline-block}
-.d-owner{display:inline-block;font-size:.67em;font-weight:700;padding:2px 5px;border-radius:4px;margin-top:auto}
-.d-owner.j{background:var(--j);color:#fff}.d-owner.b{background:var(--b);color:#fff}
-.d-note{font-size:.62em;color:#7c3aed;font-style:italic;line-height:1.2;margin-top:1px}
-.d-mid{font-size:.6em;background:#ddd6fe;color:#4c1d95;border-radius:3px;padding:1px 4px;font-weight:600;margin-top:1px;display:inline-block}
-.d-bday{font-size:.65em;background:var(--gold);color:#fff;border-radius:4px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block}
-.d-pbday{font-size:.64em;border-radius:4px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block}
-.d-pbday.j{background:#2563eb;color:#fff}.d-pbday.b{background:#ec4899;color:#fff}
-.changed-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 1.5px #fff}
+.dc{border-radius:11px;padding:8px 7px 6px;min-height:114px;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);position:relative;user-select:none;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow-sm)}
+.dc:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);z-index:5;border-color:var(--gold)}
+.dc.empty{background:transparent;cursor:default;border-color:transparent;box-shadow:none}.dc.empty:hover{box-shadow:none;transform:none;border-color:transparent}
+.dc.j-reg{background:var(--j-soft);border-color:var(--j-l)}
+.dc.j-str{background:linear-gradient(135deg,var(--j-soft),var(--j-l));border-color:var(--j)}
+.dc.b-reg{background:var(--b-soft);border-color:var(--b-l)}
+.dc.b-str{background:linear-gradient(135deg,var(--b-soft),var(--b-l));border-color:var(--b)}
+
+/* Dark mode: day cells need more presence */
+:root[data-theme="dark"] .dc{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .dc.j-reg{background:rgba(10,132,255,.13);border-color:rgba(10,132,255,.3)}
+:root[data-theme="dark"] .dc.j-str{background:linear-gradient(135deg,rgba(10,132,255,.22),rgba(10,132,255,.13));border-color:var(--j)}
+:root[data-theme="dark"] .dc.b-reg{background:rgba(255,55,95,.13);border-color:rgba(255,55,95,.3)}
+:root[data-theme="dark"] .dc.b-str{background:linear-gradient(135deg,rgba(255,55,95,.22),rgba(255,55,95,.13));border-color:var(--b)}
+:root[data-theme="dark"] .dc.bday-x{background:linear-gradient(135deg,rgba(255,159,10,.25),rgba(255,159,10,.15))!important;border-color:var(--gold)!important}
+:root[data-theme="dark"] .dc.pbday-j{background:linear-gradient(135deg,rgba(10,132,255,.25),rgba(10,132,255,.15))!important;border-color:var(--j)!important}
+:root[data-theme="dark"] .dc.pbday-b{background:linear-gradient(135deg,rgba(255,55,95,.25),rgba(255,55,95,.15))!important;border-color:var(--b)!important}
+:root[data-theme="dark"] .dc.empty{background:transparent;border-color:transparent}
+:root[data-theme="dark"] .dc:hover{border-color:var(--gold)}
+.dc.bday-x{background:linear-gradient(135deg,var(--gold-soft),var(--gold-l))!important;border-color:var(--gold)!important;box-shadow:0 0 0 1px var(--gold-soft),var(--shadow-md)}
+.dc.pbday-j{background:linear-gradient(135deg,var(--j-soft),var(--j-l))!important;border-color:var(--j)!important}
+.dc.pbday-b{background:linear-gradient(135deg,var(--b-soft),var(--b-l))!important;border-color:var(--b)!important}
+.dc.mid{background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.5)}
+.dc.today-ring{outline:2.5px solid var(--gold);outline-offset:-1px;box-shadow:0 0 0 4px var(--gold-soft),var(--shadow-md)}
+.d-num{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.05em;line-height:1;letter-spacing:-.3px}
+.d-today{font-size:.55em;color:var(--gold);font-weight:800;vertical-align:middle;margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
+.d-event{font-size:.67em;color:var(--text-2);font-weight:600;line-height:1.25;margin-top:2px}
+.d-time{font-size:.64em;color:#a78bfa;font-weight:700;margin-top:2px;background:rgba(167,139,250,.18);border-radius:5px;padding:2px 5px;display:inline-block}
+.d-owner{display:inline-block;font-size:.66em;font-weight:800;padding:3px 7px;border-radius:6px;margin-top:auto;letter-spacing:.02em;font-family:'Nunito',sans-serif}
+.d-owner.j{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;box-shadow:0 1px 3px var(--j-soft)}
+.d-owner.b{background:linear-gradient(135deg,var(--b-d),var(--b));color:#fff;box-shadow:0 1px 3px var(--b-soft)}
+.d-note{font-size:.62em;color:#a78bfa;font-style:italic;line-height:1.25;margin-top:2px}
+.d-mid{font-size:.6em;background:rgba(167,139,250,.22);color:#a78bfa;border-radius:5px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block;font-family:'Nunito',sans-serif}
+.d-bday{font-size:.64em;background:linear-gradient(135deg,#d97706,var(--gold));color:#fff;border-radius:6px;padding:2px 6px;font-weight:800;margin-top:3px;display:inline-block;box-shadow:0 1px 3px var(--gold-soft);font-family:'Nunito',sans-serif}
+.d-pbday{font-size:.63em;border-radius:6px;padding:2px 6px;font-weight:800;margin-top:3px;display:inline-block;font-family:'Nunito',sans-serif}
+.d-pbday.j{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff}
+.d-pbday.b{background:linear-gradient(135deg,var(--b-d),var(--b));color:#fff}
+.changed-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--card),0 0 8px var(--gold-soft)}
 
 /* MODALS */
-.overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,14,26,.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:16px;padding:22px;width:90%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.28);animation:popIn .18s ease;max-height:92vh;overflow-y:auto}
+.modal{background:var(--card-elev);border-radius:18px;padding:24px;width:90%;max-width:430px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto;border:1px solid var(--border)}
 @keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
 .modal-title{font-family:'Nunito',sans-serif;font-size:1.15em;font-weight:800;margin-bottom:2px}
 .modal-sub{font-size:.76em;color:var(--muted);margin-bottom:14px}
 .field-lbl{font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.sel,.inp,.ta{width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.9em;font-family:'DM Sans',sans-serif;margin-bottom:11px;transition:border-color .14s;background:#fff;color:var(--text)}
-.sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;cursor:pointer}
+.sel,.inp,.ta{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.93em;font-family:'DM Sans',sans-serif;margin-bottom:12px;transition:all .2s ease;background:var(--input-bg);color:var(--text);font-weight:500}
+.sel:focus,.inp:focus,.ta:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
+.sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 .sel:focus,.inp:focus,.ta:focus{outline:none;border-color:var(--j)}
 .ta{resize:vertical;min-height:58px;margin-bottom:14px}
 
@@ -170,10 +243,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .time-preview{font-size:.76em;color:#7c3aed;font-weight:600;margin-top:6px;min-height:18px}
 
 .btn-row{display:flex;gap:6px}
-.btn{border:none;border-radius:8px;padding:8px 12px;font-weight:700;font-size:.83em;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .14s}
-.btn-save{flex:1;background:var(--j);color:#fff}.btn-save:hover{background:var(--j-d)}
-.btn-reset{background:#fee2e2;color:#dc2626}.btn-reset:hover{background:#fecaca}
-.btn-cancel{background:#f1f5f9;color:var(--text)}.btn-cancel:hover{background:#e2e8f0}
+.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:.85em;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .18s ease}
+.btn-save{flex:1;background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;box-shadow:0 2px 8px var(--j-soft)}
+.btn-save:hover{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 4px 12px var(--j-soft)}
+.btn-reset{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.22)}.btn-reset:hover{background:rgba(220,38,38,.2)}
+.btn-cancel{background:var(--bg-2);color:var(--text);border:1px solid var(--border)}.btn-cancel:hover{background:var(--border)}
 
 /* SUMMER MODAL */
 .sum-modal{background:#fff;border-radius:16px;width:92%;max-width:540px;box-shadow:0 24px 60px rgba(0,0,0,.28);animation:popIn .18s ease;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
@@ -227,10 +301,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .who-emoji{font-size:1.8em;line-height:1}
 
 /* ── CURRENT USER BADGE (in header) ── */
-.user-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);padding:5px 12px;border-radius:18px;font-size:.78em;font-weight:700;cursor:pointer;transition:background .14s}
-.user-badge:hover{background:rgba(255,255,255,.28)}
-.user-badge.b{background:rgba(236,72,153,.3);border-color:rgba(236,72,153,.55)}
-.user-badge .switch{font-size:.7em;opacity:.7;margin-left:4px}
+.user-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:20px;font-size:.79em;font-weight:700;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
+.user-badge:hover{background:rgba(255,255,255,.2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.user-badge.b{background:rgba(236,72,153,.28);border-color:rgba(236,72,153,.5)}
+.user-badge .switch{font-size:.7em;opacity:.65;margin-left:4px;font-weight:600}
 
 /* ── ACTIVITY LOG DRAWER ── */
 #log-toggle{position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;border:none;border-radius:50px;padding:11px 18px;font-size:.85em;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:500;display:flex;align-items:center;gap:7px;transition:transform .14s}
@@ -354,9 +428,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 
 /* ── EXPORT TO PHONE BUTTON & MODAL ── */
-#export-btn{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.79em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:background .14s;margin-left:6px}
-#export-btn:hover{background:#4f46e5}
-
 #export-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9988;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px);overflow-y:auto}
 #export-overlay.show{display:flex}
 .export-modal{background:#fff;border-radius:18px;width:100%;max-width:520px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:94vh;overflow:hidden}
@@ -392,11 +463,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 
 /* ── NOTIFICATIONS ── */
-#notif-btn{background:#10b981;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.79em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:background .14s;margin-left:6px}
-#notif-btn:hover{background:#059669}
-#notif-btn.enabled{background:#0d9488}
-#notif-btn.denied{background:#94a3b8;cursor:not-allowed}
-
 #notif-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9989;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px);overflow-y:auto}
 #notif-overlay.show{display:flex}
 .notif-modal{background:#fff;border-radius:18px;width:100%;max-width:480px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:94vh;overflow:hidden}
@@ -420,6 +486,183 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .ios-instructions li{margin-bottom:3px}
 .ios-instructions b{font-weight:800;color:#1e40af}
 
+
+/* ── THEME TOGGLE & SEARCH ── */
+.hdr-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.theme-toggle{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1em;transition:all .18s ease;backdrop-filter:blur(10px)}
+.theme-toggle:hover{background:rgba(255,255,255,.22);transform:scale(1.05)}
+
+#search-bar{background:var(--card);border-bottom:1px solid var(--border);padding:9px 18px;display:flex;align-items:center;gap:8px}
+.search-input{flex:1;padding:11px 16px 11px 40px;border:1.5px solid var(--border);border-radius:24px;font-size:.9em;font-family:'DM Sans',sans-serif;background:var(--input-bg);color:var(--text);transition:all .2s ease;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2398989f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:14px center;font-weight:500}
+.search-input:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
+.search-input::placeholder{color:var(--muted-2)}
+.search-results{position:absolute;background:var(--card-elev);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-xl);margin-top:6px;max-height:280px;overflow-y:auto;z-index:300;left:18px;right:18px}
+.search-result-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border-subtle);transition:background .14s;font-size:.86em;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.search-result-item:last-child{border-bottom:none}
+.search-result-item:hover{background:var(--bg-2)}
+.search-result-date{font-weight:700;font-family:'Nunito',sans-serif;color:var(--text)}
+.search-result-meta{font-size:.85em;color:var(--muted)}
+.search-result-owner{padding:2px 7px;border-radius:5px;font-size:.78em;font-weight:700;color:#fff;font-family:'Nunito',sans-serif}
+.search-result-owner.j{background:var(--j)}
+.search-result-owner.b{background:var(--b)}
+.search-empty{padding:20px;text-align:center;color:var(--muted);font-size:.85em;font-style:italic}
+
+/* Travel marker on calendar days */
+.dc.travel{position:relative}
+.dc.travel::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(16,185,129,.25),rgba(16,185,129,.12));border-radius:11px;pointer-events:none;border:1.5px solid #10b981}
+.travel-icon{position:absolute;top:5px;right:18px;font-size:.9em;z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.d-travel{font-size:.62em;background:rgba(16,185,129,.22);color:#047857;border-radius:5px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block;font-family:'Nunito',sans-serif;position:relative;z-index:1}
+:root[data-theme="dark"] .d-travel{color:#6ee7b7}
+:root[data-theme="dark"] .dc.travel::after{background:linear-gradient(135deg,rgba(16,185,129,.3),rgba(16,185,129,.18))}
+
+/* Travel modal */
+#travel-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,26,.7);z-index:9987;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(8px);overflow-y:auto}
+#travel-overlay.show{display:flex}
+.travel-modal{background:var(--card-elev);border-radius:18px;width:100%;max-width:460px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:94vh;overflow-y:auto;border:1px solid var(--border)}
+.travel-hdr{background:linear-gradient(135deg,#047857,#10b981);color:#fff;padding:18px 22px 14px;border-radius:18px 18px 0 0}
+.travel-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
+.travel-sub{font-size:.83em;opacity:.92;margin-top:2px}
+.travel-body{padding:18px 20px}
+.travel-list{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.travel-list-title{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.travel-item{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.travel-item-icon{font-size:1.3em;line-height:1}
+.travel-item-body{flex:1;line-height:1.4}
+.travel-item-dates{font-weight:700;font-family:'Nunito',sans-serif;font-size:.88em;color:var(--text)}
+.travel-item-label{font-size:.78em;color:var(--muted);margin-top:2px}
+.travel-item-rm{background:none;border:none;color:#dc2626;cursor:pointer;font-size:1.1em;padding:4px 8px;border-radius:6px;line-height:1}
+.travel-item-rm:hover{background:rgba(220,38,38,.1)}
+.travel-empty{text-align:center;color:var(--muted);font-size:.84em;padding:14px;font-style:italic}
+
+/* Make the existing log drawer match dark theme */
+:root[data-theme="dark"] #log-drawer{background:var(--card-elev)}
+:root[data-theme="dark"] .log-entry.j{background:rgba(59,130,246,.12);border-left-color:var(--j)}
+:root[data-theme="dark"] .log-entry.b{background:rgba(236,72,153,.12);border-left-color:var(--b)}
+:root[data-theme="dark"] .log-entry{background:var(--bg-2)}
+:root[data-theme="dark"] .swap-card{background:var(--card-elev)}
+:root[data-theme="dark"] .swap-change{background:rgba(245,158,11,.15)}
+:root[data-theme="dark"] .month-reminder{background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(245,158,11,.1))}
+:root[data-theme="dark"] .month-reminder-t{color:var(--gold)}
+:root[data-theme="dark"] .month-reminder-s{color:#fbbf24}
+:root[data-theme="dark"] .summer-alert.justin{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(59,130,246,.1))}
+:root[data-theme="dark"] .summer-alert.brittany{background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(236,72,153,.1))}
+:root[data-theme="dark"] .summer-alert.urgent{background:linear-gradient(135deg,rgba(220,38,38,.22),rgba(220,38,38,.12))}
+:root[data-theme="dark"] .swap-block-modal{background:var(--card-elev);border:1px solid var(--border)}
+:root[data-theme="dark"] .swap-block-progress{background:rgba(245,158,11,.18);color:var(--gold)}
+:root[data-theme="dark"] .summer-prop-modal{background:var(--card-elev);border:1px solid var(--border)}
+:root[data-theme="dark"] .sp-stage-banner{background:rgba(245,158,11,.15);color:var(--gold)}
+:root[data-theme="dark"] .sp-block{background:var(--bg-2)}
+:root[data-theme="dark"] .sp-history-item{background:var(--bg-2)}
+:root[data-theme="dark"] .week-card{background:var(--bg-2)}
+:root[data-theme="dark"] .sum-modal{background:var(--card-elev)}
+:root[data-theme="dark"] .sum-modal-body{background:var(--card-elev)}
+:root[data-theme="dark"] .sum-modal-ftr{background:var(--card-elev);border-color:var(--border)}
+:root[data-theme="dark"] .export-modal{background:var(--card-elev)}
+:root[data-theme="dark"] .export-step{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .config-input{background:var(--bg-2);color:var(--text)}
+:root[data-theme="dark"] .export-url-inp{background:var(--bg-2);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .notif-modal{background:var(--card-elev)}
+:root[data-theme="dark"] .notif-step{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25)}
+:root[data-theme="dark"] .notif-step-t{color:#34d399}
+:root[data-theme="dark"] .notif-status.ok{background:rgba(16,185,129,.15);color:#6ee7b7;border-color:rgba(16,185,129,.3)}
+:root[data-theme="dark"] .notif-status.warn{background:rgba(245,158,11,.15);color:var(--gold);border-color:rgba(245,158,11,.3)}
+:root[data-theme="dark"] .notif-status.err{background:rgba(220,38,38,.15);color:#fca5a5;border-color:rgba(220,38,38,.3)}
+:root[data-theme="dark"] .ios-instructions{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.25)}
+:root[data-theme="dark"] .ios-instructions b{color:#93c5fd}
+:root[data-theme="dark"] .pw-error{background:rgba(220,38,38,.18);color:#fca5a5}
+:root[data-theme="dark"] .travel-modal{background:var(--card-elev)}
+:root[data-theme="dark"] .travel-item{background:var(--bg-2)}
+:root[data-theme="dark"] #pw-input{background:var(--bg-2);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .who-card{background:var(--card-elev);color:var(--text)}
+:root[data-theme="dark"] .who-title{color:var(--text)}
+:root[data-theme="dark"] .who-btn{background:var(--bg-2);color:var(--text)}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+
+/* Dark mode text refinements */
+:root[data-theme="dark"] .d-event{color:var(--text-2)}
+:root[data-theme="dark"] .d-num{color:var(--text)}
+:root[data-theme="dark"] .month-lbl{color:var(--text)}
+:root[data-theme="dark"] .stat-l{color:var(--muted)}
+:root[data-theme="dark"] .stat-v{color:var(--text)}
+:root[data-theme="dark"] .field-lbl{color:var(--muted)}
+:root[data-theme="dark"] .modal-title{color:var(--text)}
+:root[data-theme="dark"] .modal-sub{color:var(--muted)}
+:root[data-theme="dark"] .legend{background:var(--bg-2);color:var(--text)}
+:root[data-theme="dark"] .lg{color:var(--text-2)}
+:root[data-theme="dark"] .legend-hint{color:var(--muted)}
+:root[data-theme="dark"] .stats{background:var(--bg)}
+:root[data-theme="dark"] .stat{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .nav{background:var(--bg-2)}
+:root[data-theme="dark"] .year-tabs{background:var(--bg-2)}
+:root[data-theme="dark"] .month-grid{background:var(--bg-2)}
+:root[data-theme="dark"] .mth-btn{background:var(--card);color:var(--text-2)}
+:root[data-theme="dark"] .mth-btn:hover{background:var(--card-elev)}
+:root[data-theme="dark"] .year-tab{background:var(--card);color:var(--text-2);border-color:var(--border)}
+:root[data-theme="dark"] .year-tab:hover{background:var(--card-elev)}
+:root[data-theme="dark"] .modal{background:var(--card-elev);border:1px solid var(--border)}
+:root[data-theme="dark"] .who-card{background:var(--card-elev);border:1px solid var(--border)}
+:root[data-theme="dark"] .who-btn{background:var(--card);color:var(--text)}
+:root[data-theme="dark"] .who-btn:hover{background:var(--card-elev)}
+:root[data-theme="dark"] .btn-cancel{background:var(--card);color:var(--text);border:1px solid var(--border)}
+:root[data-theme="dark"] .btn-cancel:hover{background:var(--card-elev)}
+:root[data-theme="dark"] .time-section{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .time-toggle{background:var(--card)}
+:root[data-theme="dark"] .time-toggle-btn{color:var(--muted)}
+:root[data-theme="dark"] .time-toggle-btn.active{background:var(--card-elev);color:var(--text)}
+:root[data-theme="dark"] .time-inp{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .search-input{color:var(--text)}
+:root[data-theme="dark"] .search-input::placeholder{color:var(--muted-2)}
+:root[data-theme="dark"] #search-bar{background:var(--bg-2)}
+:root[data-theme="dark"] .search-result-date{color:var(--text)}
+:root[data-theme="dark"] .search-result-meta{color:var(--muted)}
+:root[data-theme="dark"] .search-results{background:var(--card-elev);border-color:var(--border)}
+:root[data-theme="dark"] .swap-block-body{background:var(--card-elev);color:var(--text)}
+:root[data-theme="dark"] .swap-block-body div{color:var(--text-2)!important}
+:root[data-theme="dark"] .swap-block-body b{color:var(--text)!important}
+:root[data-theme="dark"] .summer-prop-body{background:var(--card-elev);color:var(--text)}
+:root[data-theme="dark"] .sum-modal-body{color:var(--text)}
+:root[data-theme="dark"] .week-card-hdr,:root[data-theme="dark"] .week-num{color:var(--text-2)}
+:root[data-theme="dark"] .date-inp,:root[data-theme="dark"] .week-label-inp{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .owner-btn{background:var(--card);color:var(--text)}
+:root[data-theme="dark"] .week-days-badge{color:var(--muted)}
+:root[data-theme="dark"] .add-week-btn{background:var(--card);color:var(--muted);border-color:var(--border)}
+:root[data-theme="dark"] .sum-stats{background:var(--bg-2);border-color:var(--border);color:var(--text)}
+:root[data-theme="dark"] .export-body{color:var(--text)}
+:root[data-theme="dark"] .export-step-t{color:var(--text)}
+:root[data-theme="dark"] .export-step-body{color:var(--text-2)}
+:root[data-theme="dark"] .export-step-body code{background:var(--card);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .config-lbl,:root[data-theme="dark"] .export-step-num{color:var(--muted)}
+:root[data-theme="dark"] .notif-body{color:var(--text)}
+:root[data-theme="dark"] .notif-step-body{color:var(--text-2)}
+:root[data-theme="dark"] .travel-body{color:var(--text)}
+:root[data-theme="dark"] .travel-item-dates{color:var(--text)}
+:root[data-theme="dark"] .travel-item-label{color:var(--muted)}
+:root[data-theme="dark"] .travel-list-title{color:var(--muted)}
+:root[data-theme="dark"] #m-title{color:var(--text)}
+
+
+/* ── HAMBURGER MENU ── */
+#menu-btn{background:var(--bg-2);color:var(--text);border:1px solid var(--border);width:38px;height:38px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .18s ease;margin-left:auto}
+#menu-btn:hover{background:var(--card-elev);border-color:var(--j)}
+.menu-dropdown{display:none;position:absolute;top:calc(100% - 6px);right:18px;background:var(--card-elev);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-xl);min-width:240px;z-index:200;padding:6px;animation:menuPop .18s cubic-bezier(.4,0,.2,1)}
+.menu-dropdown.show{display:block}
+@keyframes menuPop{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.menu-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:none;background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92em;text-align:left;cursor:pointer;border-radius:9px;transition:background .14s}
+.menu-item:hover{background:var(--bg-2)}
+.menu-icon{font-size:1.4em;line-height:1;width:30px;text-align:center}
+.menu-text{flex:1}
+.menu-label{font-weight:700;color:var(--text);font-family:'Nunito',sans-serif;line-height:1.1}
+.menu-hint{font-size:.75em;color:var(--muted);margin-top:2px}
+
+/* The year-tabs row needs position:relative for the absolute dropdown */
+.year-tabs{position:relative}
+
+:root[data-theme="dark"] #menu-btn{background:var(--card);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] #menu-btn:hover{background:var(--card-elev);border-color:var(--j)}
+:root[data-theme="dark"] .menu-item:hover{background:var(--bg-2)}
+
 </style>
 </head>
 <body>
@@ -430,8 +673,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="hdr-sub">Center Grove Schools · Indiana Parenting Time Guidelines</div>
       <div class="hdr-title">📅 Xander's Parenting Calendar</div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-      <div class="hdr-info"><b>Xander</b><br>Born May 27, 2012 · Age 13</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+        <div class="hdr-info"><b>Xander</b><br>Born May 27, 2012 · Age 13</div>
+      </div>
       <div class="user-badge" id="user-badge" onclick="switchUser()" title="Click to switch user">
         <span id="user-badge-text">Loading…</span>
         <span class="switch">⇄ switch</span>
@@ -463,14 +709,48 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <span id="sync-time" style="margin-left:auto;color:#4ade80;font-style:italic;font-size:.92em"></span>
 </div>
 
+<!-- SEARCH BAR -->
+<div id="search-bar" style="position:relative">
+  <input type="text" class="search-input" id="search-input" placeholder="🔍 Search any date — try 'July 4' or '2026-12-25' or 'birthday'" oninput="handleSearch(this.value)" onfocus="handleSearch(this.value)" onblur="setTimeout(()=>document.getElementById('search-results').style.display='none',200)">
+  <div class="search-results" id="search-results" style="display:none"></div>
+</div>
+
 <!-- YEAR TABS -->
 <div class="year-tabs">
   <span class="year-tab-lbl">Year:</span>
   <button class="year-tab" onclick="setYear(2026)" id="ytab-2026">2026</button>
   <button class="year-tab" onclick="setYear(2027)" id="ytab-2027">2027</button>
   <button class="year-tab" onclick="setYear(2028)" id="ytab-2028">2028</button>
-  <button id="export-btn" onclick="openExport()">📲 Add to Phone</button>
-  <button id="notif-btn" onclick="openNotifs()">🔔 Notifications</button>
+  <button id="menu-btn" onclick="toggleMenu(event)" title="Menu" aria-label="Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <div id="menu-dropdown" class="menu-dropdown">
+    <button class="menu-item" onclick="closeMenu();openExport()">
+      <span class="menu-icon">📲</span>
+      <div class="menu-text">
+        <div class="menu-label">Add to Phone</div>
+        <div class="menu-hint">iPhone calendar subscription</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openNotifs()">
+      <span class="menu-icon">🔔</span>
+      <div class="menu-text">
+        <div class="menu-label">Notifications</div>
+        <div class="menu-hint" id="menu-notif-hint">Push alerts when needed</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openTravel()">
+      <span class="menu-icon">✈️</span>
+      <div class="menu-text">
+        <div class="menu-label">Travel</div>
+        <div class="menu-hint">Add or manage trips</div>
+      </div>
+    </button>
+  </div>
 </div>
 
 <!-- MONTH GRID for selected year -->
@@ -534,6 +814,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="field-lbl">Notes</div>
     <textarea class="ta" id="m-note" placeholder="Pickup time, swap reason, reminders…"></textarea>
 
+    <div style="display:flex;gap:6px;margin-bottom:9px">
+      <button class="btn" style="flex:1;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="addTravelFromDay()">✈️ Add Travel Range</button>
+    </div>
     <div class="btn-row">
       <button class="btn btn-reset"  onclick="resetDay()">↺ Reset</button>
       <button class="btn btn-cancel" onclick="closeDay()">Cancel</button>
@@ -547,7 +830,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sum-modal">
     <div class="sum-modal-hdr">
       <div class="sum-modal-title">☀️ Summer Vacation Planner</div>
-      <div class="sum-modal-sub" id="sum-modal-sub">May 22 – Aug 2 · Justin selects by April 1 · Typically two 2-week blocks</div>
+      <div class="sum-modal-sub" id="sum-modal-sub">May 22 – Aug 2 · Justin selects by April 1</div>
     </div>
     <div class="sum-modal-body" id="sum-body"></div>
     <div class="sum-stats" id="sum-stats"></div>
@@ -606,6 +889,37 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="notif-sub">Get notified when you have something to review</div>
     </div>
     <div class="notif-body" id="notif-body"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ TRAVEL MODAL ═══════════════════════ -->
+<div id="travel-overlay">
+  <div class="travel-modal">
+    <div class="travel-hdr">
+      <div class="travel-title">✈️ Add Travel Schedule</div>
+      <div class="travel-sub">Notifies the other parent · doesn't change parenting time</div>
+    </div>
+    <div class="travel-body" id="travel-body">
+      <div class="field-lbl">Start Date</div>
+      <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31">
+
+      <div class="field-lbl">End Date</div>
+      <input type="date" class="inp" id="tr-end" min="2026-03-01" max="2028-12-31">
+
+      <div class="field-lbl">Trip Label (optional)</div>
+      <input class="inp" id="tr-label" placeholder="e.g. Chicago Conference, Customer Visit…">
+
+      <div class="field-lbl">Notes</div>
+      <textarea class="ta" id="tr-notes" placeholder="Hotel, flight times, contact info…"></textarea>
+
+      <div class="btn-row">
+        <button class="btn btn-cancel" onclick="closeTravel()">Cancel</button>
+        <button class="btn btn-save" onclick="saveTravel()">✈️ Add & Notify</button>
+      </div>
+
+      <div class="travel-list" id="travel-list"></div>
+    </div>
   </div>
 </div>
 
@@ -691,7 +1005,7 @@ function renderBanner(){
     const range=yr===2026?'May 22 – Aug 2, 2026':'May 27 – Aug 2, 2027';
     el.innerHTML=`<div class="sum-banner">
       <div><div class="sum-t">☀️ Summer ${yr} — Plan Justin's vacation weeks</div>
-      <div class="sum-s">${range} · Justin gets half · Typically 2-week blocks · Select by April 1</div></div>
+      <div class="sum-s">${range} · Select by April 1</div></div>
       <button class="btn-sum" onclick="openSummer(${yr})">Plan Summer Weeks ▶</button>
     </div>`;
   } else { el.innerHTML=''; }
@@ -844,7 +1158,7 @@ function openSummer(yr){
   activeSummerYear = yr||2026;
   const range=yr===2027?'May 27 – Aug 2, 2027':'May 22 – Aug 2, 2026';
   document.getElementById('sum-modal-sub').textContent=
-    `${range} · Justin selects by April 1 · Typically 2-week blocks`;
+    `${range} · Justin selects by April 1`;
   renderSummerBody();
   document.getElementById('sum-overlay').classList.add('open');
 }
@@ -2667,17 +2981,13 @@ async function renderNotifModal() {
 }
 
 function updateNotifBtnAppearance(status) {
-  const btn = document.getElementById('notif-btn');
-  if (!btn || !status) return;
-  btn.classList.remove('enabled', 'denied');
-  if (!status.supported || status.permission === 'denied') {
-    btn.classList.add('denied');
-  } else if (status.subscribed) {
-    btn.classList.add('enabled');
-    btn.innerHTML = '🔔 Notifications On';
-  } else {
-    btn.innerHTML = '🔔 Notifications';
-  }
+  // Buttons consolidated into hamburger menu — update the menu hint instead
+  const hint = document.getElementById('menu-notif-hint');
+  if (!hint || !status) return;
+  if (!status.supported) hint.textContent = 'Not supported here';
+  else if (status.permission === 'denied') hint.textContent = 'Blocked — tap to fix';
+  else if (status.subscribed) hint.textContent = '✓ On for ' + (currentUser || 'you');
+  else hint.textContent = 'Tap to enable';
 }
 
 async function handleEnableNotifs() {
@@ -2857,6 +3167,398 @@ setTimeout(async () => {
   updateNotifBtnAppearance(status);
 }, 500);
 
+
+// ═══════════════════════════════════════════════════════
+//  THEME TOGGLE (dark / light)
+// ═══════════════════════════════════════════════════════
+
+const THEME_KEY = 'xander_cal_theme';
+function getTheme() { return localStorage.getItem(THEME_KEY) || 'dark'; }
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  const next = getTheme() === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+applyTheme(getTheme());
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH BAR — find any date or event
+// ═══════════════════════════════════════════════════════
+
+function handleSearch(query) {
+  const results = document.getElementById('search-results');
+  query = query.trim().toLowerCase();
+  if (!query || query.length < 2) {
+    results.style.display = 'none';
+    return;
+  }
+
+  const matches = [];
+
+  // Try to parse as date first
+  // Supported: "2026-12-25", "12/25/2026", "Dec 25 2026", "Dec 25", "December 2026"
+  const dateMatch = parseSearchDate(query);
+  if (dateMatch) {
+    matches.push({
+      type: 'date',
+      ...dateMatch
+    });
+  }
+
+  // Search events and notes (with overrides taking precedence over defaults)
+  const seen = new Set();
+  Object.keys(DEFAULT).forEach(monthKey => {
+    Object.keys(DEFAULT[monthKey]).forEach(dayStr => {
+      const day = parseInt(dayStr);
+      const [yr, mo] = monthKey.split('-').map(Number);
+      const dateKey = `${yr}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      if (seen.has(dateKey)) return;
+
+      const base = DEFAULT[monthKey][dayStr];
+      const ov = overrides[dateKey] || {};
+      const event = (ov.event !== undefined ? ov.event : base.event) || '';
+      const note = ov.note || '';
+      const owner = ov.owner || base.owner;
+
+      // Match query against event text or note
+      const haystack = (event + ' ' + note).toLowerCase();
+      if (haystack && haystack.includes(query)) {
+        seen.add(dateKey);
+        matches.push({
+          type: 'event',
+          year: yr, month: mo - 1, day: day,
+          event: event,
+          note: note,
+          owner: owner,
+          dateKey: dateKey
+        });
+      }
+
+      // Match special keywords
+      if (query === 'birthday' && (base.is_bday || base.parent_bday)) {
+        if (!seen.has(dateKey)) {
+          seen.add(dateKey);
+          matches.push({
+            type: 'event', year: yr, month: mo - 1, day: day,
+            event: base.is_bday ? `Xander's Birthday` : `${base.parent_bday}'s Birthday`,
+            owner: owner, dateKey: dateKey
+          });
+        }
+      }
+    });
+  });
+
+  // Render results (limit to 12)
+  const limit = matches.slice(0, 12);
+  if (limit.length === 0) {
+    results.innerHTML = '<div class="search-empty">No matches found</div>';
+    results.style.display = 'block';
+    return;
+  }
+
+  results.innerHTML = limit.map(m => {
+    const dateStr = new Date(m.year, m.month, m.day).toLocaleDateString('en-US',
+      {weekday:'short', month:'short', day:'numeric', year:'numeric'});
+    const ownerCls = m.owner === 'Justin' ? 'j' : 'b';
+    const ownerEmoji = m.owner === 'Justin' ? '👨' : '👩';
+    return `<div class="search-result-item" onclick="jumpToSearchResult(${m.year},${m.month},${m.day})">
+      <div>
+        <div class="search-result-date">${dateStr}</div>
+        ${m.event ? `<div class="search-result-meta">${m.event}</div>` : ''}
+      </div>
+      <div class="search-result-owner ${ownerCls}">${ownerEmoji} ${m.owner||'?'}</div>
+    </div>`;
+  }).join('');
+  results.style.display = 'block';
+}
+
+function jumpToSearchResult(y, m, d) {
+  cY = y; cM = m;
+  render();
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  // Auto-open the day modal
+  setTimeout(() => openDay(y, m, d), 200);
+}
+
+function parseSearchDate(q) {
+  // ISO format: 2026-12-25
+  let m = q.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const y = +m[1], mo = +m[2]-1, d = +m[3];
+    if (validDate(y,mo,d)) return {year:y,month:mo,day:d,event:'',owner:'',dateKey:`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
+  }
+  // US format: 12/25/2026 or 12/25
+  m = q.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (m) {
+    let mo = +m[1]-1, d = +m[2], y = m[3] ? +m[3] : new Date().getFullYear();
+    if (y < 100) y += 2000;
+    if (validDate(y,mo,d)) return {year:y,month:mo,day:d,event:'',owner:'',dateKey:`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
+  }
+  // "Dec 25" or "December 25" or "Dec 25 2026"
+  const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  for (let i = 0; i < 12; i++) {
+    const longName = months[i], shortName = longName.slice(0,3);
+    if (q.startsWith(shortName)) {
+      const rest = q.slice(longName.length).trim() || q.slice(shortName.length).trim();
+      const parts = rest.split(/\s+/);
+      const d = parseInt(parts[0]) || 1;
+      let y = parts[1] ? parseInt(parts[1]) : new Date().getFullYear();
+      if (y < 100) y += 2000;
+      if (validDate(y,i,d)) return {year:y,month:i,day:d,event:'',owner:'',dateKey:`${y}-${String(i+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
+    }
+  }
+  return null;
+}
+
+function validDate(y, m, d) {
+  if (y < 2026 || y > 2028) return false;
+  if (m < 0 || m > 11) return false;
+  if (d < 1 || d > 31) return false;
+  const dt = new Date(y, m, d);
+  return dt.getMonth() === m;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TRAVEL FEATURE — Justin marks travel ranges, notifies Brittany
+// ═══════════════════════════════════════════════════════
+
+let travelEntries = []; // {id, start, end, label, notes, by, createdAt}
+
+function openTravel(prefillStart, prefillEnd) {
+  document.getElementById('tr-start').value = prefillStart || '';
+  document.getElementById('tr-end').value = prefillEnd || prefillStart || '';
+  document.getElementById('tr-label').value = '';
+  document.getElementById('tr-notes').value = '';
+  renderTravelList();
+  document.getElementById('travel-overlay').classList.add('show');
+}
+
+function addTravelFromDay() {
+  if (!editKey) return;
+  const startDate = editKey;
+  closeDay();
+  setTimeout(() => openTravel(startDate, startDate), 200);
+}
+function closeTravel() {
+  document.getElementById('travel-overlay').classList.remove('show');
+}
+
+function renderTravelList() {
+  const list = document.getElementById('travel-list');
+  if (travelEntries.length === 0) {
+    list.innerHTML = `<div class="travel-list-title">Active Travel</div>
+      <div class="travel-empty">No travel scheduled yet</div>`;
+    return;
+  }
+  // Sort by start date
+  const sorted = [...travelEntries].sort((a,b) => a.start.localeCompare(b.start));
+  // Filter out past travel
+  const todayStr = new Date().toISOString().slice(0,10);
+  const upcoming = sorted.filter(t => t.end >= todayStr);
+
+  let html = `<div class="travel-list-title">Upcoming Travel (${upcoming.length})</div>`;
+  if (upcoming.length === 0) {
+    html += `<div class="travel-empty">No upcoming travel</div>`;
+  } else {
+    html += upcoming.map(t => `
+      <div class="travel-item">
+        <div class="travel-item-icon">✈️</div>
+        <div class="travel-item-body">
+          <div class="travel-item-dates">${fmtDate(t.start)} → ${fmtDate(t.end)}</div>
+          ${t.label ? `<div class="travel-item-label">${t.label}</div>` : ''}
+          <div class="travel-item-label" style="font-size:.7em;font-style:italic">added by ${t.by}</div>
+        </div>
+        <button class="travel-item-rm" onclick="removeTravel('${t.id}')" title="Remove">×</button>
+      </div>`).join('');
+  }
+  list.innerHTML = html;
+}
+
+function saveTravel() {
+  const start = document.getElementById('tr-start').value;
+  const end = document.getElementById('tr-end').value;
+  const label = document.getElementById('tr-label').value.trim();
+  const notes = document.getElementById('tr-notes').value.trim();
+
+  if (!start || !end) { alert('Please pick start and end dates'); return; }
+  if (end < start) { alert('End date must be on or after start date'); return; }
+  if (!currentUser) { alert('Please pick who you are first'); return; }
+
+  const entry = {
+    id: 'tr_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    start: start,
+    end: end,
+    label: label,
+    notes: notes,
+    by: currentUser,
+    createdAt: new Date().toISOString()
+  };
+  travelEntries.push(entry);
+
+  // Log it
+  logAction(currentUser, 'travel',
+    `Added travel ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
+  );
+
+  // Notify the other parent (no approval needed)
+  const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  triggerPushNotification(
+    other,
+    `${currentUser} added travel`,
+    `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
+    window.location.origin
+  );
+
+  closeTravel();
+  render();
+  scheduleSave();
+  showToast('✈️ Travel saved & ' + other + ' notified');
+}
+
+function removeTravel(id) {
+  if (!confirm('Remove this travel entry?')) return;
+  const t = travelEntries.find(x => x.id === id);
+  if (t) {
+    travelEntries = travelEntries.filter(x => x.id !== id);
+    logAction(currentUser, 'travel', `Removed travel ${fmtDate(t.start)} → ${fmtDate(t.end)}`);
+    render();
+    renderTravelList();
+    scheduleSave();
+    showToast('Travel removed');
+  }
+}
+
+// Hook into renderGrid to add travel overlays
+const _origRenderGridV10 = renderGrid;
+renderGrid = function() {
+  _origRenderGridV10();
+  // Add travel markers
+  if (!travelEntries.length) return;
+  document.querySelectorAll('#grid .dc:not(.empty)').forEach((cell) => {
+    const dn = cell.querySelector('.d-num');
+    if (!dn) return;
+    const day = parseInt(dn.textContent);
+    if (!day) return;
+    const key = `${cY}-${String(cM+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const onTravel = travelEntries.find(t => key >= t.start && key <= t.end);
+    if (onTravel) {
+      cell.classList.add('travel');
+      const icon = document.createElement('div');
+      icon.className = 'travel-icon';
+      icon.textContent = '✈️';
+      cell.appendChild(icon);
+      // Add label below event
+      if (onTravel.label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'd-travel';
+        lbl.textContent = `✈️ ${onTravel.label.slice(0,18)}`;
+        const event = cell.querySelector('.d-event');
+        if (event) event.parentNode.insertBefore(lbl, event.nextSibling);
+        else cell.querySelector('.d-num').parentNode.insertBefore(lbl, cell.querySelector('.d-num').nextSibling);
+      }
+    }
+  });
+};
+
+// Hook into Firebase load to pick up travelEntries
+const _origInitFirebaseV10 = initFirebase;
+initFirebase = function() {
+  _setSyncStatus('connecting');
+  window._fbListen(function(data) {
+    if (_ignoreNext) return;
+    if (!data) {
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)      overrides      = data.overrides;
+    if (data.summerPlan)     summerPlan     = data.summerPlan;
+    if (data.pendingSwaps)   pendingSwaps   = data.pendingSwaps;
+    if (data.activityLog)    activityLog    = data.activityLog;
+    if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+    if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
+    if (data.travelEntries)  travelEntries  = data.travelEntries;
+
+    render();
+    renderLogBody();
+    setTimeout(() => checkBlockingSwaps(), 400);
+    setTimeout(() => maybeAutoShowSummerProposal(), 700);
+
+    if (data.updatedAt) {
+      const t = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${t}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// Hook into save to include travelEntries
+const _origScheduleSaveV10 = scheduleSave;
+scheduleSave = function() {
+  _setSyncStatus('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window._fbDirectWrite) {
+      _ignoreNext = true;
+      window._fbDirectWrite({
+        overrides: overrides,
+        summerPlan: summerPlan,
+        pendingSwaps: pendingSwaps || {},
+        activityLog: activityLog || [],
+        summerProposal: summerProposal || null,
+        pushSubscriptions: window._currentNotifSubs || {},
+        travelEntries: travelEntries || [],
+        updatedAt: new Date().toISOString(),
+      });
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    }
+  }, 800);
+};
+
+document.getElementById('travel-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeTravel();
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  HAMBURGER MENU
+// ═══════════════════════════════════════════════════════
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('menu-dropdown').classList.toggle('show');
+}
+function closeMenu() {
+  document.getElementById('menu-dropdown').classList.remove('show');
+}
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('menu-dropdown');
+  const btn = document.getElementById('menu-btn');
+  if (dd && dd.classList.contains('show') && !dd.contains(e.target) && !btn.contains(e.target)) {
+    closeMenu();
+  }
+});
+
+// Update menu's notification hint based on current state
+async function updateMenuNotifHint() {
+  const hint = document.getElementById('menu-notif-hint');
+  if (!hint) return;
+  try {
+    const status = await checkNotificationStatus();
+    if (!status.supported) hint.textContent = 'Not supported here';
+    else if (status.permission === 'denied') hint.textContent = 'Blocked — tap to fix';
+    else if (status.subscribed) hint.textContent = '✓ On for ' + (currentUser || 'you');
+    else hint.textContent = 'Tap to enable';
+  } catch(e) {}
+}
+setTimeout(updateMenuNotifHint, 1500);
+
 // Init
 render();
 showWhoPickerIfNeeded();
@@ -2914,20 +3616,20 @@ setTimeout(() => {
 
 <!-- ═══════════════════════ PASSWORD GATE ═══════════════════════ -->
 <div id="pw-gate" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;">
-  <div style="background:#fff;border-radius:20px;padding:34px 30px 28px;width:90%;max-width:370px;box-shadow:0 28px 70px rgba(0,0,0,.35);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1)">
+  <div style="background:var(--card-elev);border-radius:20px;padding:34px 30px 28px;width:90%;max-width:380px;box-shadow:0 28px 70px rgba(0,0,0,.5);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--border)">
     <div style="font-size:2.5em;margin-bottom:7px">📅</div>
-    <div style="font-weight:900;font-size:1.4em;color:#0f172a;margin-bottom:3px">Xander's Calendar</div>
-    <div style="font-size:.8em;color:#64748b;margin-bottom:20px">Justin & Brittany · Private Access</div>
+    <div style="font-weight:900;font-size:1.4em;color:var(--text);margin-bottom:3px">Xander's Calendar</div>
+    <div style="font-size:.8em;color:var(--muted);margin-bottom:20px">Justin & Brittany · Private Access</div>
     <div id="pw-error" style="display:none;background:#fee2e2;color:#dc2626;border-radius:8px;padding:7px 12px;font-size:.78em;font-weight:700;margin-bottom:11px">❌ Wrong password — try again</div>
     <div style="position:relative;margin-bottom:13px">
       <input id="pw-input" type="password" placeholder="Enter password"
-        style="width:100%;padding:11px 42px 11px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:.97em;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;color:#0f172a"
-        oninput="this.style.borderColor='#3b82f6'"
+        style="width:100%;padding:13px 44px 13px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:1em;font-family:'DM Sans',sans-serif;outline:none;transition:all .2s ease;color:var(--text);background:var(--input-bg);font-weight:500"
+        oninput="this.style.borderColor='var(--j)'"
         onkeydown="if(event.key==='Enter')checkPw()">
-      <button onclick="togglePwVis()" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1em;color:#94a3b8;padding:0;line-height:1" id="pw-eye">👁</button>
+      <button onclick="togglePwVis()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.15em;color:var(--muted);padding:0;line-height:1;opacity:.7" id="pw-eye">👁</button>
     </div>
-    <button onclick="checkPw()" style="width:100%;padding:11px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:.97em;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;transition:opacity .15s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Unlock Calendar 🔓</button>
-    <div style="margin-top:14px;font-size:.7em;color:#94a3b8">Password-protected · For Justin & Brittany only</div>
+    <button onclick="checkPw()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0a84ff,#0066cc);color:#fff;border:none;border-radius:12px;font-size:1em;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s ease;box-shadow:0 4px 14px rgba(10,132,255,.4)" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(10,132,255,.5)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(10,132,255,.4)'">Unlock Calendar 🔓</button>
+    <div style="margin-top:14px;font-size:.7em;color:var(--muted)">Password-protected · For Justin & Brittany only</div>
   </div>
 </div>
 <style>
