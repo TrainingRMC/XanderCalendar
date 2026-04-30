@@ -390,6 +390,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .config-row{margin-bottom:9px}
 .config-lbl{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
 
+
+/* ── NOTIFICATIONS ── */
+#notif-btn{background:#10b981;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.79em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:background .14s;margin-left:6px}
+#notif-btn:hover{background:#059669}
+#notif-btn.enabled{background:#0d9488}
+#notif-btn.denied{background:#94a3b8;cursor:not-allowed}
+
+#notif-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9989;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px);overflow-y:auto}
+#notif-overlay.show{display:flex}
+.notif-modal{background:#fff;border-radius:18px;width:100%;max-width:480px;box-shadow:0 28px 70px rgba(0,0,0,.4);animation:popIn .22s ease;display:flex;flex-direction:column;max-height:94vh;overflow:hidden}
+.notif-hdr{background:linear-gradient(135deg,#047857,#10b981);color:#fff;padding:18px 22px 14px;flex-shrink:0}
+.notif-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
+.notif-sub{font-size:.83em;opacity:.92;margin-top:2px}
+.notif-body{padding:14px 18px 16px;overflow-y:auto;flex:1}
+.notif-step{margin-bottom:13px;padding:11px 13px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px}
+.notif-step-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.92em;color:#047857;margin-bottom:5px}
+.notif-step-body{font-size:.84em;line-height:1.55;color:var(--text)}
+.notif-status{padding:11px 13px;border-radius:10px;margin-bottom:13px;font-size:.86em;font-weight:600;line-height:1.45}
+.notif-status.ok{background:#d1fae5;border:1px solid #6ee7b7;color:#065f46}
+.notif-status.warn{background:#fef3c7;border:1px solid #fde68a;color:#92400e}
+.notif-status.err{background:#fee2e2;border:1px solid #fecaca;color:#991b1b}
+.notif-toggle-btn{display:block;width:100%;padding:13px;background:#10b981;color:#fff;border:none;border-radius:10px;font-size:.95em;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;margin-top:8px;transition:background .14s}
+.notif-toggle-btn:hover{background:#059669}
+.notif-toggle-btn.disable{background:#dc2626}
+.notif-toggle-btn.disable:hover{background:#b91c1c}
+.ios-instructions{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:11px 13px;margin-bottom:13px;font-size:.83em;line-height:1.5}
+.ios-instructions ol{margin:6px 0 0 18px;padding:0}
+.ios-instructions li{margin-bottom:3px}
+.ios-instructions b{font-weight:800;color:#1e40af}
+
 </style>
 </head>
 <body>
@@ -440,6 +470,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <button class="year-tab" onclick="setYear(2027)" id="ytab-2027">2027</button>
   <button class="year-tab" onclick="setYear(2028)" id="ytab-2028">2028</button>
   <button id="export-btn" onclick="openExport()">📲 Add to Phone</button>
+  <button id="notif-btn" onclick="openNotifs()">🔔 Notifications</button>
 </div>
 
 <!-- MONTH GRID for selected year -->
@@ -563,6 +594,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="export-body" id="export-body">
       <!-- populated by JS -->
     </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ NOTIFICATIONS MODAL ═══════════════════════ -->
+<div id="notif-overlay">
+  <div class="notif-modal">
+    <div class="notif-hdr">
+      <div class="notif-title">🔔 Push Notifications</div>
+      <div class="notif-sub">Get notified when you have something to review</div>
+    </div>
+    <div class="notif-body" id="notif-body"></div>
   </div>
 </div>
 
@@ -2342,6 +2385,480 @@ function renderExportModal() {
 document.getElementById('export-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeExport();
 });
+
+// ═══════════════════════════════════════════════════════
+//  WEB PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+
+// VAPID public key (safe to embed — only the private key on the worker is secret)
+const VAPID_PUBLIC = 'BAh0VcSVLWxFmP83u1pWie9htaqiJwG0m1LQJPGRd_YWHRp6UaKOHiIuRkNmscHVwAUjb9-YIGwgr_d862iKyyg';
+const NOTIF_WORKER_URL_KEY = 'xander_cal_export_config'; // shares config with iCal export
+
+let _swRegistration = null;
+let _pushSubscription = null;
+
+// Convert VAPID public key from base64url to Uint8Array
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// Inline service worker code — registered via Blob URL so no separate file needed
+const SW_CODE = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch(e) { data = { title: 'Calendar update', body: event.data ? event.data.text() : 'Tap to review' }; }
+
+  const title = data.title || 'Xander Calendar';
+  const options = {
+    body: data.body || 'You have something to review',
+    icon: data.icon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">📅</text></svg>',
+    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">📅</text></svg>',
+    tag: data.tag || 'cal-update',
+    data: data,
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(location.origin) && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});
+`;
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers not supported in this browser');
+  }
+  // Try existing registration first
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (existing) {
+    _swRegistration = existing;
+    return existing;
+  }
+  // Register from Blob URL
+  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(blob);
+  try {
+    _swRegistration = await navigator.serviceWorker.register(swUrl);
+    return _swRegistration;
+  } catch(err) {
+    // Blob URL registration may fail in some browsers — provide a fallback hint
+    throw new Error('Could not register service worker. iOS requires installing this site to your home screen first (Share → Add to Home Screen).');
+  }
+}
+
+async function enableNotifications() {
+  try {
+    if (!('Notification' in window)) {
+      throw new Error('Notifications not supported in this browser');
+    }
+    if (Notification.permission === 'denied') {
+      throw new Error('Notifications were blocked. Re-enable them in your browser/iPhone settings.');
+    }
+
+    // Request permission
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      throw new Error('Permission denied');
+    }
+
+    // Register SW
+    const reg = await registerServiceWorker();
+    await navigator.serviceWorker.ready;
+
+    // Subscribe to push
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+    });
+
+    _pushSubscription = sub;
+
+    // Save subscription to Firebase under current user
+    if (!currentUser) throw new Error('Pick who you are first');
+    if (!window._fbDirectWrite) throw new Error('Firebase not initialized yet');
+
+    // Read current state, add this subscription, write back
+    const subs = window._currentNotifSubs || {};
+    subs[currentUser] = {
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(sub.getKey('p256dh')),
+        auth: arrayBufferToBase64(sub.getKey('auth'))
+      },
+      ua: navigator.userAgent.slice(0, 100),
+      enabledAt: new Date().toISOString()
+    };
+    window._currentNotifSubs = subs;
+    saveNotifSubs(subs);
+
+    return { ok: true };
+  } catch(err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+async function disableNotifications() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) {
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    }
+    // Remove from Firebase
+    if (currentUser && window._currentNotifSubs) {
+      delete window._currentNotifSubs[currentUser];
+      saveNotifSubs(window._currentNotifSubs);
+    }
+    _pushSubscription = null;
+    return { ok: true };
+  } catch(err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function saveNotifSubs(subs) {
+  // Save under a separate Firebase node so it doesn't interfere with calendar data
+  // We piggyback on the existing _fbDirectWrite by adding pushSubs to the payload
+  if (!window._fbDirectWritePartial) {
+    // Add helper if not present
+    return;
+  }
+  window._fbDirectWritePartial({ pushSubscriptions: subs });
+}
+
+async function checkNotificationStatus() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    return { supported: false };
+  }
+  const reg = await navigator.serviceWorker.getRegistration();
+  let isSubscribed = false;
+  if (reg) {
+    const sub = await reg.pushManager.getSubscription();
+    isSubscribed = !!sub;
+    _pushSubscription = sub;
+    _swRegistration = reg;
+  }
+  return {
+    supported: true,
+    permission: Notification.permission,
+    subscribed: isSubscribed,
+  };
+}
+
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function isPWA() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         (window.navigator).standalone === true;
+}
+
+async function openNotifs() {
+  await renderNotifModal();
+  document.getElementById('notif-overlay').classList.add('show');
+}
+
+function closeNotifs() {
+  document.getElementById('notif-overlay').classList.remove('show');
+}
+
+async function renderNotifModal() {
+  const body = document.getElementById('notif-body');
+  const status = await checkNotificationStatus();
+
+  let html = '';
+
+  // Worker URL check
+  const cfg = JSON.parse(localStorage.getItem(NOTIF_WORKER_URL_KEY) || '{}');
+  if (!cfg.workerUrl || !cfg.token) {
+    html += `
+      <div class="notif-status warn">
+        ⚠️ Set up your Cloudflare Worker URL first via the "📲 Add to Phone" button.
+      </div>
+    `;
+  }
+
+  if (!status.supported) {
+    html += `
+      <div class="notif-status err">
+        ❌ Your browser doesn't support push notifications.
+      </div>
+    `;
+  } else {
+    // iOS-specific instructions
+    if (isIOS() && !isPWA()) {
+      html += `
+        <div class="ios-instructions">
+          <b>📱 iPhone setup required first:</b><br>
+          On iPhone, push notifications only work after installing this site as an app.
+          <ol>
+            <li>Tap the <b>Share</b> button in Safari (square with arrow)</li>
+            <li>Scroll down and tap <b>Add to Home Screen</b></li>
+            <li>Tap <b>Add</b></li>
+            <li>Open the calendar from your home screen (not Safari)</li>
+            <li>Come back here and enable notifications</li>
+          </ol>
+        </div>
+      `;
+    }
+
+    if (status.permission === 'denied') {
+      html += `
+        <div class="notif-status err">
+          ❌ Notifications are blocked. To enable: iPhone Settings → Notifications → find this app → allow.
+        </div>
+      `;
+    } else if (status.subscribed) {
+      html += `
+        <div class="notif-status ok">
+          ✓ Notifications enabled for <b>${currentUser}</b>. You'll get notified when ${currentUser==='Justin'?'Brittany':'Justin'} proposes changes that need your approval.
+        </div>
+        <button class="notif-toggle-btn disable" onclick="handleDisableNotifs()">Turn Off Notifications</button>
+      `;
+    } else {
+      html += `
+        <div class="notif-step">
+          <div class="notif-step-t">When you'll get notified</div>
+          <div class="notif-step-body">
+            • When ${currentUser==='Justin'?'Brittany':'Justin'} proposes a change to a day<br>
+            • When a summer plan is submitted for your review<br>
+            • Notifications appear instantly even when the app is closed
+          </div>
+        </div>
+        <button class="notif-toggle-btn" onclick="handleEnableNotifs()" ${(isIOS()&&!isPWA())?'disabled style="opacity:.5;cursor:not-allowed"':''}>
+          🔔 Enable Notifications
+        </button>
+        ${(isIOS()&&!isPWA())?'<div style="text-align:center;margin-top:8px;font-size:.78em;color:var(--muted);font-style:italic">Install to home screen first (instructions above)</div>':''}
+      `;
+    }
+  }
+
+  html += `
+    <div style="margin-top:14px;text-align:right">
+      <button class="btn btn-cancel" onclick="closeNotifs()" style="padding:8px 18px">Close</button>
+    </div>
+  `;
+
+  body.innerHTML = html;
+  updateNotifBtnAppearance(status);
+}
+
+function updateNotifBtnAppearance(status) {
+  const btn = document.getElementById('notif-btn');
+  if (!btn || !status) return;
+  btn.classList.remove('enabled', 'denied');
+  if (!status.supported || status.permission === 'denied') {
+    btn.classList.add('denied');
+  } else if (status.subscribed) {
+    btn.classList.add('enabled');
+    btn.innerHTML = '🔔 Notifications On';
+  } else {
+    btn.innerHTML = '🔔 Notifications';
+  }
+}
+
+async function handleEnableNotifs() {
+  const result = await enableNotifications();
+  if (result.ok) {
+    showToast('🔔 Notifications enabled!');
+  } else {
+    alert('Could not enable: ' + result.error);
+  }
+  await renderNotifModal();
+}
+
+async function handleDisableNotifs() {
+  if (!confirm('Stop receiving notifications on this device?')) return;
+  const result = await disableNotifications();
+  if (result.ok) showToast('Notifications turned off');
+  else alert('Error: ' + result.error);
+  await renderNotifModal();
+}
+
+document.getElementById('notif-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeNotifs();
+});
+
+// ═══════════════════════════════════════════════════════
+//  TRIGGER NOTIFICATION (sends via Cloudflare Worker)
+// ═══════════════════════════════════════════════════════
+
+async function triggerPushNotification(toUser, title, body, url) {
+  const cfg = JSON.parse(localStorage.getItem(NOTIF_WORKER_URL_KEY) || '{}');
+  if (!cfg.workerUrl || !cfg.token) return; // silently skip if no worker
+  try {
+    await fetch(`${cfg.workerUrl.replace(/\/$/,'')}/push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: cfg.token,
+        toUser: toUser,
+        title: title,
+        body: body,
+        url: url || window.location.origin,
+      }),
+    });
+  } catch(err) {
+    console.warn('Push notification failed:', err);
+  }
+}
+
+// Hook into saveDay to send notification when a swap is proposed
+const _origSaveDayV9 = window.saveDay;
+window.saveDay = function() {
+  const otherParent = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const beforePending = Object.keys(pendingSwaps).length;
+  _origSaveDayV9();
+  // If a pending swap was added, fire notification
+  if (Object.keys(pendingSwaps).length > beforePending) {
+    triggerPushNotification(
+      otherParent,
+      `${currentUser} proposed a change`,
+      `Open the calendar to review and approve.`,
+      window.location.origin
+    );
+  }
+};
+
+// Hook into resetDay too
+const _origResetDayV9 = window.resetDay;
+window.resetDay = function() {
+  const otherParent = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const beforePending = Object.keys(pendingSwaps).length;
+  _origResetDayV9();
+  if (Object.keys(pendingSwaps).length > beforePending) {
+    triggerPushNotification(
+      otherParent,
+      `${currentUser} proposed a reset`,
+      `Open the calendar to review.`,
+      window.location.origin
+    );
+  }
+};
+
+// Hook into Justin submitting summer plan (notifies Brittany)
+const _origApplySummerV9 = window.applySummer;
+window.applySummer = function() {
+  const beforeStage = summerProposal ? summerProposal.stage : null;
+  _origApplySummerV9();
+  // Did stage change to pending_brittany or pending_justin?
+  if (summerProposal && summerProposal.stage !== beforeStage) {
+    if (summerProposal.stage === 'pending_brittany') {
+      triggerPushNotification(
+        'Brittany',
+        `Justin submitted Summer ${summerProposal.year} plan`,
+        'Open the calendar to review and approve.',
+        window.location.origin
+      );
+    }
+  }
+};
+
+// Hook into Brittany submitting suggestion (notifies Justin)
+const _origBrittanySubmit = window.brittanySubmitSuggestion;
+window.brittanySubmitSuggestion = function(yr) {
+  _origBrittanySubmit(yr);
+  triggerPushNotification(
+    'Justin',
+    `Brittany suggested changes to Summer ${yr}`,
+    'Open the calendar to review her suggestion.',
+    window.location.origin
+  );
+};
+
+// Hook initFirebase so we capture push subs and write helper
+const _origInitFirebaseV9 = initFirebase;
+initFirebase = function() {
+  _setSyncStatus('connecting');
+  window._fbListen(function(data) {
+    if (_ignoreNext) return;
+    if (!data) {
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)      overrides      = data.overrides;
+    if (data.summerPlan)     summerPlan     = data.summerPlan;
+    if (data.pendingSwaps)   pendingSwaps   = data.pendingSwaps;
+    if (data.activityLog)    activityLog    = data.activityLog;
+    if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+    if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
+
+    render();
+    renderLogBody();
+    setTimeout(() => checkBlockingSwaps(), 400);
+    setTimeout(() => maybeAutoShowSummerProposal(), 700);
+
+    if (data.updatedAt) {
+      const t = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${t}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// Add partial-write helper that preserves existing data
+window._fbDirectWritePartial = function(partial) {
+  // Read current full state and merge
+  const full = {
+    overrides: overrides,
+    summerPlan: summerPlan,
+    pendingSwaps: pendingSwaps || {},
+    activityLog: activityLog || [],
+    summerProposal: summerProposal || null,
+    pushSubscriptions: window._currentNotifSubs || {},
+    updatedAt: new Date().toISOString(),
+  };
+  Object.assign(full, partial);
+  if (window._fbDirectWrite) {
+    _ignoreNext = true;
+    window._fbDirectWrite(full);
+    setTimeout(() => { _ignoreNext = false; }, 2500);
+  }
+};
+
+// Update notif button on user changes
+const _origSetUserV9 = setUser;
+setUser = function(name) {
+  _origSetUserV9(name);
+  setTimeout(async () => {
+    const status = await checkNotificationStatus();
+    updateNotifBtnAppearance(status);
+  }, 300);
+};
+
+// Init notif button appearance
+setTimeout(async () => {
+  const status = await checkNotificationStatus();
+  updateNotifBtnAppearance(status);
+}, 500);
 
 // Init
 render();
