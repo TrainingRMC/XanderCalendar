@@ -2452,15 +2452,12 @@ async function registerServiceWorker() {
     _swRegistration = existing;
     return existing;
   }
-  // Register from Blob URL
-  const blob = new Blob([SW_CODE], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(blob);
+  // Register from same-origin sw.js file (must exist alongside this HTML)
   try {
-    _swRegistration = await navigator.serviceWorker.register(swUrl);
+    _swRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
     return _swRegistration;
   } catch(err) {
-    // Blob URL registration may fail in some browsers — provide a fallback hint
-    throw new Error('Could not register service worker. iOS requires installing this site to your home screen first (Share → Add to Home Screen).');
+    throw new Error('Could not register service worker (' + err.message + '). Make sure sw.js is uploaded to the same folder as this calendar HTML on GitHub Pages.');
   }
 }
 
