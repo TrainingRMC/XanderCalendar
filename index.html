@@ -148,6 +148,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .year-tab.active{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff;box-shadow:0 2px 8px var(--j-soft)}
 .year-tab-lbl{font-size:.7em;font-weight:800;color:var(--muted-2);text-transform:uppercase;letter-spacing:.08em}
 
+/* v12: Past Years dropdown */
+.past-years-btn{display:inline-flex;align-items:center;gap:3px}
+.past-years-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;min-width:120px;z-index:50;flex-direction:column;gap:3px}
+.past-years-dropdown.open{display:flex}
+.past-year-item{background:transparent;border:none;border-radius:7px;padding:7px 12px;font-size:.85em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;color:var(--text);text-align:left;transition:background .12s}
+.past-year-item:hover{background:var(--bg-2);color:var(--j)}
+.past-year-item.active{background:var(--j-soft);color:var(--j);font-weight:800}
+:root[data-theme="dark"] .past-years-dropdown{background:var(--card-elev);border-color:var(--border)}
+:root[data-theme="dark"] .past-year-item:hover{background:var(--bg-2)}
+
 .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
 .month-lbl{font-family:'Nunito',sans-serif;font-size:1.32em;font-weight:900;min-width:200px;text-align:center;letter-spacing:-.5px;color:var(--text)}
 .nav-btn{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:.86em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s ease;box-shadow:0 2px 8px var(--j-soft)}
@@ -663,6 +673,94 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] #menu-btn:hover{background:var(--card-elev);border-color:var(--j)}
 :root[data-theme="dark"] .menu-item:hover{background:var(--bg-2)}
 
+/* ═══════════════════════════════════════════════════════
+   V12: INBOX BELL + SCHOOL CALENDAR + APPLE POLISH
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Inbox bell in header ─────────────────────────────────── */
+.inbox-bell{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:50%;width:36px;height:36px;cursor:pointer;color:#fff;display:inline-flex;align-items:center;justify-content:center;transition:background .15s ease,transform .12s ease;padding:0}
+.inbox-bell:hover{background:rgba(255,255,255,.22);transform:scale(1.06)}
+.inbox-bell:active{transform:scale(.95)}
+.inbox-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:.62em;font-weight:900;font-family:'Nunito',sans-serif;border-radius:10px;min-width:18px;height:18px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--hdr-grad,#1d4ed8);line-height:1;border:1.5px solid #fff;animation:badgePop .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes badgePop{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* ── Inbox drawer (right side, mobile-friendly) ───────────── */
+.inbox-drawer{position:fixed;top:0;right:-440px;width:420px;max-width:95vw;height:100vh;background:var(--card);box-shadow:-6px 0 28px rgba(0,0,0,.22);z-index:600;transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border)}
+.inbox-drawer.open{right:0}
+.inbox-hdr{background:var(--hdr-grad);color:#fff;padding:18px 18px 14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.inbox-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.15em;letter-spacing:-.3px}
+.inbox-close{background:rgba(255,255,255,.18);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.2em;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.inbox-close:hover{background:rgba(255,255,255,.3)}
+.inbox-body{flex:1;overflow-y:auto;padding:14px 14px 18px;background:var(--bg-2)}
+
+.inbox-empty{text-align:center;color:var(--muted);font-size:.9em;padding:50px 14px;font-style:italic;line-height:1.55}
+
+.inbox-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px;box-shadow:var(--shadow-sm);transition:box-shadow .18s,border-color .18s}
+.inbox-item.unread{border-left:3px solid var(--j);box-shadow:var(--shadow-md)}
+.inbox-item.unread.swap{border-left-color:var(--gold)}
+.inbox-item.unread.travel{border-left-color:#10b981}
+.inbox-item.unread.school{border-left-color:#a78bfa}
+.inbox-item-hdr{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.inbox-item-icon{font-size:1.5em;flex-shrink:0;line-height:1.1}
+.inbox-item-meta{flex:1;min-width:0}
+.inbox-item-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.94em;color:var(--text);line-height:1.25}
+.inbox-item-when{font-size:.74em;color:var(--muted);margin-top:1px;font-style:italic}
+.inbox-item-body{font-size:.86em;color:var(--text-2);line-height:1.5;background:var(--bg-2);border-radius:8px;padding:9px 11px;margin-bottom:9px}
+.inbox-item-actions{display:flex;gap:6px}
+.ix-btn{flex:1;padding:8px 10px;border:none;border-radius:8px;font-weight:700;font-size:.83em;cursor:pointer;font-family:'Nunito',sans-serif;transition:opacity .14s,transform .12s}
+.ix-btn:hover{opacity:.9}
+.ix-btn:active{transform:scale(.97)}
+.ix-approve{background:#10b981;color:#fff}
+.ix-decline{background:#ef4444;color:#fff}
+.ix-dismiss{background:var(--bg-2);color:var(--text);border:1px solid var(--border)}
+:root[data-theme="dark"] .ix-dismiss{background:var(--card-elev)}
+
+/* ── School calendar modal ─────────────────────────────────── */
+.sc-year-btn{background:var(--bg-2);border:1px solid var(--border);border-radius:18px;padding:5px 13px;font-size:.8em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;color:var(--muted);transition:all .15s}
+.sc-year-btn:hover{background:var(--j-soft);border-color:var(--j);color:var(--j)}
+.sc-year-btn.active{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--j-soft)}
+.sc-section{background:var(--bg-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:11px}
+.sc-section-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:9px}
+.sc-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.sc-row:last-child{margin-bottom:0}
+.sc-row-lbl{font-size:.86em;font-weight:700;color:var(--text);min-width:170px;flex-shrink:0}
+.sc-row-fields{display:flex;align-items:center;gap:6px;flex:1;flex-wrap:wrap}
+.sc-inp{padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83em;font-family:'DM Sans',sans-serif;background:var(--input-bg);color:var(--text);min-width:0;flex:1}
+.sc-inp:focus{outline:none;border-color:var(--j)}
+.sc-ns-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sc-rm-btn{background:transparent;border:none;color:#dc2626;cursor:pointer;font-size:1em;padding:4px 8px;border-radius:6px;flex-shrink:0;font-weight:700}
+.sc-rm-btn:hover{background:#fee2e2}
+:root[data-theme="dark"] .sc-rm-btn:hover{background:rgba(220,38,38,.2)}
+.sc-add-btn{width:100%;background:transparent;border:1px dashed var(--border);border-radius:8px;padding:8px;font-size:.83em;font-weight:600;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;margin-top:7px;transition:all .14s}
+.sc-add-btn:hover{background:var(--j-soft);border-color:var(--j);color:var(--j);border-style:solid}
+@media(max-width:520px){
+  .sc-row{flex-direction:column;align-items:flex-start;gap:5px}
+  .sc-row-lbl{min-width:auto}
+  .sc-row-fields{width:100%}
+}
+
+/* ── Apple Calendar visual polish ──────────────────────────── */
+/* Tighter today indicator: red dot beneath the date number, like iOS */
+.dc.today-ring{outline:none}
+.dc.today-ring .d-num{position:relative;color:#dc2626 !important}
+.dc.today-ring .d-num::after{content:'';position:absolute;left:50%;bottom:-4px;width:5px;height:5px;background:#dc2626;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 6px rgba(220,38,38,.6)}
+.dc.today-ring .d-today{display:none !important}
+:root[data-theme="dark"] .dc.today-ring .d-num{color:#ff453a !important}
+:root[data-theme="dark"] .dc.today-ring .d-num::after{background:#ff453a;box-shadow:0 0 8px rgba(255,69,58,.7)}
+
+/* Cleaner day-number typography (SF-style numerals) */
+.d-num{font-feature-settings:"tnum" 1;letter-spacing:-.5px}
+
+/* Subtler default cells — only-events get the strong tint */
+.dc.b-reg{background:transparent;border-color:var(--border-subtle)}
+.dc.j-reg{background:transparent;border-color:var(--border-subtle)}
+.dc.b-reg .d-num{color:var(--text)}
+.dc.j-reg .d-num{color:var(--text)}
+:root[data-theme="dark"] .dc.b-reg{background:var(--bg-2);border-color:var(--border-subtle)}
+:root[data-theme="dark"] .dc.j-reg{background:var(--bg-2);border-color:var(--border-subtle)}
+
+/* Owner pill at the bottom: slightly smaller, more refined */
+.d-owner{font-size:.62em;letter-spacing:.02em;padding:1.5px 5px}
 </style>
 </head>
 <body>
@@ -715,12 +813,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="search-results" id="search-results" style="display:none"></div>
 </div>
 
-<!-- YEAR TABS -->
+<!-- YEAR TABS (rolling: current + next, with Past Years dropdown) -->
 <div class="year-tabs">
   <span class="year-tab-lbl">Year:</span>
-  <button class="year-tab" onclick="setYear(2026)" id="ytab-2026">2026</button>
-  <button class="year-tab" onclick="setYear(2027)" id="ytab-2027">2027</button>
-  <button class="year-tab" onclick="setYear(2028)" id="ytab-2028">2028</button>
+  <span id="year-tabs-current" style="display:inline-flex;gap:7px"></span>
+  <span class="past-years-wrap" id="past-years-wrap" style="display:none;position:relative">
+    <button class="year-tab past-years-btn" id="past-years-btn" onclick="togglePastYears(event)" title="Past years">
+      <span id="past-years-btn-label">Past Years</span>
+      <span style="font-size:.65em;opacity:.7;margin-left:3px">▼</span>
+    </button>
+    <div class="past-years-dropdown" id="past-years-dropdown"></div>
+  </span>
   <button id="menu-btn" onclick="toggleMenu(event)" title="Menu" aria-label="Menu">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
       <line x1="3" y1="6" x2="21" y2="6"/>
@@ -963,27 +1066,84 @@ function fmtDate(s){return new Date(s+'T12:00:00').toLocaleDateString('en-US',{m
 function fmtTime(t){if(!t)return '';const[h,m]=t.split(':');const hr=+h;return `${hr===0?12:hr>12?hr-12:hr}:${m}${hr<12?'am':'pm'}`}
 
 // ── YEAR / MONTH NAV ─────────────────────────────────────────────
+// v12: Rolling year window — shows current year + next year as primary tabs,
+// older years collapse into the "Past Years" dropdown.
+function getRollingYears(){
+  const cur = today.getFullYear();
+  return [cur, cur + 1];
+}
+function getPastYears(){
+  const cur = today.getFullYear();
+  const set = new Set();
+  Object.keys(DEFAULT).forEach(k => set.add(parseInt(k.slice(0,4))));
+  Object.keys(overrides || {}).forEach(k => set.add(parseInt(k.slice(0,4))));
+  return [...set].filter(y => y < cur).sort((a,b) => b - a);
+}
+
 function setYear(y){
-  cY=y;
-  // Jump to first available month of that year
-  const firstKey = Object.keys(DEFAULT).find(k=>k.startsWith(y+'-'));
-  if(firstKey) cM=parseInt(firstKey.split('-')[1])-1;
+  cY = y;
+  if (y === today.getFullYear()){
+    cM = today.getMonth();
+  } else {
+    // Jump to first available month for years that have DEFAULT data
+    const firstKey = Object.keys(DEFAULT).find(k => k.startsWith(y + '-'));
+    cM = firstKey ? parseInt(firstKey.split('-')[1]) - 1 : 0;
+  }
+  closePastYears();
   render();
 }
 
 function renderYearTabs(){
-  [2026,2027,2028].forEach(y=>{
-    const t=document.getElementById('ytab-'+y);
-    if(t) t.classList.toggle('active', y===cY);
-  });
+  const wrap = document.getElementById('year-tabs-current');
+  if (!wrap) return;
+  const years = getRollingYears();
+  wrap.innerHTML = years.map(y =>
+    `<button class="year-tab ${y===cY?'active':''}" id="ytab-${y}" onclick="setYear(${y})">${y}</button>`
+  ).join('');
+  // Past Years dropdown
+  const past = getPastYears();
+  const pwrap = document.getElementById('past-years-wrap');
+  if (!pwrap) return;
+  if (past.length > 0){
+    pwrap.style.display = 'inline-block';
+    const isActivePast = past.includes(cY);
+    document.getElementById('past-years-btn').classList.toggle('active', isActivePast);
+    document.getElementById('past-years-btn-label').textContent = isActivePast ? `${cY}` : 'Past Years';
+    document.getElementById('past-years-dropdown').innerHTML = past.map(y =>
+      `<button class="past-year-item ${y===cY?'active':''}" onclick="setYear(${y})">${y}</button>`
+    ).join('');
+  } else {
+    pwrap.style.display = 'none';
+  }
 }
 
+function togglePastYears(e){
+  if (e) e.stopPropagation();
+  document.getElementById('past-years-dropdown').classList.toggle('open');
+}
+function closePastYears(){
+  const dd = document.getElementById('past-years-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+document.addEventListener('click', (e)=>{
+  const wrap = document.getElementById('past-years-wrap');
+  if (wrap && !wrap.contains(e.target)) closePastYears();
+});
+
 function renderMonthGrid(){
-  const mg=document.getElementById('month-grid');
-  const months=Object.keys(DEFAULT).filter(k=>k.startsWith(cY+'-')).map(k=>parseInt(k.split('-')[1])-1);
-  mg.innerHTML=months.map(m=>`
-    <button class="mth-btn${m===cM?' active':''}" onclick="jumpTo(${cY},${m})">${MN_SHORT[m]}</button>
-  `).join('');
+  const mg = document.getElementById('month-grid');
+  if (!mg) return;
+  // For years that have DEFAULT data, show months we have; otherwise all 12.
+  const hasDefault = Object.keys(DEFAULT).some(k => k.startsWith(cY + '-'));
+  let months;
+  if (hasDefault && cY < today.getFullYear()){
+    months = Object.keys(DEFAULT).filter(k => k.startsWith(cY+'-')).map(k => parseInt(k.split('-')[1])-1);
+  } else {
+    months = [0,1,2,3,4,5,6,7,8,9,10,11];
+  }
+  mg.innerHTML = months.map(m =>
+    `<button class="mth-btn${m===cM?' active':''}" onclick="jumpTo(${cY},${m})">${MN_SHORT[m]}</button>`
+  ).join('');
 }
 
 // ── RENDER ───────────────────────────────────────────────────────
@@ -1272,16 +1432,13 @@ function applySummer(){
 }
 
 // ── NAV ──────────────────────────────────────────────────────────
+// v12: Free month navigation — no hard clamp. Past years are still
+// reachable via the Past Years dropdown; future years let users edit
+// ahead of DEFAULT data.
 function changeMonth(dir){
-  cM+=dir;
-  if(cM>11){cM=0;cY++;}
-  if(cM<0){cM=11;cY--;}
-  // Clamp to available data
-  const key=dataKey(cY,cM);
-  if(!DEFAULT[key]){
-    if(dir>0){const keys=Object.keys(DEFAULT);cY=parseInt(keys[keys.length-1].split('-')[0]);cM=parseInt(keys[keys.length-1].split('-')[1])-1;}
-    else{cY=2026;cM=2;}
-  }
+  cM += dir;
+  if(cM > 11){ cM = 0;  cY++; }
+  if(cM <  0){ cM = 11; cY--; }
   render();
 }
 function jumpTo(y,m){cY=y;cM=m;render();}
@@ -3559,6 +3716,593 @@ async function updateMenuNotifHint() {
 }
 setTimeout(updateMenuNotifHint, 1500);
 
+
+// ═══════════════════════════════════════════════════════
+//  V12: SCHOOL CALENDAR SETTINGS + UNIFIED INBOX BELL
+// ═══════════════════════════════════════════════════════
+
+// ─── State ────────────────────────────────────────────────────
+let schoolCalendar = {};   // { "2026-2027": { firstDay, lastDay, springBreak, fallBreak, winterBreak, thanksgivingBreak, noSchoolDays:[{date,label}], updatedBy, updatedAt } }
+let inboxState     = {};   // { [user]: { read:{ key:true, ... }, dismissed:{ key:true, ... } } }
+let _activeSchoolYear = null;
+
+// ─── Academic-year helpers ───────────────────────────────────
+function getAcademicYearKey(y, m){
+  // Aug-Dec → starts that year. Jan-Jul → started previous year.
+  return m >= 7 ? `${y}-${y+1}` : `${y-1}-${y}`;
+}
+function nextAcademicYearKey(){
+  const t = today;
+  // After May (m>=5 → June), next academic year = current cal year / next cal year
+  // Before May (m<5), next academic year = previous cal year / current cal year (we should already have it)
+  // But the classic May reminder cares about "the school year starting next August"
+  const y = t.getFullYear();
+  return `${y}-${y+1}`;
+}
+
+// ─── School-event override per date ──────────────────────────
+function getSchoolOverride(y, m, d){
+  if (!schoolCalendar) return null;
+  const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  for (const yKey in schoolCalendar){
+    const sc = schoolCalendar[yKey];
+    if (!sc) continue;
+    const breaks = [
+      { key:'thanksgivingBreak', label:'🦃 Thanksgiving Break' },
+      { key:'winterBreak',       label:'❄️ Winter Break'      },
+      { key:'springBreak',       label:'🌸 Spring Break'       },
+      { key:'fallBreak',         label:'🍂 Fall Break'         }
+    ];
+    for (const br of breaks){
+      const range = sc[br.key];
+      if (range && range.start && range.end && dateStr >= range.start && dateStr <= range.end){
+        return { event: br.label, is_holiday: true };
+      }
+    }
+    if (sc.firstDay === dateStr) return { event: '🎒 First Day of School', is_holiday: true };
+    if (sc.lastDay  === dateStr) return { event: '🎓 Last Day of School',  is_holiday: true };
+    if (Array.isArray(sc.noSchoolDays)){
+      const ns = sc.noSchoolDays.find(x => x && x.date === dateStr);
+      if (ns) return { event: ns.label || '📚 No School', is_holiday: true };
+    }
+  }
+  return null;
+}
+
+// Wrap getInfo so school overrides apply *after* base/manual edits
+const _v12_origGetInfo = getInfo;
+getInfo = function(y, m, d){
+  const base   = _v12_origGetInfo(y, m, d);
+  const school = getSchoolOverride(y, m, d);
+  if (!base && !school) return null;
+  return Object.assign({}, base || {}, school || {});
+};
+
+// ─── School Calendar modal ───────────────────────────────────
+function openSchoolCal(yearKey){
+  if (!_activeSchoolYear){
+    // Default to current academic year
+    _activeSchoolYear = yearKey || getAcademicYearKey(today.getFullYear(), today.getMonth());
+  } else if (yearKey){
+    _activeSchoolYear = yearKey;
+  }
+  renderSchoolCal();
+  document.getElementById('school-overlay').classList.add('open');
+}
+function closeSchoolCal(){
+  document.getElementById('school-overlay').classList.remove('open');
+}
+
+function renderSchoolCal(){
+  const yKey = _activeSchoolYear;
+  const sc = schoolCalendar[yKey] || {};
+  const [y1, y2] = yKey.split('-').map(Number);
+
+  // Year picker buttons (cur, next, prev)
+  const cur = today.getFullYear();
+  const yearOptions = [
+    `${cur-1}-${cur}`,
+    `${cur}-${cur+1}`,
+    `${cur+1}-${cur+2}`
+  ];
+  // Include any other defined years too
+  Object.keys(schoolCalendar).forEach(k => {
+    if (!yearOptions.includes(k)) yearOptions.push(k);
+  });
+  yearOptions.sort();
+
+  const yearTabs = yearOptions.map(yk =>
+    `<button class="sc-year-btn ${yk===yKey?'active':''}" onclick="_activeSchoolYear='${yk}';renderSchoolCal()">${yk}</button>`
+  ).join('');
+
+  const minD = `${y1}-07-01`, maxD = `${y2}-08-31`;
+
+  const breakRow = (key, label, emoji) => {
+    const r = sc[key] || {};
+    return `
+      <div class="sc-row">
+        <div class="sc-row-lbl">${emoji} ${label}</div>
+        <div class="sc-row-fields">
+          <input type="date" class="sc-inp" value="${r.start||''}" min="${minD}" max="${maxD}"
+            onchange="_scSetBreak('${key}','start',this.value)">
+          <span style="color:var(--muted);font-size:.85em">to</span>
+          <input type="date" class="sc-inp" value="${r.end||''}" min="${minD}" max="${maxD}"
+            onchange="_scSetBreak('${key}','end',this.value)">
+        </div>
+      </div>`;
+  };
+
+  const noSchoolRows = Array.isArray(sc.noSchoolDays) ? sc.noSchoolDays : [];
+  const nsHtml = noSchoolRows.map((ns, i) => `
+    <div class="sc-ns-row">
+      <input type="date" class="sc-inp" value="${ns.date||''}" min="${minD}" max="${maxD}"
+        onchange="_scSetNs(${i},'date',this.value)">
+      <input type="text" class="sc-inp" placeholder="Label (e.g. eLearning Day)" value="${ns.label||''}"
+        oninput="_scSetNs(${i},'label',this.value)">
+      <button class="sc-rm-btn" onclick="_scRmNs(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  document.getElementById('school-body').innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px;justify-content:center">${yearTabs}</div>
+
+    <div class="sc-section">
+      <div class="sc-section-t">📅 School Year Bookends</div>
+      <div class="sc-row">
+        <div class="sc-row-lbl">🎒 First Day</div>
+        <div class="sc-row-fields"><input type="date" class="sc-inp" value="${sc.firstDay||''}" min="${minD}" max="${maxD}" onchange="_scSet('firstDay',this.value)"></div>
+      </div>
+      <div class="sc-row">
+        <div class="sc-row-lbl">🎓 Last Day</div>
+        <div class="sc-row-fields"><input type="date" class="sc-inp" value="${sc.lastDay||''}" min="${minD}" max="${maxD}" onchange="_scSet('lastDay',this.value)"></div>
+      </div>
+    </div>
+
+    <div class="sc-section">
+      <div class="sc-section-t">🏝 Breaks</div>
+      ${breakRow('fallBreak',         'Fall Break',         '🍂')}
+      ${breakRow('thanksgivingBreak', 'Thanksgiving Break', '🦃')}
+      ${breakRow('winterBreak',       'Winter Break',       '❄️')}
+      ${breakRow('springBreak',       'Spring Break',       '🌸')}
+    </div>
+
+    <div class="sc-section">
+      <div class="sc-section-t">📚 No-School / Early-Release Days</div>
+      ${nsHtml || '<div style="font-size:.82em;color:var(--muted);padding:8px 4px;font-style:italic">None added yet — tap the button below to add one.</div>'}
+      <button class="sc-add-btn" onclick="_scAddNs()">+ Add a no-school day</button>
+    </div>
+
+    ${sc.updatedBy ? `<div style="font-size:.74em;color:var(--muted);text-align:center;margin-top:9px;font-style:italic">Last updated by ${sc.updatedBy} ${sc.updatedAt?'· '+formatLogTime(sc.updatedAt):''}</div>` : ''}
+  `;
+}
+
+function _scSet(key, val){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  if (val) schoolCalendar[yKey][key] = val;
+  else delete schoolCalendar[yKey][key];
+}
+function _scSetBreak(brKey, side, val){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  if (!schoolCalendar[yKey][brKey]) schoolCalendar[yKey][brKey] = {};
+  if (val) schoolCalendar[yKey][brKey][side] = val;
+  else delete schoolCalendar[yKey][brKey][side];
+}
+function _scSetNs(i, field, val){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  if (!Array.isArray(schoolCalendar[yKey].noSchoolDays)) schoolCalendar[yKey].noSchoolDays = [];
+  schoolCalendar[yKey].noSchoolDays[i] = schoolCalendar[yKey].noSchoolDays[i] || {};
+  schoolCalendar[yKey].noSchoolDays[i][field] = val;
+}
+function _scAddNs(){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  if (!Array.isArray(schoolCalendar[yKey].noSchoolDays)) schoolCalendar[yKey].noSchoolDays = [];
+  schoolCalendar[yKey].noSchoolDays.push({ date:'', label:'' });
+  renderSchoolCal();
+}
+function _scRmNs(i){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey] || !Array.isArray(schoolCalendar[yKey].noSchoolDays)) return;
+  schoolCalendar[yKey].noSchoolDays.splice(i, 1);
+  renderSchoolCal();
+}
+
+function saveSchoolCal(){
+  const yKey = _activeSchoolYear;
+  if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  // Clean empty no-school entries
+  if (Array.isArray(schoolCalendar[yKey].noSchoolDays)){
+    schoolCalendar[yKey].noSchoolDays = schoolCalendar[yKey].noSchoolDays.filter(x => x && x.date);
+  }
+  schoolCalendar[yKey].updatedBy = currentUser || 'unknown';
+  schoolCalendar[yKey].updatedAt = new Date().toISOString();
+  // Mark May reminder as seen for this year
+  if (currentUser){
+    if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
+    inboxState[currentUser].dismissed[`schoolReminder-${yKey}`] = true;
+  }
+  if (typeof logAction === 'function'){
+    logAction(currentUser || 'unknown', 'school-cal', `Updated school calendar for ${yKey}`);
+  }
+  closeSchoolCal();
+  render();
+  scheduleSave();
+  showToast(`🏫 School calendar saved for ${yKey}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  V12: UNIFIED INBOX BELL
+// ═══════════════════════════════════════════════════════
+
+function getInboxItems(){
+  // Returns flat list of unread/active inbox items for currentUser
+  if (!currentUser) return [];
+  const me = currentUser;
+  const otherP = me === 'Justin' ? 'Brittany' : 'Justin';
+  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const items = [];
+
+  // 1. Pending swap proposals from the other parent
+  Object.entries(pendingSwaps || {}).forEach(([id, s]) => {
+    if (!s) return;
+    if (s.by === otherP){
+      items.push({
+        id: 'swap-' + id,
+        type: 'swap',
+        ts: s.createdAt || new Date().toISOString(),
+        unread: !myState.read['swap-' + id],
+        data: { swapId: id, swap: s }
+      });
+    }
+  });
+
+  // 2. Travel notifications from the other parent
+  if (Array.isArray(travelEntries)){
+    travelEntries.forEach(t => {
+      if (!t || !t.id) return;
+      if (t.by !== otherP) return;
+      const key = 'travel-' + t.id;
+      if (myState.dismissed[key]) return;
+      items.push({
+        id: key,
+        type: 'travel',
+        ts: t.createdAt || t.start || new Date().toISOString(),
+        unread: !myState.read[key],
+        data: { travel: t }
+      });
+    });
+  }
+
+  // 3. May annual school-calendar reminder
+  // Only fires May 1 → May 31 if no schoolCalendar entry for next academic year
+  const t = today;
+  if (t.getMonth() === 4){
+    const nextKey = nextAcademicYearKey();
+    const has = schoolCalendar && schoolCalendar[nextKey] && schoolCalendar[nextKey].firstDay;
+    const dismissed = myState.dismissed[`schoolReminder-${nextKey}`];
+    if (!has && !dismissed){
+      items.push({
+        id: 'schoolReminder-' + nextKey,
+        type: 'school',
+        ts: new Date(t.getFullYear(), 4, 1).toISOString(),
+        unread: !myState.read['schoolReminder-' + nextKey],
+        data: { yearKey: nextKey }
+      });
+    }
+  }
+
+  // Newest first
+  items.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  return items;
+}
+
+function getInboxUnreadCount(){
+  return getInboxItems().filter(i => i.unread).length;
+}
+
+function renderInboxBadge(){
+  const badge = document.getElementById('inbox-badge');
+  if (!badge) return;
+  const n = getInboxUnreadCount();
+  if (n > 0){
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleInbox(e){
+  if (e) e.stopPropagation();
+  const drawer = document.getElementById('inbox-drawer');
+  if (drawer.classList.contains('open')){
+    closeInbox();
+  } else {
+    openInbox();
+  }
+}
+function openInbox(){
+  document.getElementById('inbox-drawer').classList.add('open');
+  renderInboxBody();
+  // Mark all as read on open (after a beat so user sees the unread state briefly)
+  setTimeout(() => {
+    if (!currentUser) return;
+    if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
+    let changed = false;
+    getInboxItems().forEach(i => {
+      if (!inboxState[currentUser].read[i.id]){
+        inboxState[currentUser].read[i.id] = true;
+        changed = true;
+      }
+    });
+    if (changed){
+      renderInboxBadge();
+      scheduleSave();
+    }
+  }, 1500);
+}
+function closeInbox(){
+  document.getElementById('inbox-drawer').classList.remove('open');
+}
+
+function renderInboxBody(){
+  const body = document.getElementById('inbox-body');
+  const items = getInboxItems();
+  if (items.length === 0){
+    body.innerHTML = '<div class="inbox-empty">✨ Inbox zero<br><span style="font-size:.86em">No pending swaps, travel notices, or reminders</span></div>';
+    return;
+  }
+  body.innerHTML = items.map(i => renderInboxItem(i)).join('');
+}
+
+function renderInboxItem(item){
+  const unreadCls = item.unread ? ' unread' : '';
+  if (item.type === 'swap'){
+    const s = item.data.swap;
+    const id = item.data.swapId;
+    const ownerChange = s.fromOwner !== s.toOwner
+      ? `<b>${s.fromOwner}</b> → <b>${s.toOwner}</b>`
+      : `Owner stays <b>${s.toOwner}</b>`;
+    const eventLine = (s.toEvent && s.toEvent !== s.fromEvent) ? `<br>Event: "${s.toEvent}"` : '';
+    return `
+      <div class="inbox-item swap${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">🔄</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">${s.by} proposes a swap</div>
+            <div class="inbox-item-when">${formatLogTime(s.createdAt)}</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">
+          📅 <b>${formatLogDate(s.date)}</b><br>${ownerChange}${eventLine}
+        </div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">✗ Decline</button>
+          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">✓ Approve</button>
+        </div>
+      </div>`;
+  }
+  if (item.type === 'travel'){
+    const t = item.data.travel;
+    const range = t.start === t.end ? fmtDate(t.start) : `${fmtDate(t.start)} → ${fmtDate(t.end)}`;
+    return `
+      <div class="inbox-item travel${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">✈️</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">${t.by} added travel</div>
+            <div class="inbox-item-when">${formatLogTime(t.createdAt || t.start)}</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">
+          <b>${range}</b>${t.label?`<br>"${t.label}"`:''}${t.note?`<br><i>${t.note}</i>`:''}
+        </div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Got it</button>
+        </div>
+      </div>`;
+  }
+  if (item.type === 'school'){
+    const yKey = item.data.yearKey;
+    return `
+      <div class="inbox-item school${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">🏫</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">School calendar for ${yKey}</div>
+            <div class="inbox-item-when">Annual May reminder</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">
+          Time to enter next year's school dates — first day, last day, breaks, no-school days.
+        </div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSchoolCal('${yKey}')">Open Settings →</button>
+        </div>
+      </div>`;
+  }
+  return '';
+}
+
+function dismissInboxItem(itemId){
+  if (!currentUser) return;
+  if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
+  inboxState[currentUser].dismissed[itemId] = true;
+  inboxState[currentUser].read[itemId] = true;
+  renderInboxBody();
+  renderInboxBadge();
+  scheduleSave();
+}
+
+// ═══════════════════════════════════════════════════════
+//  V12: HOOK render() + persistence layer
+// ═══════════════════════════════════════════════════════
+
+const _v12_origRender = render;
+render = function(){
+  _v12_origRender();
+  renderInboxBadge();
+  // The month-reminder banner is replaced by the inbox — kill it if any prior
+  // hook tries to insert it.
+  const mr = document.getElementById('month-reminder');
+  if (mr) mr.remove();
+};
+
+// Suppress month-reminder (now lives in inbox)
+if (typeof renderMonthReminder === 'function'){
+  renderMonthReminder = function(){
+    const existing = document.getElementById('month-reminder');
+    if (existing) existing.remove();
+  };
+}
+
+// Final scheduleSave + initFirebase that include schoolCalendar + inboxState
+const _v12_origScheduleSave = scheduleSave;
+scheduleSave = function(){
+  _setSyncStatus('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window._fbDirectWrite){
+      _ignoreNext = true;
+      window._fbDirectWrite({
+        overrides:         overrides,
+        summerPlan:        summerPlan,
+        pendingSwaps:      pendingSwaps   || {},
+        activityLog:       activityLog    || [],
+        summerProposal:    summerProposal || null,
+        pushSubscriptions: window._currentNotifSubs || {},
+        travelEntries:     travelEntries  || [],
+        schoolCalendar:    schoolCalendar || {},
+        inboxState:        inboxState     || {},
+        updatedAt:         new Date().toISOString()
+      });
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    }
+  }, 800);
+};
+
+const _v12_origInitFirebase = initFirebase;
+initFirebase = function(){
+  _setSyncStatus('connecting');
+  window._fbListen(function(data){
+    if (_ignoreNext) return;
+    if (!data){
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)         overrides         = data.overrides;
+    if (data.summerPlan)        summerPlan        = data.summerPlan;
+    if (data.pendingSwaps)      pendingSwaps      = data.pendingSwaps;
+    if (data.activityLog)       activityLog       = data.activityLog;
+    if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+    if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
+    if (data.travelEntries)     travelEntries     = data.travelEntries;
+    if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
+    if (data.inboxState)        inboxState        = data.inboxState;
+
+    render();
+    if (typeof renderLogBody === 'function') renderLogBody();
+    setTimeout(() => { if (typeof checkBlockingSwaps === 'function') checkBlockingSwaps(); }, 400);
+    setTimeout(() => { if (typeof maybeAutoShowSummerProposal === 'function') maybeAutoShowSummerProposal(); }, 700);
+
+    if (data.updatedAt){
+      const ts = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${ts}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// Inject inbox bell + school cal modal HTML once DOM is ready
+(function _v12_injectUI(){
+  // 1. Inbox bell — drop next to theme toggle in the header
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle && !document.getElementById('inbox-bell')){
+    const bell = document.createElement('button');
+    bell.id = 'inbox-bell';
+    bell.className = 'inbox-bell';
+    bell.title = 'Inbox';
+    bell.setAttribute('aria-label', 'Inbox');
+    bell.onclick = toggleInbox;
+    bell.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+      </svg>
+      <span id="inbox-badge" class="inbox-badge" style="display:none">0</span>
+    `;
+    themeToggle.parentNode.insertBefore(bell, themeToggle);
+  }
+
+  // 2. Inbox drawer
+  if (!document.getElementById('inbox-drawer')){
+    const drawer = document.createElement('div');
+    drawer.id = 'inbox-drawer';
+    drawer.className = 'inbox-drawer';
+    drawer.innerHTML = `
+      <div class="inbox-hdr">
+        <div class="inbox-title">📥 Inbox</div>
+        <button class="inbox-close" onclick="closeInbox()" aria-label="Close">×</button>
+      </div>
+      <div class="inbox-body" id="inbox-body"></div>
+    `;
+    document.body.appendChild(drawer);
+    document.addEventListener('click', (e) => {
+      if (!drawer.classList.contains('open')) return;
+      const bell = document.getElementById('inbox-bell');
+      if (drawer.contains(e.target) || (bell && bell.contains(e.target))) return;
+      closeInbox();
+    });
+  }
+
+  // 3. School calendar modal
+  if (!document.getElementById('school-overlay')){
+    const ov = document.createElement('div');
+    ov.id = 'school-overlay';
+    ov.className = 'overlay';
+    ov.innerHTML = `
+      <div class="modal" style="max-width:560px;width:94%">
+        <div class="modal-title">🏫 School Calendar Settings</div>
+        <div class="modal-sub">Enter Center Grove dates for the school year. Calendar refreshes automatically.</div>
+        <div id="school-body" style="max-height:62vh;overflow-y:auto;padding:2px"></div>
+        <div style="display:flex;gap:7px;margin-top:14px">
+          <button class="btn btn-cancel" onclick="closeSchoolCal()">Close</button>
+          <button class="btn btn-save" style="flex:1" onclick="saveSchoolCal()">✓ Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', (e) => { if (e.target === ov) closeSchoolCal(); });
+  }
+
+  // 4. Add School Calendar item to hamburger menu
+  const menu = document.getElementById('menu-dropdown');
+  if (menu && !document.getElementById('menu-school-item')){
+    const btn = document.createElement('button');
+    btn.id = 'menu-school-item';
+    btn.className = 'menu-item';
+    btn.onclick = function(){ closeMenu(); openSchoolCal(); };
+    btn.innerHTML = `
+      <span class="menu-icon">🏫</span>
+      <div class="menu-text">
+        <div class="menu-label">School Calendar</div>
+        <div class="menu-hint">Breaks, first/last day, no-school days</div>
+      </div>
+    `;
+    menu.appendChild(btn);
+  }
+})();
+
+// Refresh inbox badge whenever new data flows in
+const _v12_refreshBadgeTimer = setInterval(() => {
+  if (typeof renderInboxBadge === 'function') renderInboxBadge();
+}, 30000);
 // Init
 render();
 showWhoPickerIfNeeded();
