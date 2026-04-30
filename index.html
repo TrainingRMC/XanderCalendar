@@ -853,6 +853,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="menu-hint">Add or manage trips</div>
       </div>
     </button>
+    <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
+      <span class="menu-icon">☀️</span>
+      <div class="menu-text">
+        <div class="menu-label">Summer Planner</div>
+        <div class="menu-hint">Plan & apply 2-week vacation blocks</div>
+      </div>
+    </button>
+    <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
+      <span class="menu-icon">🏫</span>
+      <div class="menu-text">
+        <div class="menu-label">School Calendar</div>
+        <div class="menu-hint">Breaks, first/last day, no-school days</div>
+      </div>
+    </button>
   </div>
 </div>
 
@@ -4303,6 +4317,619 @@ initFirebase = function(){
 const _v12_refreshBadgeTimer = setInterval(() => {
   if (typeof renderInboxBadge === 'function') renderInboxBadge();
 }, 30000);
+
+// ═══════════════════════════════════════════════════════
+//  V12.1: Summer reminders → Inbox + smart "planned" check
+// ═══════════════════════════════════════════════════════
+
+// Smart "is summer planned" — counts a year as planned when EITHER the formal
+// proposal is approved OR the summerPlan has covering blocks for the year.
+// This fixes the case where summerPlan was populated (default or via Brittany)
+// but summerProposal was never created → urgent banner kept showing.
+function isSummerPlannedFor(yr){
+  if (summerProposal && summerProposal.year === yr && summerProposal.stage === 'approved'){
+    return true;
+  }
+  if (Array.isArray(summerPlan)){
+    const yearBlocks = summerPlan.filter(b => b && b.start && b.start.startsWith(String(yr)));
+    if (yearBlocks.length >= 2){
+      const owners = new Set(yearBlocks.map(b => b.owner));
+      if (owners.has('Justin') && owners.has('Brittany')) return true;
+    }
+  }
+  return false;
+}
+
+// Suppress the wide in-page summer banners — items now live in the Inbox
+if (typeof renderSummerAlert === 'function'){
+  renderSummerAlert = function(){
+    const e = document.getElementById('summer-alert');
+    if (e) e.remove();
+  };
+}
+if (typeof renderBanner === 'function'){
+  renderBanner = function(){
+    const el = document.getElementById('sum-banner');
+    if (el) el.innerHTML = '';
+  };
+}
+
+// Add summer items to the Inbox
+const _v121_origGetInboxItems = getInboxItems;
+getInboxItems = function(){
+  const items = _v121_origGetInboxItems();
+  if (!currentUser) return items;
+  const me = currentUser;
+  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const t = today;
+
+  // Relevant summer year — current summer if before August, else next year
+  const cur = t.getFullYear();
+  const yr = t.getMonth() < 7 ? cur : cur + 1;
+
+  // 1. Brittany: Justin submitted a proposal awaiting her review
+  if (me === 'Brittany' && summerProposal && summerProposal.year === yr && summerProposal.stage === 'pending_brittany'){
+    const id = `summer-review-${yr}`;
+    if (!myState.dismissed[id]){
+      const lastTs = summerProposal.history && summerProposal.history.length
+        ? summerProposal.history[summerProposal.history.length-1].ts
+        : new Date().toISOString();
+      items.push({
+        id, type:'summer-review', ts:lastTs,
+        unread: !myState.read[id],
+        data: { yr }
+      });
+    }
+  }
+
+  // 2. Justin: Brittany counter-proposed, Justin has final say
+  if (me === 'Justin' && summerProposal && summerProposal.year === yr && summerProposal.stage === 'pending_justin'){
+    const id = `summer-finalize-${yr}`;
+    if (!myState.dismissed[id]){
+      const lastTs = summerProposal.history && summerProposal.history.length
+        ? summerProposal.history[summerProposal.history.length-1].ts
+        : new Date().toISOString();
+      items.push({
+        id, type:'summer-finalize', ts:lastTs,
+        unread: !myState.read[id],
+        data: { yr }
+      });
+    }
+  }
+
+  // 3. Justin: needs to plan summer — ONLY if not already planned
+  if (me === 'Justin' && !isSummerPlannedFor(yr)){
+    const deadline  = new Date(yr, 3, 1); // April 1
+    const summerEnd = new Date(yr, 7, 15);
+    if (t <= summerEnd){
+      const overdue = t > deadline;
+      const id = `summer-plan-${yr}`;
+      if (!myState.dismissed[id]){
+        items.push({
+          id, type:'summer-plan',
+          ts: deadline.toISOString(),
+          unread: !myState.read[id],
+          data: { yr, overdue, deadline: deadline.toISOString() }
+        });
+      }
+    }
+  }
+
+  items.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  return items;
+};
+
+// Render summer item types in the inbox
+const _v121_origRenderInboxItem = renderInboxItem;
+renderInboxItem = function(item){
+  const unreadCls = item.unread ? ' unread' : '';
+  if (item.type === 'summer-plan'){
+    const { yr, overdue, deadline } = item.data;
+    const dl = deadline ? new Date(deadline) : null;
+    const daysOverdue = dl ? Math.floor((today - dl) / 86400000) : 0;
+    const daysLeft    = dl ? Math.ceil((dl - today) / 86400000) : 0;
+    const headline = overdue
+      ? `Summer ${yr} plan is ${daysOverdue} day${daysOverdue===1?'':'s'} overdue`
+      : `Summer ${yr} plan due in ${daysLeft} day${daysLeft===1?'':'s'}`;
+    const sub = overdue
+      ? 'April 1 deadline passed — submit your plan to preserve selection rights.'
+      : 'As noncustodial parent, you select your summer days by April 1.';
+    return `
+      <div class="inbox-item ${overdue?'urgent':'summer'}${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">${overdue?'⏰':'☀️'}</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">${headline}</div>
+            <div class="inbox-item-when">Annual planning task</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">${sub}</div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSummer(${yr})">Plan Summer ${yr} →</button>
+        </div>
+      </div>`;
+  }
+  if (item.type === 'summer-review'){
+    const { yr } = item.data;
+    return `
+      <div class="inbox-item summer${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">☀️</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">Justin submitted Summer ${yr} plan</div>
+            <div class="inbox-item-when">Awaiting your review</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">Review and approve, or suggest changes with reasoning.</div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Review →</button>
+        </div>
+      </div>`;
+  }
+  if (item.type === 'summer-finalize'){
+    const { yr } = item.data;
+    return `
+      <div class="inbox-item summer${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">☀️</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">Brittany suggested changes — Summer ${yr}</div>
+            <div class="inbox-item-when">You have final say</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">Review her counter-suggestion and finalize.</div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Review →</button>
+        </div>
+      </div>`;
+  }
+  return _v121_origRenderInboxItem(item);
+};
+
+// Small CSS additions for summer/urgent inbox tints
+(function(){
+  const css = `
+    .inbox-item.urgent.unread{border-left-color:#dc2626 !important}
+    .inbox-item.urgent .inbox-item-icon{filter:drop-shadow(0 0 4px rgba(220,38,38,.5))}
+    .inbox-item.summer.unread{border-left-color:#f59e0b}
+    .inbox-item.summer .inbox-item-icon{filter:drop-shadow(0 0 3px rgba(245,158,11,.4))}
+  `;
+  const s = document.createElement('style');
+  s.textContent = css;
+  document.head.appendChild(s);
+})();
+
+// ═══════════════════════════════════════════════════════
+//  V12.2: Summer Planner accessibility + direct-apply path
+//
+//  Problems being fixed:
+//    a) The wide gold "Plan Summer Weeks ▶" banner is gone (intentional)
+//       but that was the only way to reach the planner — no menu entry.
+//    b) v11's proposal workflow gates Justin's picks behind Brittany's
+//       approval, so summerPlan blocks never reach `overrides[]` until
+//       Brittany clicks Approve. This causes "I picked these but the
+//       calendar still shows DEFAULT" — exactly the symptom reported.
+// ═══════════════════════════════════════════════════════
+
+// Direct-apply: take summerPlan blocks for a given year and write them
+// to overrides[], bypassing the proposal workflow entirely. Used by the
+// "Apply Picks to Calendar" button and the load-time recovery.
+function applySummerDirect(yr){
+  if (!Array.isArray(summerPlan)) return 0;
+  const yearBlocks = summerPlan.filter(b => b && b.start && b.start.startsWith(String(yr)));
+  if (yearBlocks.length === 0) return 0;
+
+  // Wipe existing _summer overrides for this year so the new blocks are clean
+  Object.keys(overrides).forEach(k => {
+    if (k.startsWith(String(yr) + '-') && overrides[k] && overrides[k]._summer){
+      delete overrides[k];
+    }
+  });
+
+  let touched = 0;
+  yearBlocks.forEach(blk => {
+    if (!blk.start || !blk.end) return;
+    const bs = new Date(blk.start + 'T12:00:00');
+    const be = new Date(blk.end   + 'T12:00:00');
+    for (let d = new Date(bs); d <= be; d.setDate(d.getDate()+1)){
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const base = (DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`] || {})[String(d.getDate())] || {};
+      overrides[key] = {
+        owner:    blk.owner,
+        event:    blk.label ? `☀️ ${blk.label}` : (base.event || `☀️ ${blk.owner}'s Summer`),
+        note:     '',
+        timeMode: 'all',
+        timeFrom: '',
+        timeTo:   '',
+        _summer:  true
+      };
+      touched++;
+    }
+  });
+  return touched;
+}
+
+// One-click recovery: applies all years currently in summerPlan
+function applySummerPicksNow(){
+  const years = new Set();
+  (summerPlan || []).forEach(b => {
+    if (b && b.start) years.add(parseInt(b.start.slice(0,4)));
+  });
+  let total = 0;
+  years.forEach(yr => { total += applySummerDirect(yr); });
+  if (total > 0){
+    if (typeof logAction === 'function' && currentUser){
+      logAction(currentUser, 'summer-apply', `Applied summer picks to calendar (${total} days across ${years.size} year${years.size===1?'':'s'})`);
+    }
+    render();
+    if (typeof scheduleSave === 'function') scheduleSave();
+    if (typeof showToast === 'function') showToast(`☀️ Applied ${total} summer day${total===1?'':'s'}`);
+  } else {
+    if (typeof showToast === 'function') showToast('No summer blocks to apply');
+  }
+}
+
+// Detect: does summerPlan have blocks for a year that AREN'T reflected in overrides?
+// Returns { yr → driftedDays } for years where calendar disagrees with picks.
+function findSummerDrift(){
+  const drift = {};
+  if (!Array.isArray(summerPlan)) return drift;
+  summerPlan.forEach(blk => {
+    if (!blk || !blk.start || !blk.end) return;
+    const yr = parseInt(blk.start.slice(0,4));
+    const bs = new Date(blk.start + 'T12:00:00');
+    const be = new Date(blk.end   + 'T12:00:00');
+    for (let d = new Date(bs); d <= be; d.setDate(d.getDate()+1)){
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const ov = overrides[key];
+      // Drift if no override of summer type, or override owner doesn't match the picked block
+      if (!ov || !ov._summer || ov.owner !== blk.owner){
+        drift[yr] = (drift[yr] || 0) + 1;
+      }
+    }
+  });
+  return drift;
+}
+
+// Inject "Summer Planner" into the hamburger menu (after Travel)
+(function _v122_injectMenuItem(){
+  function go(){
+    const menu = document.getElementById('menu-dropdown');
+    if (!menu){ setTimeout(go, 80); return; }
+    if (document.getElementById('menu-summer-item')) return;
+    const btn = document.createElement('button');
+    btn.id = 'menu-summer-item';
+    btn.className = 'menu-item';
+    btn.onclick = function(){
+      closeMenu();
+      // Default to current summer year
+      const yr = today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1;
+      openSummer(yr);
+    };
+    btn.innerHTML = `
+      <span class="menu-icon">☀️</span>
+      <div class="menu-text">
+        <div class="menu-label">Summer Planner</div>
+        <div class="menu-hint" id="menu-summer-hint">Plan & apply vacation weeks</div>
+      </div>
+    `;
+    // Insert just before the School Calendar item if present, else append
+    const schoolItem = document.getElementById('menu-school-item');
+    if (schoolItem) menu.insertBefore(btn, schoolItem);
+    else menu.appendChild(btn);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+  else go();
+})();
+
+// Add "Apply Picks Now" button to the Summer Planner modal footer
+(function _v122_extendSummerModal(){
+  function go(){
+    const overlay = document.getElementById('sum-overlay');
+    if (!overlay){ setTimeout(go, 100); return; }
+    const ftr = overlay.querySelector('.sum-modal-ftr');
+    if (!ftr || document.getElementById('sum-apply-direct-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'sum-apply-direct-btn';
+    btn.className = 'btn';
+    btn.style.cssText = 'background:#10b981;color:#fff;font-weight:700';
+    btn.title = 'Write current blocks directly to the calendar without the proposal workflow';
+    btn.textContent = '⚡ Apply Picks to Calendar Now';
+    btn.onclick = function(){
+      const n = applySummerDirect(activeSummerYear);
+      if (n > 0){
+        if (typeof logAction === 'function' && currentUser){
+          logAction(currentUser, 'summer-apply', `Applied ${activeSummerYear} picks directly to calendar (${n} days)`);
+        }
+        closeSummer();
+        render();
+        scheduleSave();
+        showToast(`☀️ Applied ${n} summer day${n===1?'':'s'} for ${activeSummerYear}`);
+      } else {
+        showToast('No blocks to apply for ' + activeSummerYear);
+      }
+    };
+    // Insert before the existing "Apply to Calendar" (proposal-flow) button
+    const saveBtn = ftr.querySelector('.btn-save');
+    if (saveBtn) ftr.insertBefore(btn, saveBtn);
+    else ftr.appendChild(btn);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+  else go();
+})();
+
+// Auto-recovery: when Firebase data finishes loading, if summerPlan has
+// picks that aren't reflected on the calendar (drifted), restore them.
+// Only runs once per session.
+let _v122_recoveryRan = false;
+function maybeRunSummerRecovery(){
+  if (_v122_recoveryRan) return;
+  if (!Array.isArray(summerPlan) || summerPlan.length === 0) return;
+  const drift = findSummerDrift();
+  const driftedYears = Object.keys(drift).map(Number);
+  if (driftedYears.length === 0){ _v122_recoveryRan = true; return; }
+
+  // Only auto-restore for the current/upcoming summer year — be conservative
+  const cur = today.getFullYear();
+  const targetYr = today.getMonth() < 7 ? cur : cur + 1;
+  if (!driftedYears.includes(targetYr)){ _v122_recoveryRan = true; return; }
+
+  // Only auto-apply if there's no existing _summer override at all for this year
+  // (this avoids overwriting partial manual work)
+  const hasAnySummerOverride = Object.keys(overrides).some(k =>
+    k.startsWith(String(targetYr)+'-') && overrides[k] && overrides[k]._summer
+  );
+  if (hasAnySummerOverride){ _v122_recoveryRan = true; return; }
+
+  const n = applySummerDirect(targetYr);
+  if (n > 0){
+    _v122_recoveryRan = true;
+    if (typeof logAction === 'function' && currentUser){
+      logAction('system', 'summer-restore', `Auto-restored ${n} ${targetYr} summer days from picks`);
+    }
+    render();
+    if (typeof scheduleSave === 'function') scheduleSave();
+    if (typeof showToast === 'function'){
+      showToast(`☀️ Restored ${n} summer ${targetYr} day${n===1?'':'s'} from your picks`);
+    }
+  }
+}
+
+// Hook into initFirebase so recovery runs after data loads
+const _v122_origInitFirebase = initFirebase;
+initFirebase = function(){
+  _v122_origInitFirebase();
+  // The listener fires async — wait a beat after first data, then attempt recovery
+  setTimeout(maybeRunSummerRecovery, 1800);
+};
+
+// ═══════════════════════════════════════════════════════
+//  V12.3: Submit-summer reminder window + 2-week defaults
+//
+//  What changed:
+//   1. Reminder now starts 30 days before April 1 (i.e. March 2)
+//      and runs through summer end. It only dismisses when Justin
+//      explicitly submits — either via Apply Picks Now or via the
+//      proposal workflow. summerPlan having default blocks is no
+//      longer enough to silence the reminder.
+//   2. summerSubmitted[yr] flag tracks formal submission per year.
+//   3. Opening the Summer Planner for a year with no blocks now
+//      auto-seeds 4 alternating 2-week blocks (J/B/J/B) covering
+//      May 22 → Aug 2.
+// ═══════════════════════════════════════════════════════
+
+// New persisted state — when did Justin formally submit each year's plan?
+if (typeof summerSubmitted === 'undefined'){ window.summerSubmitted = {}; var summerSubmitted = window.summerSubmitted; }
+
+// Treat a year as submitted when:
+//   (a) summerSubmitted[yr] is set explicitly, OR
+//   (b) summerProposal exists for that year AND has Justin in history
+//       (i.e. he formally submitted via the proposal workflow)
+function isSummerSubmitted(yr){
+  if (summerSubmitted && summerSubmitted[yr]) return true;
+  if (summerProposal && summerProposal.year === yr && Array.isArray(summerProposal.history)){
+    return summerProposal.history.some(h => h && h.by === 'Justin');
+  }
+  return false;
+}
+
+// Override the v12.1 inbox summer-plan logic with the new submission gating
+const _v123_origGetInboxItems = getInboxItems;
+getInboxItems = function(){
+  // Strip out v12.1's summer-plan items, then re-add with new logic
+  const items = _v123_origGetInboxItems().filter(i => i.type !== 'summer-plan');
+  if (!currentUser) return items;
+  const me = currentUser;
+  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const t = today;
+  const cur = t.getFullYear();
+  const yr = t.getMonth() < 7 ? cur : cur + 1;
+
+  if (me === 'Justin' && !isSummerSubmitted(yr)){
+    const reminderStart = new Date(yr, 2, 2);   // March 2 (30 days before April 1)
+    const deadline      = new Date(yr, 3, 1);   // April 1
+    const summerEnd     = new Date(yr, 7, 15);  // Aug 15
+    if (t >= reminderStart && t <= summerEnd){
+      const overdue = t > deadline;
+      const id = `summer-plan-${yr}`;
+      // Justin can dismiss a reminder for the day, but it returns next time
+      // a new piece of info changes — this is intentional, the reminder is
+      // important until he submits. We keep the dismissed flag respected.
+      if (!myState.dismissed[id]){
+        items.push({
+          id,
+          type: 'summer-plan',
+          ts: deadline.toISOString(),
+          unread: !myState.read[id],
+          data: { yr, overdue, deadline: deadline.toISOString() }
+        });
+      }
+    }
+  }
+  // Re-sort because we just modified
+  items.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  return items;
+};
+
+// Hook the direct-apply path so it marks the year as submitted
+if (typeof applySummerDirect === 'function'){
+  const _v123_origApplySummerDirect = applySummerDirect;
+  applySummerDirect = function(yr){
+    const n = _v123_origApplySummerDirect(yr);
+    if (n > 0 && currentUser === 'Justin'){
+      summerSubmitted[yr] = {
+        by: 'Justin',
+        at: new Date().toISOString(),
+        method: 'direct'
+      };
+      // Clear any "Later" dismissal so this year's reminder doesn't reappear
+      if (inboxState[currentUser] && inboxState[currentUser].dismissed){
+        delete inboxState[currentUser].dismissed[`summer-plan-${yr}`];
+      }
+    }
+    return n;
+  };
+}
+
+// Hook the proposal-flow applySummer too
+if (typeof applySummer === 'function'){
+  const _v123_origApplySummer = applySummer;
+  applySummer = function(){
+    const yrBefore = (typeof activeSummerYear !== 'undefined') ? activeSummerYear : null;
+    const ret = _v123_origApplySummer.apply(this, arguments);
+    if (yrBefore && currentUser === 'Justin'){
+      summerSubmitted[yrBefore] = {
+        by: 'Justin',
+        at: new Date().toISOString(),
+        method: 'proposal'
+      };
+    }
+    return ret;
+  };
+}
+
+// Persist summerSubmitted via Firebase by extending scheduleSave/initFirebase
+const _v123_origScheduleSave = scheduleSave;
+scheduleSave = function(){
+  _setSyncStatus('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window._fbDirectWrite){
+      _ignoreNext = true;
+      window._fbDirectWrite({
+        overrides:         overrides,
+        summerPlan:        summerPlan,
+        pendingSwaps:      pendingSwaps   || {},
+        activityLog:       activityLog    || [],
+        summerProposal:    summerProposal || null,
+        pushSubscriptions: window._currentNotifSubs || {},
+        travelEntries:     travelEntries  || [],
+        schoolCalendar:    schoolCalendar || {},
+        inboxState:        inboxState     || {},
+        summerSubmitted:   summerSubmitted || {},
+        updatedAt:         new Date().toISOString()
+      });
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    }
+  }, 800);
+};
+
+const _v123_origInitFirebase = initFirebase;
+initFirebase = function(){
+  _setSyncStatus('connecting');
+  window._fbListen(function(data){
+    if (_ignoreNext) return;
+    if (!data){
+      _setSyncStatus('synced', '✓ Connected — no data yet');
+      return;
+    }
+    if (data.overrides)         overrides         = data.overrides;
+    if (data.summerPlan)        summerPlan        = data.summerPlan;
+    if (data.pendingSwaps)      pendingSwaps      = data.pendingSwaps;
+    if (data.activityLog)       activityLog       = data.activityLog;
+    if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+    if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
+    if (data.travelEntries)     travelEntries     = data.travelEntries;
+    if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
+    if (data.inboxState)        inboxState        = data.inboxState;
+    if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
+
+    render();
+    if (typeof renderLogBody === 'function') renderLogBody();
+    setTimeout(() => { if (typeof checkBlockingSwaps === 'function') checkBlockingSwaps(); }, 400);
+    setTimeout(() => { if (typeof maybeAutoShowSummerProposal === 'function') maybeAutoShowSummerProposal(); }, 700);
+    setTimeout(() => { if (typeof maybeRunSummerRecovery === 'function') maybeRunSummerRecovery(); }, 1800);
+
+    if (data.updatedAt){
+      const ts = new Date(data.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${ts}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════
+//  Auto-seed 2-week blocks when opening planner for an
+//  empty year. Pattern: Justin / Brittany / Justin / Brittany
+//  with 2-week blocks covering May 22 → Aug 2 (or year-specific
+//  start when defined).
+// ═══════════════════════════════════════════════════════
+
+function _seedSummerBlocksForYear(yr){
+  const minD = (yr === 2027) ? `${yr}-05-27` : `${yr}-05-22`;
+  const maxD = `${yr}-08-02`;
+  const blocks = [];
+  let cursor = minD;
+
+  // 2-week J → 2-week B → 2-week J, then B until maxD
+  const cycle = ['Justin','Brittany','Justin'];
+  cycle.forEach((owner, i) => {
+    const start = cursor;
+    const end   = addDays(start, 13);
+    if (start > maxD) return;
+    const cappedEnd = end > maxD ? maxD : end;
+    blocks.push({
+      start,
+      end:   cappedEnd,
+      owner,
+      label: owner === 'Justin' ? `Justin's Vacation Wk ${i*2+1}-${i*2+2}` : `Brittany's Time`
+    });
+    cursor = addDays(cappedEnd, 1);
+  });
+  // Fill remainder with Brittany
+  if (cursor <= maxD){
+    blocks.push({
+      start: cursor,
+      end:   maxD,
+      owner: 'Brittany',
+      label: `Brittany's Time`
+    });
+  }
+  return blocks;
+}
+
+// Wrap openSummer so we seed when needed
+if (typeof openSummer === 'function'){
+  const _v123_origOpenSummer = openSummer;
+  openSummer = function(yr){
+    const targetYr = yr || (today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1);
+    // If summerPlan has nothing for this year, seed the typical 2-week pattern
+    const yearBlocks = (summerPlan || []).filter(b => b && b.start && b.start.startsWith(String(targetYr)));
+    if (yearBlocks.length === 0){
+      const seeded = _seedSummerBlocksForYear(targetYr);
+      summerPlan = (summerPlan || []).concat(seeded);
+      if (typeof showToast === 'function'){
+        setTimeout(() => showToast(`☀️ Seeded ${targetYr} with typical 2-week blocks`), 250);
+      }
+    }
+    return _v123_origOpenSummer(targetYr);
+  };
+}
 // Init
 render();
 showWhoPickerIfNeeded();
