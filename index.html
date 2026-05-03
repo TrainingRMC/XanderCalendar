@@ -789,7 +789,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dash-card-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-top:4px}
 .dash-card-main.j{color:var(--j)}.dash-card-main.b{color:var(--b)}.dash-card-main.gold{color:var(--gold)}
 .calendar-anchor-label{max-width:980px;margin:4px auto 0;padding:0 2px;font-size:.72em;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-family:'Nunito',sans-serif}
+.dash-timeline{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
+.dash-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.dash-timeline-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.dash-timeline-link{border:none;background:transparent;color:var(--j);font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.timeline-list{display:grid;gap:7px}
+.timeline-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:11px;padding:8px 9px;min-height:50px}
+.timeline-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:var(--shadow-sm);font-size:1em}
+.timeline-title{font-weight:900;font-family:'Nunito',sans-serif;font-size:.86em;color:var(--text);line-height:1.15}
+.timeline-sub{font-size:.74em;color:var(--muted);line-height:1.25;margin-top:2px}
+.timeline-date{font-family:'Nunito',sans-serif;font-size:.73em;font-weight:900;color:var(--muted);text-align:right;white-space:nowrap}
+.timeline-item.j{border-left:3px solid var(--j)}.timeline-item.b{border-left:3px solid var(--b)}.timeline-item.travel{border-left:3px solid var(--emerald)}.timeline-item.attn{border-left:3px solid var(--gold)}
 .inbox-history-title{font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px;font-family:'Nunito',sans-serif}
+.inbox-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}
+.inbox-section-count{background:var(--bg-2);border:1px solid var(--border);border-radius:14px;padding:3px 8px;font-size:.7em;font-weight:900;color:var(--muted);font-family:'Nunito',sans-serif}
 .inbox-history-row{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:7px;font-size:.82em;line-height:1.35}
 .inbox-history-row.j{border-left-color:var(--j)}.inbox-history-row.b{border-left-color:var(--b)}
 .inbox-history-who{font-weight:900;font-family:'Nunito',sans-serif;color:var(--text)}
@@ -798,6 +811,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .dash-hero{background:linear-gradient(135deg,var(--bg-2),var(--card))}
 :root[data-theme="dark"] .dash-action{background:var(--card)}
 :root[data-theme="dark"] .dash-card.attn{background:linear-gradient(135deg,rgba(255,159,10,.18),var(--card))}
+:root[data-theme="dark"] .timeline-icon{background:var(--card-elev)}
 @media(max-width:700px){
   .home-dash{padding:10px 10px 6px}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
@@ -875,6 +889,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
+    <div class="dash-timeline">
+      <div class="dash-timeline-head">
+        <div class="dash-timeline-title">Next Up</div>
+        <button class="dash-timeline-link" onclick="document.getElementById('search-input').focus()">Search</button>
+      </div>
+      <div class="timeline-list" id="dash-timeline-list"></div>
+    </div>
     <div class="calendar-anchor-label">Month Calendar</div>
   </div>
 </section>
@@ -5084,6 +5105,120 @@ function _v13FindUpcomingHighlight(){
   return null;
 }
 
+function _v13BuildTimeline(){
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  const items = [];
+  let prevOwner = _v13InfoForDate(start).owner;
+  const seen = new Set();
+
+  const pushItem = (item) => {
+    const id = `${item.type}-${item.date}-${item.title}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    items.push(item);
+  };
+
+  for (let i = 0; i <= 45; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dateKey = _v13KeyFromDate(d);
+    const info = _v13InfoForDate(d);
+
+    if (i > 0 && info.owner && prevOwner && info.owner !== prevOwner){
+      pushItem({
+        type:'handoff',
+        icon:'↔',
+        date:dateKey,
+        title:`Handoff to ${info.owner}`,
+        sub:`${prevOwner} to ${info.owner}`,
+        owner:info.owner
+      });
+    }
+    prevOwner = info.owner || prevOwner;
+
+    if (info.is_bday || info.parent_bday || info.event){
+      const title = info.event || (info.is_bday ? "Xander's Birthday" : `${info.parent_bday}'s Birthday`);
+      const icon = info.is_bday || info.parent_bday ? '🎂'
+        : title.toLowerCase().includes('school') ? '🏫'
+        : title.toLowerCase().includes('summer') ? '☀️'
+        : '★';
+      pushItem({
+        type:'event',
+        icon,
+        date:dateKey,
+        title,
+        sub:`${info.owner || 'Parent'} has Xander`,
+        owner:info.owner
+      });
+    }
+  }
+
+  (travelEntries || []).forEach(t => {
+    if (!t || !t.end || t.end < _v13TodayKey()) return;
+    pushItem({
+      type:'travel',
+      icon:'✈️',
+      date:t.start,
+      title:t.label || `${t.by || 'Parent'} travel`,
+      sub:`${fmtDate(t.start)}${t.end !== t.start ? ' - ' + fmtDate(t.end) : ''}`,
+      owner:t.by,
+      travel:true
+    });
+  });
+
+  if (typeof getInboxItems === 'function'){
+    getInboxItems().slice(0, 2).forEach(i => {
+      const label = i.type === 'swap' ? 'Swap needs review'
+        : i.type === 'travel' ? 'Travel acknowledgement'
+        : i.type === 'school' ? 'School calendar reminder'
+        : i.type && i.type.includes('summer') ? 'Summer planning'
+        : 'Inbox item';
+      pushItem({
+        type:'attention',
+        icon:'📥',
+        date:(i.ts || new Date().toISOString()).slice(0,10),
+        title:label,
+        sub:'Open Inbox to handle it',
+        owner:currentUser,
+        attention:true
+      });
+    });
+  }
+
+  return items
+    .filter(i => i.date)
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .slice(0, 6);
+}
+
+function renderTimeline(){
+  const el = document.getElementById('dash-timeline-list');
+  if (!el) return;
+  const items = _v13BuildTimeline();
+  if (items.length === 0){
+    el.innerHTML = `<div class="timeline-item">
+      <div class="timeline-icon">✓</div>
+      <div>
+        <div class="timeline-title">Nothing urgent ahead</div>
+        <div class="timeline-sub">The next few weeks look calm.</div>
+      </div>
+      <div class="timeline-date">Now</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = items.map(item => {
+    const cls = item.attention ? 'attn' : item.travel ? 'travel' : (item.owner === 'Justin' ? 'j' : item.owner === 'Brittany' ? 'b' : '');
+    return `<div class="timeline-item ${cls}" onclick="${item.attention ? 'openInbox()' : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`}" style="cursor:pointer">
+      <div class="timeline-icon">${item.icon}</div>
+      <div>
+        <div class="timeline-title">${item.title}</div>
+        <div class="timeline-sub">${item.sub || ''}</div>
+      </div>
+      <div class="timeline-date">${_v13ShortDate(item.date).replace(',', '')}</div>
+    </div>`;
+  }).join('');
+}
+
 function renderDashboard(){
   const dash = document.getElementById('home-dash');
   if (!dash) return;
@@ -5143,6 +5278,7 @@ function renderDashboard(){
       <div class="dash-card-sub">${highlight ? `${_v13ShortDate(highlight.date)} · ${highlight.owner} has Xander` : `The next 45 days look clear.`}</div>
     </div>
   `;
+  renderTimeline();
 }
 
 const _v13_origRender = render;
@@ -5176,7 +5312,10 @@ renderInboxBody = function(){
 
   const history = (activityLog || []).slice(0, 500);
   const historyHtml = history.length
-    ? `<div class="inbox-history-title">Permanent Record</div>` + history.map(e => {
+    ? `<div class="inbox-section-head" style="margin-top:18px">
+        <div class="inbox-history-title" style="margin:0">Permanent Record</div>
+        <div class="inbox-section-count">${activityLog.length} total</div>
+      </div>` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
         return `<div class="inbox-history-row ${cls}">
@@ -5185,10 +5324,16 @@ renderInboxBody = function(){
           <div class="inbox-history-when">${formatLogTime(e.ts)}</div>
         </div>`;
       }).join('')
-    : `<div class="inbox-history-title">Permanent Record</div><div class="inbox-empty" style="padding:18px 10px">No activity recorded yet.</div>`;
+    : `<div class="inbox-section-head" style="margin-top:18px">
+        <div class="inbox-history-title" style="margin:0">Permanent Record</div>
+        <div class="inbox-section-count">0 total</div>
+      </div><div class="inbox-empty" style="padding:18px 10px">No activity recorded yet.</div>`;
 
   body.innerHTML = `
-    <div class="inbox-history-title" style="margin-top:0">Action Items</div>
+    <div class="inbox-section-head">
+      <div class="inbox-history-title" style="margin:0">Action Items</div>
+      <div class="inbox-section-count">${items.length} open</div>
+    </div>
     ${actionHtml}
     ${historyHtml}
   `;
