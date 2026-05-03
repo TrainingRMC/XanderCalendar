@@ -1605,8 +1605,14 @@ function initFirebase(){
   });
 }
 
-if(window._fbReady) initFirebase();
-else window.addEventListener('fbReady',initFirebase);
+function startFirebaseAfterBoot(){
+  // Later feature layers replace initFirebase with the full loader. Defer
+  // startup until this script finishes so travel, inbox, school, and summer
+  // submission fields are loaded instead of only the original v1 fields.
+  setTimeout(() => initFirebase(), 0);
+}
+if(window._fbReady) startFirebaseAfterBoot();
+else window.addEventListener('fbReady',startFirebaseAfterBoot);
 
 // ── TOAST ────────────────────────────────────────────────────────
 let _toastT;
