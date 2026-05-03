@@ -884,7 +884,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="dash-pill" id="dash-owner-pill">Syncing</div>
       </div>
       <div class="dash-actions">
-        <button class="dash-action" onclick="openInbox()">📥<br>Inbox</button>
+        <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
         <button class="dash-action" onclick="document.getElementById('search-input').focus()">🔎<br>Find</button>
@@ -5076,6 +5076,13 @@ function _v13OpenDate(dateKey){
   jumpToSearchResult(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+function _v13OpenInboxFromPage(e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  setTimeout(() => {
+    if (typeof openInbox === 'function') openInbox();
+  }, 0);
+}
+
 function _v13CountMyDays(days){
   if (!currentUser) return 0;
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
@@ -5216,7 +5223,7 @@ function renderTimeline(){
   }
   el.innerHTML = items.map(item => {
     const cls = item.attention ? 'attn' : item.travel ? 'travel' : (item.owner === 'Justin' ? 'j' : item.owner === 'Brittany' ? 'b' : '');
-    return `<div class="timeline-item ${cls}" onclick="${item.attention ? 'openInbox()' : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`}" style="cursor:pointer">
+    return `<div class="timeline-item ${cls}" onclick="${item.attention ? '_v13OpenInboxFromPage(event)' : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`}" style="cursor:pointer">
       <div class="timeline-icon">${item.icon}</div>
       <div>
         <div class="timeline-title">${item.title}</div>
@@ -5263,7 +5270,7 @@ function renderDashboard(){
     : 'Add work trips so both homes stay aligned.';
 
   document.getElementById('dash-grid').innerHTML = `
-    <div class="dash-card tap attn" onclick="openInbox()" role="button" tabindex="0">
+    <div class="dash-card tap attn" onclick="_v13OpenInboxFromPage(event)" role="button" tabindex="0">
       <div class="dash-card-title">Needs Attention</div>
       <div class="dash-card-main gold">${inboxCount || 'Inbox zero'}</div>
       <div class="dash-card-sub">${unreadCount ? `${unreadCount} unread for you` : 'Swaps, travel acknowledgements, and reminders live here.'}</div>
