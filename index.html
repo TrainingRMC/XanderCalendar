@@ -789,6 +789,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dash-card.tap:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--j)}
 .dash-card.attn{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
 .dash-card.travel{border-color:rgba(16,185,129,.45)}
+.dash-card.travel.wait{border-color:var(--emerald);background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card))}
 .dash-card-title{font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;font-family:'Nunito',sans-serif}
 .dash-card-main{font-family:'Nunito',sans-serif;font-weight:900;font-size:1em;line-height:1.15;color:var(--text)}
 .dash-card-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-top:4px}
@@ -813,9 +814,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .inbox-history-who{font-weight:900;font-family:'Nunito',sans-serif;color:var(--text)}
 .inbox-history-when{font-size:.78em;color:var(--muted);font-style:italic;margin-top:2px}
 #log-toggle{display:none!important}
+#search-bar{display:none}
+#search-bar.open{display:flex}
 :root[data-theme="dark"] .dash-hero{background:linear-gradient(135deg,var(--bg-2),var(--card))}
 :root[data-theme="dark"] .dash-action{background:var(--card)}
 :root[data-theme="dark"] .dash-card.attn{background:linear-gradient(135deg,rgba(255,159,10,.18),var(--card))}
+:root[data-theme="dark"] .dash-card.travel.wait{background:linear-gradient(135deg,rgba(16,185,129,.18),var(--card))}
 :root[data-theme="dark"] .timeline-icon{background:var(--card-elev)}
 @media(max-width:700px){
   .home-dash{padding:10px 10px 6px}
@@ -890,14 +894,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-        <button class="dash-action" onclick="document.getElementById('search-input').focus()">🔎<br>Find</button>
+        <button class="dash-action" onclick="_v13ShowSearch()">🔎<br>Find</button>
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
     <div class="dash-timeline">
       <div class="dash-timeline-head">
         <div class="dash-timeline-title">Next Up</div>
-        <button class="dash-timeline-link" onclick="document.getElementById('search-input').focus()">Search</button>
+        <button class="dash-timeline-link" onclick="_v13ShowSearch()">Find</button>
       </div>
       <div class="timeline-list" id="dash-timeline-list"></div>
     </div>
@@ -3557,6 +3561,7 @@ function jumpToSearchResult(y, m, d) {
   render();
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('search-input').value = '';
+  document.getElementById('search-bar').classList.remove('open');
   // Auto-open the day modal
   setTimeout(() => openDay(y, m, d), 200);
 }
@@ -3974,7 +3979,7 @@ function renderSchoolCal(){
           <input type="date" class="sc-inp" value="${r.start||''}" min="${minD}" max="${maxD}"
             onchange="_scSetBreak('${key}','start',this.value)">
           <span style="color:var(--muted);font-size:.85em">to</span>
-          <input type="date" class="sc-inp" value="${r.end||''}" min="${minD}" max="${maxD}"
+          <input type="date" class="sc-inp" value="${r.end||''}" min="${r.start||minD}" max="${maxD}"
             onchange="_scSetBreak('${key}','end',this.value)">
         </div>
       </div>`;
@@ -4036,6 +4041,14 @@ function _scSetBreak(brKey, side, val){
   if (!schoolCalendar[yKey][brKey]) schoolCalendar[yKey][brKey] = {};
   if (val) schoolCalendar[yKey][brKey][side] = val;
   else delete schoolCalendar[yKey][brKey][side];
+  const range = schoolCalendar[yKey][brKey];
+  if (side === 'start' && val && (!range.end || range.end < val)) {
+    range.end = val;
+  }
+  if (side === 'end' && val && (!range.start || range.start > val)) {
+    range.start = val;
+  }
+  renderSchoolCal();
 }
 function _scSetNs(i, field, val){
   const yKey = _activeSchoolYear;
@@ -5122,6 +5135,16 @@ function _v13OpenInboxFromPage(e){
   }, 0);
 }
 
+function _v13ShowSearch(){
+  const bar = document.getElementById('search-bar');
+  const input = document.getElementById('search-input');
+  if (bar) bar.classList.add('open');
+  if (input) {
+    input.focus();
+    input.select();
+  }
+}
+
 function _v13CountMyDays(days){
   if (!currentUser) return 0;
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
@@ -5292,7 +5315,9 @@ function renderDashboard(){
   const myDays = _v13CountMyDays(14);
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
   const travelAction = travel ? `_v13OpenDate('${travel.start}')` : 'openTravel()';
-  const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : 'document.getElementById("search-input").focus()';
+  const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
+  const hasAttention = inboxCount > 0;
+  const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
 
   document.getElementById('dash-kicker').textContent =
     today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
@@ -5313,17 +5338,17 @@ function renderDashboard(){
     : 'Add work trips so both homes stay aligned.';
 
   document.getElementById('dash-grid').innerHTML = `
-    <div class="dash-card tap attn" onclick="_v13OpenInboxFromPage(event)" role="button" tabindex="0">
+    <div class="dash-card tap ${hasAttention ? 'attn' : ''}" onclick="_v13OpenInboxFromPage(event)" role="button" tabindex="0">
       <div class="dash-card-title">Needs Attention</div>
-      <div class="dash-card-main gold">${inboxCount || 'Inbox zero'}</div>
-      <div class="dash-card-sub">${unreadCount ? `${unreadCount} unread for you` : 'Swaps, travel acknowledgements, and reminders live here.'}</div>
+      <div class="dash-card-main ${hasAttention ? 'gold' : ''}">${hasAttention ? `${inboxCount} open` : "You're all caught up"}</div>
+      <div class="dash-card-sub">${hasAttention ? (unreadCount ? `${unreadCount} unread for you` : 'Open items are waiting in your Inbox.') : 'Nothing needs a decision right now.'}</div>
     </div>
     <div class="dash-card tap" onclick="${handoffAction}" role="button" tabindex="0">
       <div class="dash-card-title">Next Exchange</div>
       <div class="dash-card-main">${handoff ? _v13ShortDate(handoff.date) : 'None soon'}</div>
       <div class="dash-card-sub">${handoff ? `${handoff.from} to ${handoff.owner}` : 'No owner change found in the next 90 days.'}</div>
     </div>
-    <div class="dash-card tap travel" onclick="${travelAction}" role="button" tabindex="0">
+    <div class="dash-card tap travel ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}" role="button" tabindex="0">
       <div class="dash-card-title">Travel</div>
       <div class="dash-card-main">${travelText}</div>
       <div class="dash-card-sub">${travelSub}</div>
