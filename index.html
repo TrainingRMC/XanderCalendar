@@ -540,6 +540,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .travel-item-body{flex:1;line-height:1.4}
 .travel-item-dates{font-weight:700;font-family:'Nunito',sans-serif;font-size:.88em;color:var(--text)}
 .travel-item-label{font-size:.78em;color:var(--muted);margin-top:2px}
+.travel-status{display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:3px 8px;font-size:.7em;font-weight:800;font-family:'Nunito',sans-serif;margin-top:6px;background:var(--bg-2);color:var(--muted);border:1px solid var(--border)}
+.travel-status.ok{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.35);color:#047857}
+.travel-status.wait{background:var(--gold-soft);border-color:var(--gold);color:#92400e}
 .travel-item-rm{background:none;border:none;color:#dc2626;cursor:pointer;font-size:1.1em;padding:4px 8px;border-radius:6px;line-height:1}
 .travel-item-rm:hover{background:rgba(220,38,38,.1)}
 .travel-empty{text-align:center;color:var(--muted);font-size:.84em;padding:14px;font-style:italic}
@@ -3596,6 +3599,34 @@ function validDate(y, m, d) {
 
 let travelEntries = []; // {id, start, end, label, notes, by, createdAt}
 
+function travelAckKey(id){ return 'travel-' + id; }
+function travelOtherParent(t){ return t.by === 'Justin' ? 'Brittany' : 'Justin'; }
+function isTravelAcknowledged(t){
+  if (!t || !t.id) return false;
+  const other = travelOtherParent(t);
+  return !!(inboxState && inboxState[other] && inboxState[other].dismissed && inboxState[other].dismissed[travelAckKey(t.id)]);
+}
+function travelStatusLabel(t){
+  if (!t || !t.by) return 'Visible to both parents';
+  const other = travelOtherParent(t);
+  return isTravelAcknowledged(t) ? `${other} acknowledged` : `Awaiting ${other} acknowledgement`;
+}
+function acknowledgeTravel(id){
+  if (!currentUser) return;
+  const t = (travelEntries || []).find(x => x.id === id);
+  if (!t) return;
+  const key = travelAckKey(id);
+  if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
+  inboxState[currentUser].dismissed[key] = true;
+  inboxState[currentUser].read[key] = true;
+  logAction(currentUser, 'travel-ack', `Acknowledged ${t.by}'s travel ${fmtDate(t.start)} → ${fmtDate(t.end)}${t.label ? ` (${t.label})` : ''}`);
+  render();
+  renderInboxBody();
+  renderTravelList();
+  scheduleSave();
+  showToast('Travel acknowledged');
+}
+
 function openTravel(prefillStart, prefillEnd) {
   document.getElementById('tr-start').value = prefillStart || '';
   document.getElementById('tr-end').value = prefillEnd || prefillStart || '';
@@ -3638,7 +3669,9 @@ function renderTravelList() {
         <div class="travel-item-body">
           <div class="travel-item-dates">${fmtDate(t.start)} → ${fmtDate(t.end)}</div>
           ${t.label ? `<div class="travel-item-label">${t.label}</div>` : ''}
-          <div class="travel-item-label" style="font-size:.7em;font-style:italic">added by ${t.by}</div>
+          ${t.notes ? `<div class="travel-item-label">${t.notes}</div>` : ''}
+          <div class="travel-item-label" style="font-size:.7em;font-style:italic">added by ${t.by} · visible to both parents</div>
+          <div class="travel-status ${isTravelAcknowledged(t)?'ok':'wait'}">${isTravelAcknowledged(t)?'✓':'•'} ${travelStatusLabel(t)}</div>
         </div>
         <button class="travel-item-rm" onclick="removeTravel('${t.id}')" title="Remove">×</button>
       </div>`).join('');
@@ -5099,7 +5132,11 @@ function _v13FindUpcomingTravel(){
   const nowKey = _v13TodayKey();
   const upcoming = (travelEntries || [])
     .filter(t => t && t.end >= nowKey)
-    .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
+    .sort((a,b) => {
+      const aAck = isTravelAcknowledged(a) ? 1 : 0;
+      const bAck = isTravelAcknowledged(b) ? 1 : 0;
+      return aAck - bAck || (a.start || '').localeCompare(b.start || '');
+    });
   return upcoming[0] || null;
 }
 
@@ -5266,7 +5303,7 @@ function renderDashboard(){
     ? `${fmtDate(travel.start)}${travel.end !== travel.start ? ' - ' + fmtDate(travel.end) : ''}`
     : 'No upcoming travel';
   const travelSub = travel
-    ? `${travel.by || 'Parent'}${travel.label ? ' · ' + travel.label : ''}`
+    ? `${travelStatusLabel(travel)}${travel.label ? ' · ' + travel.label : ''}`
     : 'Add work trips so both homes stay aligned.';
 
   document.getElementById('dash-grid').innerHTML = `
@@ -5363,20 +5400,24 @@ renderInboxItem = function(item){
     const unreadCls = item.unread ? ' unread' : '';
     const t = item.data.travel;
     const range = t.start === t.end ? fmtDate(t.start) : `${fmtDate(t.start)} → ${fmtDate(t.end)}`;
+    const other = travelOtherParent(t);
     return `
       <div class="inbox-item travel${unreadCls}">
         <div class="inbox-item-hdr">
           <span class="inbox-item-icon">✈️</span>
           <div class="inbox-item-meta">
-            <div class="inbox-item-t">${t.by} added travel</div>
+            <div class="inbox-item-t">${t.by} added work travel</div>
             <div class="inbox-item-when">${formatLogTime(t.createdAt || t.start)}</div>
           </div>
         </div>
         <div class="inbox-item-body">
-          <b>${range}</b>${t.label?`<br>"${t.label}"`:''}${t.notes?`<br><i>${t.notes}</i>`:''}
+          <b>${range}</b>
+          ${t.label?`<br><b>Trip:</b> ${t.label}`:''}
+          ${t.notes?`<br><b>Notes:</b> <i>${t.notes}</i>`:''}
+          <br><span style="font-size:.9em;color:var(--muted)">Visible to both parents · acknowledgement lets ${t.by} know ${currentUser || other} saw it.</span>
         </div>
         <div class="inbox-item-actions">
-          <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Acknowledge</button>
+          <button class="ix-btn ix-dismiss" onclick="acknowledgeTravel('${t.id}')">Acknowledge</button>
         </div>
       </div>`;
   }
