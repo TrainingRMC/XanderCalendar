@@ -799,6 +799,50 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Owner pill at the bottom: slightly smaller, more refined */
 .d-owner{font-size:.62em;letter-spacing:.02em;padding:1.5px 5px}
 
+/* V13.6: calmer, more readable day cells */
+.dc{--owner-accent:var(--border);border-left-width:4px}
+.dc.j-reg,.dc.j-str{--owner-accent:var(--j)}
+.dc.b-reg,.dc.b-str{--owner-accent:var(--b)}
+.dc.j-reg,.dc.b-reg{background:var(--card);border-color:var(--border-subtle);border-left-color:var(--owner-accent)}
+.dc.j-str{background:linear-gradient(135deg,rgba(59,130,246,.1),var(--card));border-color:rgba(59,130,246,.25);border-left-color:var(--j)}
+.dc.b-str{background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card));border-color:rgba(236,72,153,.25);border-left-color:var(--b)}
+.dc.mid{border-left-color:#a78bfa}
+.dc.bday-x,.dc.pbday-j,.dc.pbday-b{border-left-color:var(--gold)}
+.dc.today-ring{box-shadow:var(--shadow-md)}
+.d-num{color:var(--text);margin-bottom:1px}
+.d-event,.d-note,.d-travel{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.d-event{font-weight:700}
+.d-note{background:rgba(167,139,250,.12);border-radius:6px;padding:2px 5px;color:#7c3aed;font-style:normal}
+.d-owner,.d-owner.j,.d-owner.b{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  width:100%;
+  margin-top:auto;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--muted);
+  box-shadow:none;
+  font-size:.6em;
+  line-height:1.1;
+}
+.d-owner::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--owner-accent);flex-shrink:0}
+.d-mid{font-size:.58em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.changed-dot{width:7px;height:7px;box-shadow:0 0 0 2px var(--card),0 0 8px var(--gold-soft)}
+.pending-dot{box-shadow:0 0 0 2px var(--card),0 0 8px var(--gold-soft)}
+.travel-icon{right:16px}
+:root[data-theme="dark"] .dc.j-reg,:root[data-theme="dark"] .dc.b-reg{background:var(--bg-2);border-color:var(--border-subtle);border-left-color:var(--owner-accent)}
+:root[data-theme="dark"] .dc.j-str{background:linear-gradient(135deg,rgba(10,132,255,.17),var(--bg-2));border-color:rgba(10,132,255,.32);border-left-color:var(--j)}
+:root[data-theme="dark"] .dc.b-str{background:linear-gradient(135deg,rgba(255,55,95,.17),var(--bg-2));border-color:rgba(255,55,95,.32);border-left-color:var(--b)}
+:root[data-theme="dark"] .d-note{background:rgba(167,139,250,.18);color:#c4b5fd}
+:root[data-theme="dark"] .changed-dot,:root[data-theme="dark"] .pending-dot{box-shadow:0 0 0 2px var(--bg-2),0 0 8px var(--gold-soft)}
+
 /* ═══════════════════════════════════════════════════════
    V13: iPhone dashboard + simplified shared-family feel
    ═══════════════════════════════════════════════════════ */
@@ -1410,8 +1454,7 @@ function renderGrid(){
     cell.className=cls;
     cell.onclick=()=>openDay(cY,cM,d);
 
-    const dColor=owner==='Justin'?'#1e40af':'#9d174d';
-    let html=`<div class="d-num" style="color:${dColor}">${d}${isToday(d)?'<span class="d-today">TODAY</span>':''}</div>`;
+    let html=`<div class="d-num">${d}${isToday(d)?'<span class="d-today">TODAY</span>':''}</div>`;
 
     if(info.is_bday) html+=`<div class="d-bday">🎂 Xander's Birthday!</div>`;
     if(pb==='Justin')   html+=`<div class="d-pbday j">🎂 Justin's Birthday</div>`;
@@ -1423,8 +1466,8 @@ function renderGrid(){
     if(timeStr) html+=`<div class="d-time">⏰ ${timeStr}</div>`;
 
     if(info.note) html+=`<div class="d-note">📝 ${info.note}</div>`;
-    html+=`<div class="d-owner ${owner==='Justin'?'j':'b'}">${owner==='Justin'?'👨 Justin':'👩 Brittany'}</div>`;
-    if(info.midweek&&!ov) html+=`<div class="d-mid">📚 Justin after school–8pm</div>`;
+    html+=`<div class="d-owner ${owner==='Justin'?'j':'b'}">${owner}</div>`;
+    if(info.midweek&&!ov) html+=`<div class="d-mid">Tue/Thu after school</div>`;
     if(ov) html+=`<div class="changed-dot" title="Manually edited"></div>`;
 
     cell.innerHTML=html;
