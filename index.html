@@ -1001,7 +1001,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-        <button class="dash-action" onclick="openHistory()">📜<br>History</button>
+        <button class="dash-action" onclick="openHistory(event)">📜<br>History</button>
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
@@ -1072,7 +1072,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="menu-hint">Add or manage trips</div>
     </div>
   </button>
-  <button class="menu-item" onclick="closeMenu();openHistory()">
+  <button class="menu-item" onclick="closeMenu();openHistory(event)">
     <span class="menu-icon">📜</span>
     <div class="menu-text">
       <div class="menu-label">Permanent Record</div>
@@ -5511,19 +5511,24 @@ function _v13OpenInboxFromPage(e){
 let inboxViewMode = 'actions';
 let historyFilter = 'all';
 
-function setInboxView(mode){
+function setInboxView(mode, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   inboxViewMode = mode;
   renderInboxBody();
 }
 
-function setHistoryFilter(filter){
+function setHistoryFilter(filter, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   historyFilter = filter;
   renderInboxBody();
 }
 
-function openHistory(){
+function openHistory(e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   inboxViewMode = 'history';
-  if (typeof openInbox === 'function') openInbox();
+  setTimeout(() => {
+    if (typeof openInbox === 'function') openInbox();
+  }, 0);
 }
 
 function _v13EscapeHtml(value){
@@ -5899,13 +5904,13 @@ renderInboxBody = function(){
   ];
   const viewTabs = `
     <div class="inbox-view-tabs">
-      <button class="inbox-view-tab ${inboxViewMode==='actions'?'active':''}" onclick="setInboxView('actions')">Action Items</button>
-      <button class="inbox-view-tab ${inboxViewMode==='history'?'active':''}" onclick="setInboxView('history')">Record</button>
-      <button class="inbox-view-tab ${inboxViewMode==='all'?'active':''}" onclick="setInboxView('all')">Both</button>
+      <button class="inbox-view-tab ${inboxViewMode==='actions'?'active':''}" onclick="setInboxView('actions', event)">Action Items</button>
+      <button class="inbox-view-tab ${inboxViewMode==='history'?'active':''}" onclick="setInboxView('history', event)">Record</button>
+      <button class="inbox-view-tab ${inboxViewMode==='all'?'active':''}" onclick="setInboxView('all', event)">Both</button>
     </div>`;
   const filterHtml = `<div class="history-filters">${filterDefs.map(([key,label]) => {
     const count = key === 'all' ? allHistory.length : allHistory.filter(e => _v13HistoryKind(e.type) === key).length;
-    return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}')">${label} ${count}</button>`;
+    return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}', event)">${label} ${count}</button>`;
   }).join('')}</div>`;
   const historyHtml = history.length
     ? `<div class="inbox-section-head" style="margin-top:18px">
