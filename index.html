@@ -292,6 +292,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .week-days-badge{font-size:.7em;color:var(--muted);margin-top:5px;font-style:italic}
 .add-week-btn{width:100%;background:#f1f5f9;border:1.5px dashed var(--border);border-radius:9px;padding:9px;font-size:.8em;font-weight:600;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .14s;margin-bottom:5px}
 .add-week-btn:hover{background:var(--j-l);border-color:var(--j-m);color:var(--j-d)}
+.summer-overview{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:11px}
+.summer-overview-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.summer-overview-title{font-family:'Nunito',sans-serif;font-size:.86em;font-weight:900;color:var(--text)}
+.summer-overview-meta{font-size:.74em;color:var(--muted);font-weight:800}
+.summer-split-bar{height:16px;display:flex;overflow:hidden;border-radius:999px;background:var(--card);border:1px solid var(--border);box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}
+.summer-split-seg.j{background:linear-gradient(135deg,var(--j-d),var(--j))}
+.summer-split-seg.b{background:linear-gradient(135deg,var(--b-d),var(--b))}
+.summer-warnings{display:grid;gap:6px;margin-bottom:10px}
+.summer-warning{border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:9px;padding:8px 10px;font-size:.78em;line-height:1.35}
+.summer-warning.ok{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.12);color:#047857}
+.week-card.j{border-left:4px solid var(--j)}
+.week-card.b{border-left:4px solid var(--b)}
+.week-card.problem{border-color:#f59e0b;background:#fffbeb}
+.summer-block-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 8px;font-size:.72em;font-weight:900;font-family:'Nunito',sans-serif;color:#fff}
+.summer-block-chip.j{background:var(--j)}
+.summer-block-chip.b{background:var(--b)}
+.quick-blocks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.quick-block-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 9px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.quick-block-btn:hover{border-color:var(--j);background:var(--j-soft);color:var(--j)}
 .sum-stats{display:flex;gap:7px;flex-wrap:wrap;padding:9px 18px;background:#fffbeb;border-top:1px solid #fde68a;flex-shrink:0}
 .sum-stat{font-size:.74em;display:flex;align-items:center;gap:4px}
 .sum-stat-dot{width:7px;height:7px;border-radius:50%}
@@ -607,6 +626,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .sp-block{background:var(--bg-2)}
 :root[data-theme="dark"] .sp-history-item{background:var(--bg-2)}
 :root[data-theme="dark"] .week-card{background:var(--bg-2)}
+:root[data-theme="dark"] .week-card.problem{background:rgba(245,158,11,.14);border-color:var(--gold)}
+:root[data-theme="dark"] .summer-warning{background:rgba(245,158,11,.15);color:var(--gold);border-color:rgba(245,158,11,.35)}
+:root[data-theme="dark"] .summer-warning.ok{background:rgba(16,185,129,.12);color:#6ee7b7;border-color:rgba(16,185,129,.3)}
 :root[data-theme="dark"] .sum-modal{background:var(--card-elev)}
 :root[data-theme="dark"] .sum-modal-body{background:var(--card-elev)}
 :root[data-theme="dark"] .sum-modal-ftr{background:var(--card-elev);border-color:var(--border)}
@@ -6228,6 +6250,200 @@ setTimeout(() => {
   const logToggle = document.getElementById('log-toggle');
   if (logToggle) logToggle.style.display = 'none';
 }, 500);
+
+// V14: clearer summer planning workflow
+function summerRangeForYear(yr){
+  return {
+    min: yr === 2027 ? `${yr}-05-27` : `${yr}-05-22`,
+    max: `${yr}-08-02`
+  };
+}
+
+function getSummerBlocks(yr){
+  return (summerPlan || [])
+    .map((blk, idx) => Object.assign({ _idx:idx }, blk))
+    .filter(b => b.start && b.start.startsWith(String(yr)))
+    .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
+}
+
+function summarizeSummerPlan(yr){
+  const range = summerRangeForYear(yr);
+  const blocks = getSummerBlocks(yr);
+  const dayMap = {};
+  const warnings = [];
+  let j = 0, b = 0, planned = 0;
+
+  blocks.forEach(blk => {
+    if (!blk.start || !blk.end) return;
+    if (blk.end < blk.start) {
+      warnings.push(`${fmtDate(blk.start)} has an end date before the start date.`);
+      return;
+    }
+    const start = blk.start < range.min ? range.min : blk.start;
+    const end = blk.end > range.max ? range.max : blk.end;
+    if (blk.start < range.min || blk.end > range.max) {
+      warnings.push(`${blk.label || blk.owner || 'A block'} reaches outside the summer window.`);
+    }
+    for (let d = new Date(start + 'T12:00:00'); d <= new Date(end + 'T12:00:00'); d.setDate(d.getDate()+1)) {
+      const key = _v13KeyFromDate(d);
+      if (dayMap[key]) warnings.push(`${fmtDate(key)} is covered by more than one summer block.`);
+      dayMap[key] = blk.owner || 'Justin';
+    }
+  });
+
+  Object.values(dayMap).forEach(owner => {
+    planned++;
+    if (owner === 'Justin') j++;
+    else b++;
+  });
+
+  let gaps = 0;
+  for (let d = new Date(range.min + 'T12:00:00'); d <= new Date(range.max + 'T12:00:00'); d.setDate(d.getDate()+1)) {
+    if (!dayMap[_v13KeyFromDate(d)]) gaps++;
+  }
+  if (gaps) warnings.push(`${gaps} summer day${gaps===1?' is':'s are'} not assigned yet.`);
+
+  return {
+    range,
+    blocks,
+    warnings:[...new Set(warnings)],
+    justin:j,
+    brittany:b,
+    planned,
+    total:daysBetween(range.min, range.max),
+    gaps
+  };
+}
+
+function setSummerStart(i, value){
+  if (!summerPlan[i]) return;
+  summerPlan[i].start = value;
+  if (!summerPlan[i].end || summerPlan[i].end < value) summerPlan[i].end = addDays(value, 13);
+  const maxD = summerRangeForYear(activeSummerYear).max;
+  if (summerPlan[i].end > maxD) summerPlan[i].end = maxD;
+  renderSummerBody();
+}
+
+function setSummerEnd(i, value){
+  if (!summerPlan[i]) return;
+  summerPlan[i].end = value;
+  renderSummerBody();
+}
+
+function addTwoWeekBlock(owner){
+  const summary = summarizeSummerPlan(activeSummerYear);
+  let start = summary.range.min;
+  if (summary.blocks.length) {
+    const last = summary.blocks[summary.blocks.length - 1];
+    if (last.end) start = addDays(last.end, 1);
+  }
+  if (start > summary.range.max) {
+    showToast('Summer is already covered');
+    return;
+  }
+  let end = addDays(start, 13);
+  if (end > summary.range.max) end = summary.range.max;
+  summerPlan.push({
+    start,
+    end,
+    owner,
+    label: owner === 'Justin' ? "Justin's 2-week block" : "Brittany's 2-week block"
+  });
+  renderSummerBody();
+}
+
+function renderSummerBody(){
+  const body = document.getElementById('sum-body');
+  if (!body) return;
+  const summary = summarizeSummerPlan(activeSummerYear);
+  document.getElementById('sum-modal-sub').textContent =
+    `${fmtDate(summary.range.min)} - ${fmtDate(summary.range.max)} · shared summer planning`;
+
+  const jPct = summary.total ? Math.max(0, Math.min(100, (summary.justin / summary.total) * 100)) : 0;
+  const bPct = summary.total ? Math.max(0, Math.min(100, (summary.brittany / summary.total) * 100)) : 0;
+  const warningsHtml = summary.warnings.length
+    ? `<div class="summer-warnings">${summary.warnings.slice(0,4).map(w => `<div class="summer-warning">⚠️ ${w}</div>`).join('')}</div>`
+    : `<div class="summer-warnings"><div class="summer-warning ok">✓ Blocks look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
+
+  body.innerHTML = `
+    <div class="summer-overview">
+      <div class="summer-overview-top">
+        <div>
+          <div class="summer-overview-title">Summer ${activeSummerYear} split</div>
+          <div class="summer-overview-meta">${summary.planned} of ${summary.total} days planned</div>
+        </div>
+        <div class="summer-overview-meta">${Math.abs(summary.justin-summary.brittany)<=2 ? 'Near 50/50' : `${Math.abs(summary.justin-summary.brittany)} day difference`}</div>
+      </div>
+      <div class="summer-split-bar" aria-label="Summer split">
+        <div class="summer-split-seg j" style="width:${jPct}%"></div>
+        <div class="summer-split-seg b" style="width:${bPct}%"></div>
+      </div>
+      <div class="summer-overview-meta" style="margin-top:7px">Justin ${summary.justin} days · Brittany ${summary.brittany} days</div>
+    </div>
+    ${warningsHtml}
+    <div class="quick-blocks">
+      <button class="quick-block-btn" onclick="addTwoWeekBlock('Justin')">+ Justin 2-week block</button>
+      <button class="quick-block-btn" onclick="addTwoWeekBlock('Brittany')">+ Brittany 2-week block</button>
+    </div>
+  `;
+
+  summary.blocks.forEach((blk, order) => {
+    const i = blk._idx;
+    const days = blk.start && blk.end && blk.end >= blk.start ? daysBetween(blk.start, blk.end) : 0;
+    const hasProblem = summary.warnings.some(w => (blk.label && w.includes(blk.label)) || (blk.start && w.includes(fmtDate(blk.start))));
+    const card = document.createElement('div');
+    card.className = `week-card ${blk.owner === 'Justin' ? 'j' : 'b'} ${hasProblem ? 'problem' : ''}`;
+    card.innerHTML = `
+      <div class="week-card-hdr">
+        <span class="week-num">Block ${order+1}</span>
+        <span class="summer-block-chip ${blk.owner==='Justin'?'j':'b'}">${blk.owner || 'Justin'}</span>
+        <button class="rm-btn" onclick="removeBlock(${i})">✕</button>
+      </div>
+      <div class="week-grid">
+        <div>
+          <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:3px">START</div>
+          <input type="date" class="date-inp" value="${blk.start || ''}" min="${summary.range.min}" max="${summary.range.max}"
+            onchange="setSummerStart(${i}, this.value)">
+        </div>
+        <div>
+          <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:3px">END</div>
+          <input type="date" class="date-inp" value="${blk.end || ''}" min="${summary.range.min}" max="${summary.range.max}"
+            onchange="setSummerEnd(${i}, this.value)">
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:4px">WHO HAS XANDER?</div>
+        <div class="week-grid">
+          <button class="owner-btn ${blk.owner==='Justin'?'active-j':''}" onclick="setBlockOwner(${i},'Justin')">Justin</button>
+          <button class="owner-btn ${blk.owner==='Brittany'?'active-b':''}" onclick="setBlockOwner(${i},'Brittany')">Brittany</button>
+        </div>
+      </div>
+      <input class="week-label-inp" placeholder="Label e.g. Florida, Lake week, Work travel overlap..."
+        value="${_v13EscapeHtml(blk.label || '')}" oninput="summerPlan[${i}].label=this.value">
+      ${days>0?`<div class="week-days-badge">${days} day${days!==1?'s':''} · ${fmtDate(blk.start)} - ${fmtDate(blk.end)}</div>`:''}
+    `;
+    body.appendChild(card);
+  });
+  renderSummerStats();
+}
+
+function renderSummerStats(){
+  const summary = summarizeSummerPlan(activeSummerYear);
+  document.getElementById('sum-stats').innerHTML = `
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--j)"></div><b style="color:var(--j)">${summary.justin}</b> Justin</div>
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--b)"></div><b style="color:var(--b)">${summary.brittany}</b> Brittany</div>
+    <div class="sum-stat"><div class="sum-stat-dot" style="background:#94a3b8"></div><b>${summary.planned}</b> of ${summary.total} planned</div>
+    ${summary.warnings.length ? `<div class="sum-stat" style="color:#92400e">⚠️ ${summary.warnings.length} item${summary.warnings.length===1?'':'s'} to review</div>` : '<div class="sum-stat">✓ Ready to apply</div>'}
+  `;
+}
+
+setTimeout(() => {
+  const directBtn = document.getElementById('sum-apply-direct-btn');
+  if (directBtn) {
+    directBtn.textContent = '✓ Apply Summer Plan';
+    directBtn.title = 'Apply these summer blocks to the calendar and record the update';
+  }
+}, 700);
 
 // Init
 render();
