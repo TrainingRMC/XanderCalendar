@@ -301,7 +301,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .summer-split-seg.b{background:linear-gradient(135deg,var(--b-d),var(--b))}
 .summer-warnings{display:grid;gap:6px;margin-bottom:10px}
 .summer-warning{border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:9px;padding:8px 10px;font-size:.78em;line-height:1.35}
+.summer-warning.actionable{cursor:pointer;font-weight:800}
+.summer-warning.actionable:hover{box-shadow:var(--shadow-sm);filter:brightness(.99)}
 .summer-warning.ok{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.12);color:#047857}
+.summer-gap-panel{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:10px 11px;margin-bottom:10px}
+.summer-gap-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text);margin-bottom:3px}
+.summer-gap-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-bottom:8px}
+.summer-gap-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:8px}
+.summer-gap-date{font-size:.82em;font-weight:800;color:var(--text)}
+.summer-gap-btn{border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:.76em;font-family:'Nunito',sans-serif;font-weight:900;cursor:pointer;background:var(--bg-2);color:var(--text)}
+.summer-gap-btn.j{background:var(--j-soft);color:var(--j);border-color:var(--j-m)}
+.summer-gap-btn.b{background:var(--b-soft);color:var(--b);border-color:var(--b-m)}
 .week-card.j{border-left:4px solid var(--j)}
 .week-card.b{border-left:4px solid var(--b)}
 .week-card.problem{border-color:#f59e0b;background:#fffbeb}
@@ -1029,6 +1039,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .sum-modal-ftr,.summer-prop-ftr{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 13px}
   .sum-modal-ftr .btn,.summer-prop-ftr .btn{width:100%}
   .quick-blocks{grid-template-columns:1fr}
+  .summer-gap-row{grid-template-columns:1fr 1fr}
+  .summer-gap-date{grid-column:1/-1}
   .week-card{padding:10px;border-radius:10px}
   .week-card-hdr{gap:7px}
   .inbox-drawer{width:100vw;max-width:100vw}
@@ -1679,6 +1691,7 @@ let activeSummerYear = 2026;
 
 function openSummer(yr){
   activeSummerYear = yr||2026;
+  if (typeof closeInbox === 'function') closeInbox();
   const range=yr===2027?'May 27 – Aug 2, 2027':'May 22 – Aug 2, 2026';
   document.getElementById('sum-modal-sub').textContent=
     `${range} · Justin selects by April 1`;
@@ -6337,6 +6350,24 @@ function getSummerBlocks(yr){
     .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
 }
 
+let summerGapPanelOpen = false;
+
+function summerGapRanges(summary){
+  const ranges = [];
+  let open = null;
+  for (let d = new Date(summary.range.min + 'T12:00:00'); d <= new Date(summary.range.max + 'T12:00:00'); d.setDate(d.getDate()+1)) {
+    const key = _v13KeyFromDate(d);
+    if (!summary.dayMap[key] && !open) open = { start:key, end:key };
+    else if (!summary.dayMap[key] && open) open.end = key;
+    else if (summary.dayMap[key] && open) {
+      ranges.push(open);
+      open = null;
+    }
+  }
+  if (open) ranges.push(open);
+  return ranges;
+}
+
 function summarizeSummerPlan(yr){
   const range = summerRangeForYear(yr);
   const blocks = getSummerBlocks(yr);
@@ -6378,6 +6409,7 @@ function summarizeSummerPlan(yr){
     range,
     blocks,
     warnings:[...new Set(warnings)],
+    dayMap,
     justin:j,
     brittany:b,
     planned,
@@ -6423,6 +6455,38 @@ function addTwoWeekBlock(owner){
   renderSummerBody();
 }
 
+function toggleSummerGapPanel(){
+  summerGapPanelOpen = !summerGapPanelOpen;
+  renderSummerBody();
+}
+
+function assignSummerGap(start, end, owner){
+  summerPlan.push({
+    start,
+    end,
+    owner,
+    label: owner === 'Justin' ? "Justin summer time" : "Brittany summer time"
+  });
+  summerGapPanelOpen = true;
+  renderSummerBody();
+}
+
+function renderSummerGapPanel(summary){
+  const gaps = summerGapRanges(summary);
+  if (!gaps.length || !summerGapPanelOpen) return '';
+  return `<div class="summer-gap-panel">
+    <div class="summer-gap-title">Unassigned summer dates</div>
+    <div class="summer-gap-sub">Tap Justin or Brittany beside a range to assign those dates and create a new block.</div>
+    ${gaps.map(g => `
+      <div class="summer-gap-row">
+        <div class="summer-gap-date">${fmtDate(g.start)}${g.end !== g.start ? ' - ' + fmtDate(g.end) : ''} · ${daysBetween(g.start,g.end)} day${daysBetween(g.start,g.end)===1?'':'s'}</div>
+        <button class="summer-gap-btn j" onclick="assignSummerGap('${g.start}','${g.end}','Justin')">Justin</button>
+        <button class="summer-gap-btn b" onclick="assignSummerGap('${g.start}','${g.end}','Brittany')">Brittany</button>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
 function renderSummerBody(){
   const body = document.getElementById('sum-body');
   if (!body) return;
@@ -6433,8 +6497,12 @@ function renderSummerBody(){
   const jPct = summary.total ? Math.max(0, Math.min(100, (summary.justin / summary.total) * 100)) : 0;
   const bPct = summary.total ? Math.max(0, Math.min(100, (summary.brittany / summary.total) * 100)) : 0;
   const warningsHtml = summary.warnings.length
-    ? `<div class="summer-warnings">${summary.warnings.slice(0,4).map(w => `<div class="summer-warning">⚠️ ${w}</div>`).join('')}</div>`
+    ? `<div class="summer-warnings">${summary.warnings.slice(0,4).map(w => {
+        const isGap = w.includes('not assigned yet');
+        return `<div class="summer-warning ${isGap?'actionable':''}" ${isGap?'onclick="toggleSummerGapPanel()"':''}>⚠️ ${w}${isGap?' <span style="text-decoration:underline">Review dates</span>':''}</div>`;
+      }).join('')}</div>`
     : `<div class="summer-warnings"><div class="summer-warning ok">✓ Blocks look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
+  const gapPanelHtml = renderSummerGapPanel(summary);
 
   body.innerHTML = `
     <div class="summer-overview">
@@ -6452,6 +6520,7 @@ function renderSummerBody(){
       <div class="summer-overview-meta" style="margin-top:7px">Justin ${summary.justin} days · Brittany ${summary.brittany} days</div>
     </div>
     ${warningsHtml}
+    ${gapPanelHtml}
     <div class="quick-blocks">
       <button class="quick-block-btn" onclick="addTwoWeekBlock('Justin')">+ Justin 2-week block</button>
       <button class="quick-block-btn" onclick="addTwoWeekBlock('Brittany')">+ Brittany 2-week block</button>
