@@ -1185,6 +1185,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="menu-hint">Add or manage trips</div>
     </div>
   </button>
+  <button class="menu-item" onclick="closeMenu();openHistory(event)">
+    <span class="menu-icon">📜</span>
+    <div class="menu-text">
+      <div class="menu-label">Record</div>
+      <div class="menu-hint">Search history, dates, notes, travel</div>
+    </div>
+  </button>
   <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
     <span class="menu-icon">☀️</span>
     <div class="menu-text">
@@ -4661,6 +4668,7 @@ function toggleInbox(e){
   if (drawer.classList.contains('open')){
     closeInbox();
   } else {
+    if (typeof inboxViewMode !== 'undefined') inboxViewMode = 'actions';
     openInbox();
   }
 }
@@ -6186,12 +6194,6 @@ renderInboxBody = function(){
     ['summer','Summer'],
     ['school','School']
   ];
-  const viewTabs = `
-    <div class="inbox-view-tabs">
-      <button class="inbox-view-tab ${inboxViewMode==='actions'?'active':''}" onclick="setInboxView('actions', event)">Action Items</button>
-      <button class="inbox-view-tab ${inboxViewMode==='history'?'active':''}" onclick="setInboxView('history', event)">Record</button>
-      <button class="inbox-view-tab ${inboxViewMode==='all'?'active':''}" onclick="setInboxView('all', event)">Both</button>
-    </div>`;
   const filterHtml = `<div class="history-filters">${filterDefs.map(([key,label]) => {
     const count = key === 'all' ? allHistory.length : allHistory.filter(e => _v13HistoryKind(e.type) === key).length;
     return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}', event)">${label} ${count}</button>`;
@@ -6217,8 +6219,9 @@ renderInboxBody = function(){
     ? _v13BuildTravelSummary()
     : '';
   const calendarMatchesHtml = _v13CalendarRecordMatches();
+  const historyTop = inboxViewMode === 'history' ? '0' : '18px';
   const historyHtml = history.length
-    ? `<div class="inbox-section-head" style="margin-top:18px">
+    ? `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
       </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
@@ -6232,7 +6235,7 @@ renderInboxBody = function(){
           <div class="inbox-history-when">${formatLogTime(e.ts)}</div>
         </div>`;
       }).join('')
-    : `<div class="inbox-section-head" style="margin-top:18px">
+    : `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
       </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
@@ -6244,9 +6247,7 @@ renderInboxBody = function(){
     </div>
     ${actionHtml}`;
 
-  body.innerHTML = viewTabs
-    + (inboxViewMode === 'actions' || inboxViewMode === 'all' ? actionSection : '')
-    + (inboxViewMode === 'history' || inboxViewMode === 'all' ? historyHtml : '');
+  body.innerHTML = inboxViewMode === 'history' ? historyHtml : actionSection;
 };
 
 const _v13_origRenderInboxItem = renderInboxItem;
