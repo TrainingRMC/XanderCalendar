@@ -318,6 +318,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .pin-mode-note{font-size:.72em;color:#64748b;margin-top:10px;line-height:1.4}
 .pin-secondary{background:transparent;border:none;color:#64748b;font-size:.78em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:12px}
 .pin-secondary:hover{color:var(--j-d)}
+.pin-person-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.pin-person{padding:12px 10px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;font-family:'Nunito',sans-serif;font-weight:900;cursor:pointer;color:#334155}
+.pin-person.active.j{background:var(--j-l);border-color:var(--j);color:var(--j-d)}
+.pin-person.active.b{background:var(--b-l);border-color:var(--b);color:var(--b-d)}
+.pin-profile-name{font-weight:900;color:var(--text);font-family:'Nunito',sans-serif;margin-bottom:8px}
 
 /* ── CURRENT USER BADGE (in header) ── */
 .user-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:20px;font-size:.79em;font-weight:700;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
@@ -610,6 +615,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .pin-row-label{color:var(--text-2)}
 :root[data-theme="dark"] .pin-input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 :root[data-theme="dark"] .pin-mode-note{color:var(--muted)}
+:root[data-theme="dark"] .pin-person{background:var(--bg-2);color:var(--text);border-color:var(--border)}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
@@ -1660,6 +1666,7 @@ function showToast(msg){
 
 const USER_KEY = 'xander_cal_user';
 const PIN_KEY = 'xander_cal_parent_pins_v1';
+let setupPinParent = 'Justin';
 let currentUser = sessionStorage.getItem(USER_KEY) || null;
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
@@ -1711,7 +1718,7 @@ function savePinStore(store) {
 
 function hasParentPins() {
   const store = getPinStore();
-  return !!(store.Justin && store.Brittany);
+  return !!(store.Justin || store.Brittany);
 }
 
 function showPinError(msg) {
@@ -1734,19 +1741,35 @@ function renderPinGate() {
   if (!title || !sub || !setup || !login) return false;
   hidePinError();
   if (hasParentPins()) {
+    const store = getPinStore();
+    const profiles = ['Justin','Brittany'].filter(name => !!store[name]);
+    const profileLabel = profiles.length === 1 ? profiles[0] : 'Justin or Brittany';
     title.textContent = 'Enter your PIN';
-    sub.textContent = 'Your PIN identifies who is using the calendar.';
+    sub.textContent = profiles.length === 1
+      ? `This phone is set up for ${profileLabel}.`
+      : 'Your PIN identifies who is using the calendar.';
     setup.style.display = 'none';
     login.style.display = 'block';
+    const profile = document.getElementById('pin-profile-name');
+    if (profile) profile.textContent = profiles.length === 1 ? `${profiles[0]}'s PIN` : 'Enter your PIN';
     setTimeout(() => document.getElementById('pin-login-input')?.focus(), 80);
   } else {
-    title.textContent = 'Set up personal PINs';
-    sub.textContent = 'First time on this phone: create one PIN for each parent.';
+    title.textContent = 'Set up this phone';
+    sub.textContent = 'Choose who uses this phone, then create your PIN.';
     setup.style.display = 'grid';
     login.style.display = 'none';
-    setTimeout(() => document.getElementById('pin-justin')?.focus(), 80);
+    selectPinParent(setupPinParent);
+    setTimeout(() => document.getElementById('pin-single')?.focus(), 80);
   }
   return true;
+}
+
+function selectPinParent(name) {
+  setupPinParent = name === 'Brittany' ? 'Brittany' : 'Justin';
+  const j = document.getElementById('pin-person-justin');
+  const b = document.getElementById('pin-person-brittany');
+  if (j) j.classList.toggle('active', setupPinParent === 'Justin');
+  if (b) b.classList.toggle('active', setupPinParent === 'Brittany');
 }
 
 function showWhoPickerIfNeeded(force) {
@@ -1773,25 +1796,20 @@ function showWhoPickerIfNeeded(force) {
 }
 
 async function saveParentPins() {
-  const j = document.getElementById('pin-justin').value.trim();
-  const b = document.getElementById('pin-brittany').value.trim();
-  if (!/^\d{4,8}$/.test(j) || !/^\d{4,8}$/.test(b)) {
-    showPinError('Use 4 to 8 numbers for each PIN.');
+  const pin = document.getElementById('pin-single').value.trim();
+  if (!/^\d{4,8}$/.test(pin)) {
+    showPinError('Use 4 to 8 numbers for your PIN.');
     return;
   }
-  if (j === b) {
-    showPinError('Justin and Brittany need different PINs.');
-    return;
-  }
-  savePinStore({
-    Justin: await pinHash(j, 'Justin'),
-    Brittany: await pinHash(b, 'Brittany'),
-    createdAt: new Date().toISOString()
-  });
-  document.getElementById('pin-justin').value = '';
-  document.getElementById('pin-brittany').value = '';
+  const store = getPinStore();
+  store[setupPinParent] = await pinHash(pin, setupPinParent);
+  store.defaultParent = setupPinParent;
+  store.createdAt = store.createdAt || new Date().toISOString();
+  store.updatedAt = new Date().toISOString();
+  savePinStore(store);
+  document.getElementById('pin-single').value = '';
   renderPinGate();
-  showToast('PINs saved on this phone');
+  showToast(`${setupPinParent}'s PIN saved on this phone`);
 }
 
 async function unlockWithPin() {
@@ -1818,7 +1836,7 @@ async function unlockWithPin() {
 }
 
 function resetParentPins() {
-  if (!confirm('Reset PINs on this phone? You will create new PINs for Justin and Brittany.')) return;
+  if (!confirm('Reset the PIN on this phone? You will choose the parent and create a new PIN.')) return;
   localStorage.removeItem(PIN_KEY);
   sessionStorage.removeItem(USER_KEY);
   currentUser = null;
@@ -5734,24 +5752,25 @@ setTimeout(() => {
     <div class="pin-error" id="pin-error"></div>
 
     <div class="pin-setup" id="pin-setup" style="display:none">
-      <div class="pin-row">
-        <div class="pin-row-label">👨 Justin's PIN</div>
-        <input class="pin-input" id="pin-justin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+      <div class="pin-person-row">
+        <button class="pin-person j active" id="pin-person-justin" onclick="selectPinParent('Justin')">👨 Justin</button>
+        <button class="pin-person b" id="pin-person-brittany" onclick="selectPinParent('Brittany')">👩 Brittany</button>
       </div>
       <div class="pin-row">
-        <div class="pin-row-label">👩 Brittany's PIN</div>
-        <input class="pin-input" id="pin-brittany" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••"
+        <div class="pin-row-label">Your PIN</div>
+        <input class="pin-input" id="pin-single" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••"
           onkeydown="if(event.key==='Enter')saveParentPins()">
       </div>
-      <button class="btn btn-save" onclick="saveParentPins()" style="width:100%;margin-top:2px">Save PINs</button>
-      <div class="pin-mode-note">PINs are stored only on this phone. Each iPhone can set its own PINs the first time it opens the updated app.</div>
+      <button class="btn btn-save" onclick="saveParentPins()" style="width:100%;margin-top:2px">Save PIN</button>
+      <div class="pin-mode-note">This PIN is stored only on this phone. Brittany can set her own PIN on her iPhone.</div>
     </div>
 
     <div id="pin-login" style="display:none">
+      <div class="pin-profile-name" id="pin-profile-name">Enter your PIN</div>
       <input class="pin-input" id="pin-login-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••"
         onkeydown="if(event.key==='Enter')unlockWithPin()">
       <button class="btn btn-save" onclick="unlockWithPin()" style="width:100%;margin-top:12px">Unlock</button>
-      <button class="pin-secondary" onclick="resetParentPins()">Reset PINs on this phone</button>
+      <button class="pin-secondary" onclick="resetParentPins()">Reset PIN on this phone</button>
     </div>
   </div>
 </div>
