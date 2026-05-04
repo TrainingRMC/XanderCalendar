@@ -888,9 +888,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .inbox-history-title{font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px;font-family:'Nunito',sans-serif}
 .inbox-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}
 .inbox-section-count{background:var(--bg-2);border:1px solid var(--border);border-radius:14px;padding:3px 8px;font-size:.7em;font-weight:900;color:var(--muted);font-family:'Nunito',sans-serif}
-.inbox-history-row{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:7px;font-size:.82em;line-height:1.35}
+.inbox-view-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:0 0 13px}
+.inbox-view-tab{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:10px;padding:8px 6px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.inbox-view-tab.active{background:var(--j);border-color:var(--j);color:#fff}
+.history-filters{display:flex;gap:5px;overflow-x:auto;padding:0 0 8px;margin:-1px 0 8px}
+.history-filter{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 9px;font-size:.72em;font-weight:900;font-family:'Nunito',sans-serif;white-space:nowrap;cursor:pointer}
+.history-filter.active{background:var(--text);border-color:var(--text);color:var(--card)}
+.inbox-history-row{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:10px 11px;margin-bottom:7px;font-size:.82em;line-height:1.35}
 .inbox-history-row.j{border-left-color:var(--j)}.inbox-history-row.b{border-left-color:var(--b)}
+.inbox-history-row.travel{border-left-color:var(--emerald)}.inbox-history-row.summer{border-left-color:var(--gold)}.inbox-history-row.school{border-left-color:#a78bfa}.inbox-history-row.system{border-left-color:var(--muted)}
 .inbox-history-who{font-weight:900;font-family:'Nunito',sans-serif;color:var(--text)}
+.history-type{display:inline-flex;align-items:center;gap:4px;background:var(--bg-2);border:1px solid var(--border);border-radius:999px;padding:2px 7px;font-size:.75em;font-weight:900;color:var(--muted);font-family:'Nunito',sans-serif;margin-bottom:5px}
 .inbox-history-when{font-size:.78em;color:var(--muted);font-style:italic;margin-top:2px}
 .mydays-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:92%;max-width:460px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
 .mydays-hdr{background:var(--hdr-grad);color:#fff;padding:18px 20px 14px;flex-shrink:0}
@@ -993,7 +1001,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-        <button class="dash-action" onclick="_v13ShowSearch()">🔎<br>Find</button>
+        <button class="dash-action" onclick="openHistory()">📜<br>History</button>
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
@@ -1062,6 +1070,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="menu-text">
       <div class="menu-label">Travel</div>
       <div class="menu-hint">Add or manage trips</div>
+    </div>
+  </button>
+  <button class="menu-item" onclick="closeMenu();openHistory()">
+    <span class="menu-icon">📜</span>
+    <div class="menu-text">
+      <div class="menu-label">Permanent Record</div>
+      <div class="menu-hint">Schedule, travel, notes, summer, school</div>
     </div>
   </button>
   <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
@@ -3915,6 +3930,8 @@ function acknowledgeTravel(id){
   if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
   inboxState[currentUser].dismissed[key] = true;
   inboxState[currentUser].read[key] = true;
+  if (!t.acknowledgedBy) t.acknowledgedBy = {};
+  t.acknowledgedBy[currentUser] = new Date().toISOString();
   logAction(currentUser, 'travel-ack', `Acknowledged ${t.by}'s travel ${fmtDate(t.start)} → ${fmtDate(t.end)}${t.label ? ` (${t.label})` : ''}`);
   render();
   renderInboxBody();
@@ -4001,6 +4018,7 @@ function renderTravelList() {
           ${t.label ? `<div class="travel-item-label">${t.label}</div>` : ''}
           ${t.notes ? `<div class="travel-item-label">${t.notes}</div>` : ''}
           <div class="travel-item-label" style="font-size:.7em;font-style:italic">added by ${t.by} · visible to both parents</div>
+          ${t.acknowledgedBy ? Object.entries(t.acknowledgedBy).map(([name, ts]) => `<div class="travel-item-label" style="font-size:.7em">✓ Acknowledged by ${name} ${formatLogTime(ts)}</div>`).join('') : ''}
           <div class="travel-status ${isTravelAcknowledged(t)?'ok':'wait'}">${isTravelAcknowledged(t)?'✓':'•'} ${travelStatusLabel(t)}</div>
         </div>
         <div class="travel-item-actions">
@@ -5484,9 +5502,66 @@ function _v13OpenDate(dateKey){
 
 function _v13OpenInboxFromPage(e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  inboxViewMode = 'actions';
   setTimeout(() => {
     if (typeof openInbox === 'function') openInbox();
   }, 0);
+}
+
+let inboxViewMode = 'actions';
+let historyFilter = 'all';
+
+function setInboxView(mode){
+  inboxViewMode = mode;
+  renderInboxBody();
+}
+
+function setHistoryFilter(filter){
+  historyFilter = filter;
+  renderInboxBody();
+}
+
+function openHistory(){
+  inboxViewMode = 'history';
+  if (typeof openInbox === 'function') openInbox();
+}
+
+function _v13EscapeHtml(value){
+  return String(value || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+function _v13HistoryKind(type){
+  type = String(type || '').toLowerCase();
+  if (type.includes('travel')) return 'travel';
+  if (type.includes('summer')) return 'summer';
+  if (type.includes('school')) return 'school';
+  if (type.includes('note')) return 'note';
+  if (type.includes('approved') || type.includes('declined') || type.includes('proposed') || type.includes('canceled') || type.includes('swap')) return 'schedule';
+  return 'system';
+}
+
+function _v13HistoryLabel(kind){
+  return {
+    schedule:'Schedule',
+    note:'Note',
+    travel:'Travel',
+    summer:'Summer',
+    school:'School',
+    system:'System'
+  }[kind] || 'Record';
+}
+
+function _v13HistoryIcon(kind){
+  return {
+    schedule:'🔄',
+    note:'📝',
+    travel:'✈️',
+    summer:'☀️',
+    school:'🏫',
+    system:'•'
+  }[kind] || '•';
 }
 
 function _v13ShowSearch(){
@@ -5792,12 +5867,13 @@ render = function(){
 
 // Keep the permanent record. The earlier drawer capped history at 200 items;
 // the Inbox now shows the durable activity timeline instead.
-logAction = function(by, type, msg) {
+logAction = function(by, type, msg, meta) {
   activityLog.unshift({
     ts: new Date().toISOString(),
     by: by,
     type: type,
-    msg: msg
+    msg: msg,
+    meta: meta || null
   });
 };
 
@@ -5810,33 +5886,57 @@ renderInboxBody = function(){
     ? items.map(i => renderInboxItem(i)).join('')
     : '<div class="inbox-empty">✨ No action needed<br><span style="font-size:.86em">Swaps, travel acknowledgements, summer planning, and school reminders will show up here.</span></div>';
 
-  const history = (activityLog || []).slice(0, 500);
+  const allHistory = (activityLog || []);
+  const filteredHistory = allHistory.filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter);
+  const history = filteredHistory.slice(0, 500);
+  const filterDefs = [
+    ['all','All'],
+    ['schedule','Schedule'],
+    ['note','Notes'],
+    ['travel','Travel'],
+    ['summer','Summer'],
+    ['school','School']
+  ];
+  const viewTabs = `
+    <div class="inbox-view-tabs">
+      <button class="inbox-view-tab ${inboxViewMode==='actions'?'active':''}" onclick="setInboxView('actions')">Action Items</button>
+      <button class="inbox-view-tab ${inboxViewMode==='history'?'active':''}" onclick="setInboxView('history')">Record</button>
+      <button class="inbox-view-tab ${inboxViewMode==='all'?'active':''}" onclick="setInboxView('all')">Both</button>
+    </div>`;
+  const filterHtml = `<div class="history-filters">${filterDefs.map(([key,label]) => {
+    const count = key === 'all' ? allHistory.length : allHistory.filter(e => _v13HistoryKind(e.type) === key).length;
+    return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}')">${label} ${count}</button>`;
+  }).join('')}</div>`;
   const historyHtml = history.length
     ? `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
-        <div class="inbox-section-count">${activityLog.length} total</div>
-      </div>` + history.map(e => {
+        <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
+      </div>${filterHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
+        const kind = _v13HistoryKind(e.type);
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
-        return `<div class="inbox-history-row ${cls}">
+        return `<div class="inbox-history-row ${cls} ${kind}">
+          <div class="history-type">${_v13HistoryIcon(kind)} ${_v13HistoryLabel(kind)}</div>
           <div class="inbox-history-who">${emoji} ${e.by || 'System'}</div>
-          <div>${e.msg || ''}</div>
+          <div>${_v13EscapeHtml(e.msg)}</div>
           <div class="inbox-history-when">${formatLogTime(e.ts)}</div>
         </div>`;
       }).join('')
     : `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
-        <div class="inbox-section-count">0 total</div>
-      </div><div class="inbox-empty" style="padding:18px 10px">No activity recorded yet.</div>`;
+        <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
+      </div>${filterHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
-  body.innerHTML = `
+  const actionSection = `
     <div class="inbox-section-head">
       <div class="inbox-history-title" style="margin:0">Action Items</div>
       <div class="inbox-section-count">${items.length} open</div>
     </div>
-    ${actionHtml}
-    ${historyHtml}
-  `;
+    ${actionHtml}`;
+
+  body.innerHTML = viewTabs
+    + (inboxViewMode === 'actions' || inboxViewMode === 'all' ? actionSection : '')
+    + (inboxViewMode === 'history' || inboxViewMode === 'all' ? historyHtml : '');
 };
 
 const _v13_origRenderInboxItem = renderInboxItem;
