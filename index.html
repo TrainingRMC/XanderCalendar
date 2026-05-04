@@ -777,13 +777,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 
 /* ── Apple Calendar visual polish ──────────────────────────── */
-/* Tighter today indicator: red dot beneath the date number, like iOS */
-.dc.today-ring{outline:none}
+/* Today gets a soft red glow so it is easy to spot at a glance */
+.dc.today-ring{outline:1.5px solid rgba(220,38,38,.72);outline-offset:-2px;box-shadow:0 0 0 4px rgba(220,38,38,.12),0 0 18px rgba(220,38,38,.28),var(--shadow-md)}
 .dc.today-ring .d-num{position:relative;color:#dc2626 !important}
-.dc.today-ring .d-num::after{content:'';position:absolute;left:50%;bottom:-4px;width:5px;height:5px;background:#dc2626;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 6px rgba(220,38,38,.6)}
+.dc.today-ring .d-num::after{display:none}
 .dc.today-ring .d-today{display:none !important}
+:root[data-theme="dark"] .dc.today-ring{outline-color:rgba(255,69,58,.82);box-shadow:0 0 0 4px rgba(255,69,58,.18),0 0 22px rgba(255,69,58,.38),var(--shadow-md)}
 :root[data-theme="dark"] .dc.today-ring .d-num{color:#ff453a !important}
-:root[data-theme="dark"] .dc.today-ring .d-num::after{background:#ff453a;box-shadow:0 0 8px rgba(255,69,58,.7)}
 
 /* Cleaner day-number typography (SF-style numerals) */
 .d-num{font-feature-settings:"tnum" 1;letter-spacing:-.5px}
@@ -808,7 +808,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dc.b-str{background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card));border-color:rgba(236,72,153,.25);border-left-color:var(--b)}
 .dc.mid{border-left-color:#a78bfa}
 .dc.bday-x,.dc.pbday-j,.dc.pbday-b{border-left-color:var(--gold)}
-.dc.today-ring{box-shadow:var(--shadow-md)}
+.dc.today-ring{box-shadow:0 0 0 4px rgba(220,38,38,.12),0 0 18px rgba(220,38,38,.28),var(--shadow-md)}
 .d-num{color:var(--text);margin-bottom:1px}
 .d-event,.d-note,.d-travel{
   display:-webkit-box;
