@@ -1330,9 +1330,9 @@ function renderStats(){
   }
   document.getElementById('stats').innerHTML=`
     <div class="stat"><div class="stat-dot" style="background:var(--j)"></div>
-      <div><div class="stat-v" style="color:var(--j)">${j}</div><div class="stat-l">Justin's days</div></div></div>
+      <div><div class="stat-v" style="color:var(--j)">${j}</div><div class="stat-l">Justin with Xander</div></div></div>
     <div class="stat"><div class="stat-dot" style="background:var(--b)"></div>
-      <div><div class="stat-v" style="color:var(--b)">${b}</div><div class="stat-l">Brittany's days</div></div></div>
+      <div><div class="stat-v" style="color:var(--b)">${b}</div><div class="stat-l">Brittany with Xander</div></div></div>
     <div class="stat"><div class="stat-dot" style="background:var(--muted)"></div>
       <div><div class="stat-v">${j+b}</div><div class="stat-l">Total days</div></div></div>
     ${ch>0?`<div class="stat"><div class="stat-dot" style="background:var(--gold)"></div>
@@ -5399,6 +5399,20 @@ function _v13CountMyDays(days){
   return count;
 }
 
+function _v13FindNextMyDay(){
+  if (!currentUser) return null;
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  for (let i = 0; i <= 90; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const info = _v13InfoForDate(d);
+    if (info.owner === currentUser){
+      return { date:_v13KeyFromDate(d), event:info.event || '' };
+    }
+  }
+  return null;
+}
+
 function _v13FindUpcomingTravel(){
   const nowKey = _v13TodayKey();
   const upcoming = (travelEntries || [])
@@ -5555,9 +5569,11 @@ function renderDashboard(){
   const travel = _v13FindUpcomingTravel();
   const highlight = _v13FindUpcomingHighlight();
   const myDays = _v13CountMyDays(14);
+  const nextMyDay = _v13FindNextMyDay();
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
   const travelAction = travel ? `_v13OpenDate('${travel.start}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
+  const myDaysAction = nextMyDay ? `_v13OpenDate('${nextMyDay.date}')` : `jumpTo(${today.getFullYear()},${today.getMonth()})`;
   const hasAttention = inboxCount > 0;
   const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
 
@@ -5595,10 +5611,10 @@ function renderDashboard(){
       <div class="dash-card-main">${travelText}</div>
       <div class="dash-card-sub">${travelSub}</div>
     </div>
-    <div class="dash-card tap" onclick="jumpTo(${today.getFullYear()},${today.getMonth()})" role="button" tabindex="0">
-      <div class="dash-card-title">My Next 14 Days</div>
+    <div class="dash-card tap" onclick="${myDaysAction}" role="button" tabindex="0">
+      <div class="dash-card-title">Days With Xander</div>
       <div class="dash-card-main ${currentUser === 'Justin' ? 'j' : 'b'}">${currentUser ? myDays : '-'}</div>
-      <div class="dash-card-sub">${currentUser ? `${currentUser}'s days with Xander` : 'Choose a parent to personalize this.'}</div>
+      <div class="dash-card-sub">${currentUser ? `${myDays} of the next 14 days · next: ${nextMyDay ? _v13ShortDate(nextMyDay.date) : 'none soon'}` : 'Unlock with your PIN to personalize this.'}</div>
     </div>
     <div class="dash-card tap" onclick="${highlightAction}" role="button" tabindex="0" style="grid-column:1/-1">
       <div class="dash-card-title">Coming Up</div>
