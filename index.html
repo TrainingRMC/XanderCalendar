@@ -4675,6 +4675,7 @@ function toggleInbox(e){
 function openInbox(){
   document.getElementById('inbox-drawer').classList.add('open');
   renderInboxBody();
+  if (typeof inboxViewMode !== 'undefined' && inboxViewMode === 'history') return;
   // Mark all as read on open (after a beat so user sees the unread state briefly)
   setTimeout(() => {
     if (!currentUser) return;
@@ -6173,6 +6174,8 @@ const _v13_origRenderInboxBody = renderInboxBody;
 renderInboxBody = function(){
   const body = document.getElementById('inbox-body');
   if (!body) return;
+  const title = document.querySelector('.inbox-title');
+  if (title) title.textContent = inboxViewMode === 'history' ? '📜 Record' : '📥 Inbox';
   const items = getInboxItems();
   const actionHtml = items.length
     ? items.map(i => renderInboxItem(i)).join('')
