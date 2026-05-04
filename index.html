@@ -901,6 +901,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .history-filters{display:flex;gap:5px;overflow-x:auto;padding:0 0 8px;margin:-1px 0 8px}
 .history-filter{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 9px;font-size:.72em;font-weight:900;font-family:'Nunito',sans-serif;white-space:nowrap;cursor:pointer}
 .history-filter.active{background:var(--text);border-color:var(--text);color:var(--card)}
+.history-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
+.history-sort{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:6px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif}
 .inbox-history-row{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:10px 11px;margin-bottom:7px;font-size:.82em;line-height:1.35}
 .inbox-history-row.j{border-left-color:var(--j)}.inbox-history-row.b{border-left-color:var(--b)}
 .inbox-history-row.travel{border-left-color:var(--emerald)}.inbox-history-row.summer{border-left-color:var(--gold)}.inbox-history-row.school{border-left-color:#a78bfa}.inbox-history-row.system{border-left-color:var(--muted)}
@@ -1008,7 +1010,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-        <button class="dash-action" onclick="openHistory(event)">📜<br>History</button>
+        <button class="dash-action" onclick="_v13ShowSearch()">🔎<br>Find</button>
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
@@ -1077,13 +1079,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="menu-text">
       <div class="menu-label">Travel</div>
       <div class="menu-hint">Add or manage trips</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openHistory(event)">
-    <span class="menu-icon">📜</span>
-    <div class="menu-text">
-      <div class="menu-label">Permanent Record</div>
-      <div class="menu-hint">Schedule, travel, notes, summer, school</div>
     </div>
   </button>
   <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
@@ -1278,7 +1273,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="mydays-body" id="mydays-body"></div>
     <div style="display:flex;gap:7px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)">
       <button class="btn btn-cancel" onclick="closeMyDays()">Close</button>
-      <button class="btn btn-save" style="flex:1" onclick="closeMyDays();jumpTo(today.getFullYear(),today.getMonth())">Open Calendar</button>
+      <button class="btn btn-save" style="flex:1" onclick="_v13OpenCalendarFromMyDays()">Open Calendar</button>
     </div>
   </div>
 </div>
@@ -5517,6 +5512,7 @@ function _v13OpenInboxFromPage(e){
 
 let inboxViewMode = 'actions';
 let historyFilter = 'all';
+let historySort = 'newest';
 
 function setInboxView(mode, e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -5527,6 +5523,12 @@ function setInboxView(mode, e){
 function setHistoryFilter(filter, e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   historyFilter = filter;
+  renderInboxBody();
+}
+
+function setHistorySort(sort, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historySort = sort;
   renderInboxBody();
 }
 
@@ -5654,6 +5656,15 @@ function openMyDaysSummary(){
 
 function closeMyDays(){
   document.getElementById('mydays-overlay').classList.remove('open');
+}
+
+function _v13OpenCalendarFromMyDays(){
+  closeMyDays();
+  jumpTo(today.getFullYear(), today.getMonth());
+  setTimeout(() => {
+    const cal = document.querySelector('.calendar-toolbar') || document.querySelector('.cal-wrap');
+    if (cal) cal.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 80);
 }
 
 function _v13FindUpcomingTravel(){
@@ -5899,7 +5910,11 @@ renderInboxBody = function(){
     : '<div class="inbox-empty">✨ No action needed<br><span style="font-size:.86em">Swaps, travel acknowledgements, summer planning, and school reminders will show up here.</span></div>';
 
   const allHistory = (activityLog || []);
-  const filteredHistory = allHistory.filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter);
+  const filteredHistory = allHistory
+    .filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter)
+    .sort((a,b) => historySort === 'oldest'
+      ? (a.ts || '').localeCompare(b.ts || '')
+      : (b.ts || '').localeCompare(a.ts || ''));
   const history = filteredHistory.slice(0, 500);
   const filterDefs = [
     ['all','All'],
@@ -5919,11 +5934,18 @@ renderInboxBody = function(){
     const count = key === 'all' ? allHistory.length : allHistory.filter(e => _v13HistoryKind(e.type) === key).length;
     return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}', event)">${label} ${count}</button>`;
   }).join('')}</div>`;
+  const sortHtml = `<div class="history-tools">
+    <div class="inbox-history-title" style="margin:0">Sort by Date</div>
+    <select class="history-sort" onchange="setHistorySort(this.value, event)" onclick="event.stopPropagation()">
+      <option value="newest" ${historySort==='newest'?'selected':''}>Newest first</option>
+      <option value="oldest" ${historySort==='oldest'?'selected':''}>Oldest first</option>
+    </select>
+  </div>`;
   const historyHtml = history.length
     ? `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
-      </div>${filterHtml}` + history.map(e => {
+      </div>${filterHtml}${sortHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
         const kind = _v13HistoryKind(e.type);
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
@@ -5937,7 +5959,7 @@ renderInboxBody = function(){
     : `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
-      </div>${filterHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
+      </div>${filterHtml}${sortHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
   const actionSection = `
     <div class="inbox-section-head">
