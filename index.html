@@ -295,7 +295,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .week-grid,.time-row{grid-template-columns:1fr}
 }
 
-/* ── WHO-ARE-YOU PICKER (after password) ── */
+/* ── PERSONAL PIN GATE ── */
 #who-gate{position:fixed;inset:0;z-index:99998;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:none;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
 #who-gate.show{display:flex}
 .who-card{background:#fff;border-radius:20px;padding:34px 30px 28px;width:90%;max-width:400px;box-shadow:0 28px 70px rgba(0,0,0,.35);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1)}
@@ -309,6 +309,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .who-btn.b{color:var(--b-d);border-color:var(--b-m)}
 .who-btn.b:hover{background:var(--b-l);border-color:var(--b)}
 .who-emoji{font-size:1.8em;line-height:1}
+.pin-setup{display:grid;gap:10px;text-align:left;margin-top:4px}
+.pin-row{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:11px 12px}
+.pin-row-label{font-size:.78em;font-weight:900;color:#334155;margin-bottom:6px}
+.pin-input{width:100%;padding:11px 13px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:1.05em;font-family:'DM Sans',sans-serif;letter-spacing:.18em;text-align:center;background:#fff;color:#0f172a}
+.pin-input:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
+.pin-error{display:none;background:#fee2e2;color:#dc2626;border-radius:8px;padding:7px 12px;font-size:.78em;font-weight:800;margin-bottom:11px}
+.pin-mode-note{font-size:.72em;color:#64748b;margin-top:10px;line-height:1.4}
+.pin-secondary{background:transparent;border:none;color:#64748b;font-size:.78em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:12px}
+.pin-secondary:hover{color:var(--j-d)}
 
 /* ── CURRENT USER BADGE (in header) ── */
 .user-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:20px;font-size:.79em;font-weight:700;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
@@ -597,6 +606,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .who-card{background:var(--card-elev);color:var(--text)}
 :root[data-theme="dark"] .who-title{color:var(--text)}
 :root[data-theme="dark"] .who-btn{background:var(--bg-2);color:var(--text)}
+:root[data-theme="dark"] .pin-row{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .pin-row-label{color:var(--text-2)}
+:root[data-theme="dark"] .pin-input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+:root[data-theme="dark"] .pin-mode-note{color:var(--muted)}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
@@ -1646,6 +1659,7 @@ function showToast(msg){
 // ═══════════════════════════════════════════════════════
 
 const USER_KEY = 'xander_cal_user';
+const PIN_KEY = 'xander_cal_parent_pins_v1';
 let currentUser = sessionStorage.getItem(USER_KEY) || null;
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
@@ -1653,35 +1667,162 @@ let activityLog  = [];   // array of {ts, by, type, msg}
 function setUser(name) {
   currentUser = name;
   sessionStorage.setItem(USER_KEY, name);
-  document.getElementById('who-gate').classList.remove('show');
+  const gate = document.getElementById('who-gate');
+  if (gate) gate.classList.remove('show');
   updateUserBadge();
-  document.getElementById('log-toggle').style.display = 'flex';
+  const logToggle = document.getElementById('log-toggle');
+  if (logToggle) logToggle.style.display = 'flex';
 }
 
 function switchUser() {
-  if (confirm('Switch to the other parent? Your edits will be tracked under their name until you switch back.')) {
-    sessionStorage.removeItem(USER_KEY);
-    currentUser = null;
-    document.getElementById('who-gate').classList.add('show');
-  }
+  sessionStorage.removeItem(USER_KEY);
+  currentUser = null;
+  updateUserBadge();
+  showWhoPickerIfNeeded(true);
 }
 
 function updateUserBadge() {
   const badge = document.getElementById('user-badge');
   const text  = document.getElementById('user-badge-text');
-  if (!currentUser) return;
+  if (!badge || !text) return;
+  if (!currentUser) {
+    text.textContent = 'Locked';
+    badge.classList.remove('b');
+    return;
+  }
   text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
   badge.classList.toggle('b', currentUser === 'Brittany');
 }
 
-function showWhoPickerIfNeeded() {
-  // Only show after password gate is gone
-  if (!currentUser) {
-    document.getElementById('who-gate').classList.add('show');
+async function pinHash(pin, name) {
+  const raw = `${name}:${pin}:xander-calendar-local-pin-v1`;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getPinStore() {
+  try { return JSON.parse(localStorage.getItem(PIN_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function savePinStore(store) {
+  localStorage.setItem(PIN_KEY, JSON.stringify(store || {}));
+}
+
+function hasParentPins() {
+  const store = getPinStore();
+  return !!(store.Justin && store.Brittany);
+}
+
+function showPinError(msg) {
+  const err = document.getElementById('pin-error');
+  if (!err) return;
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+function hidePinError() {
+  const err = document.getElementById('pin-error');
+  if (err) err.style.display = 'none';
+}
+
+function renderPinGate() {
+  const title = document.getElementById('pin-title');
+  const sub = document.getElementById('pin-sub');
+  const setup = document.getElementById('pin-setup');
+  const login = document.getElementById('pin-login');
+  if (!title || !sub || !setup || !login) return false;
+  hidePinError();
+  if (hasParentPins()) {
+    title.textContent = 'Enter your PIN';
+    sub.textContent = 'Your PIN identifies who is using the calendar.';
+    setup.style.display = 'none';
+    login.style.display = 'block';
+    setTimeout(() => document.getElementById('pin-login-input')?.focus(), 80);
   } else {
-    updateUserBadge();
-    document.getElementById('log-toggle').style.display = 'flex';
+    title.textContent = 'Set up personal PINs';
+    sub.textContent = 'First time on this phone: create one PIN for each parent.';
+    setup.style.display = 'grid';
+    login.style.display = 'none';
+    setTimeout(() => document.getElementById('pin-justin')?.focus(), 80);
   }
+  return true;
+}
+
+function showWhoPickerIfNeeded(force) {
+  if (!hasParentPins()) {
+    sessionStorage.removeItem(USER_KEY);
+    currentUser = null;
+  }
+  const gate = document.getElementById('who-gate');
+  if (!gate) {
+    setTimeout(() => showWhoPickerIfNeeded(force), 120);
+    return;
+  }
+  if (!currentUser || force) {
+    renderPinGate();
+    gate.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  } else {
+    gate.classList.remove('show');
+    document.body.style.overflow = '';
+    updateUserBadge();
+    const logToggle = document.getElementById('log-toggle');
+    if (logToggle) logToggle.style.display = 'flex';
+  }
+}
+
+async function saveParentPins() {
+  const j = document.getElementById('pin-justin').value.trim();
+  const b = document.getElementById('pin-brittany').value.trim();
+  if (!/^\d{4,8}$/.test(j) || !/^\d{4,8}$/.test(b)) {
+    showPinError('Use 4 to 8 numbers for each PIN.');
+    return;
+  }
+  if (j === b) {
+    showPinError('Justin and Brittany need different PINs.');
+    return;
+  }
+  savePinStore({
+    Justin: await pinHash(j, 'Justin'),
+    Brittany: await pinHash(b, 'Brittany'),
+    createdAt: new Date().toISOString()
+  });
+  document.getElementById('pin-justin').value = '';
+  document.getElementById('pin-brittany').value = '';
+  renderPinGate();
+  showToast('PINs saved on this phone');
+}
+
+async function unlockWithPin() {
+  const pin = document.getElementById('pin-login-input').value.trim();
+  const store = getPinStore();
+  const hJustin = await pinHash(pin, 'Justin');
+  const hBrittany = await pinHash(pin, 'Brittany');
+  if (store.Justin && hJustin === store.Justin) {
+    document.getElementById('pin-login-input').value = '';
+    document.body.style.overflow = '';
+    setUser('Justin');
+    render();
+    return;
+  }
+  if (store.Brittany && hBrittany === store.Brittany) {
+    document.getElementById('pin-login-input').value = '';
+    document.body.style.overflow = '';
+    setUser('Brittany');
+    render();
+    return;
+  }
+  document.getElementById('pin-login-input').value = '';
+  showPinError('That PIN did not match Justin or Brittany.');
+}
+
+function resetParentPins() {
+  if (!confirm('Reset PINs on this phone? You will create new PINs for Justin and Brittany.')) return;
+  localStorage.removeItem(PIN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+  currentUser = null;
+  renderPinGate();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2110,9 +2251,11 @@ let _swapBlockActive = false;
 function checkBlockingSwaps() {
   if (!currentUser) return;
   if (_swapBlockActive) return;
-  // Don't show during password gate / who picker
-  if (document.getElementById('pw-gate').style.display !== 'none') return;
-  if (document.getElementById('who-gate').classList.contains('show')) return;
+  // Don't show during login / PIN picker
+  const pwGate = document.getElementById('pw-gate');
+  const whoGate = document.getElementById('who-gate');
+  if (pwGate && pwGate.style.display !== 'none') return;
+  if (whoGate && whoGate.classList.contains('show')) return;
   // Don't show while summer prop modal is open
   if (document.getElementById('summer-prop-overlay').classList.contains('show')) return;
 
@@ -5582,27 +5725,39 @@ setTimeout(() => {
   <div class="log-body" id="log-body"></div>
 </div>
 
-<!-- ═══════════════════════ WHO ARE YOU PICKER ═══════════════════════ -->
+<!-- ═══════════════════════ PERSONAL PIN GATE ═══════════════════════ -->
 <div id="who-gate">
   <div class="who-card">
-    <div style="font-size:2.4em;margin-bottom:6px">👋</div>
-    <div class="who-title">Who's using the calendar?</div>
-    <div class="who-sub">Tap your name so changes are tracked correctly</div>
-    <div class="who-btns">
-      <button class="who-btn j" onclick="setUser('Justin')">
-        <div class="who-emoji">👨</div>
-        <div>Justin</div>
-      </button>
-      <button class="who-btn b" onclick="setUser('Brittany')">
-        <div class="who-emoji">👩</div>
-        <div>Brittany</div>
-      </button>
+    <div style="font-size:2.4em;margin-bottom:6px">🔐</div>
+    <div class="who-title" id="pin-title">Enter your PIN</div>
+    <div class="who-sub" id="pin-sub">Your PIN identifies who is using the calendar.</div>
+    <div class="pin-error" id="pin-error"></div>
+
+    <div class="pin-setup" id="pin-setup" style="display:none">
+      <div class="pin-row">
+        <div class="pin-row-label">👨 Justin's PIN</div>
+        <input class="pin-input" id="pin-justin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••">
+      </div>
+      <div class="pin-row">
+        <div class="pin-row-label">👩 Brittany's PIN</div>
+        <input class="pin-input" id="pin-brittany" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••"
+          onkeydown="if(event.key==='Enter')saveParentPins()">
+      </div>
+      <button class="btn btn-save" onclick="saveParentPins()" style="width:100%;margin-top:2px">Save PINs</button>
+      <div class="pin-mode-note">PINs are stored only on this phone. Each iPhone can set its own PINs the first time it opens the updated app.</div>
+    </div>
+
+    <div id="pin-login" style="display:none">
+      <input class="pin-input" id="pin-login-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••"
+        onkeydown="if(event.key==='Enter')unlockWithPin()">
+      <button class="btn btn-save" onclick="unlockWithPin()" style="width:100%;margin-top:12px">Unlock</button>
+      <button class="pin-secondary" onclick="resetParentPins()">Reset PINs on this phone</button>
     </div>
   </div>
 </div>
 
 <!-- ═══════════════════════ PASSWORD GATE ═══════════════════════ -->
-<div id="pw-gate" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;">
+<div id="pw-gate" style="display:none">
   <div style="background:var(--card-elev);border-radius:20px;padding:34px 30px 28px;width:90%;max-width:380px;box-shadow:0 28px 70px rgba(0,0,0,.5);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--border)">
     <div style="font-size:2.5em;margin-bottom:7px">📅</div>
     <div style="font-weight:900;font-size:1.4em;color:var(--text);margin-bottom:3px">Xander's Calendar</div>
@@ -5625,43 +5780,14 @@ setTimeout(() => {
 </style>
 <script>
 (function(){
-  async function sha256(msg){
-    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-  const HASH='f0f98a9650227603cd8d6fe0ce13e3a15526a6d1d56e21447f6617d3861f9e65';
-  const SK='xander_cal_auth';
-  if(sessionStorage.getItem(SK)===HASH){
-    document.getElementById('pw-gate').style.display='none';
-    // who-picker will run via render() init code
-    return;
-  }
-  document.body.style.overflow='hidden';
-  window.checkPw=async function(){
-    const val=document.getElementById('pw-input').value;
-    const hash=await sha256(val);
-    if(hash===HASH){
-      sessionStorage.setItem(SK,HASH);
-      const g=document.getElementById('pw-gate');
-      g.style.transition='opacity .35s';g.style.opacity='0';
-      setTimeout(()=>{g.style.display='none';},360);
-      document.body.style.overflow='';
-      // After password unlock, show who-picker if user not yet selected
-      if (typeof showWhoPickerIfNeeded === 'function') {
-        setTimeout(() => showWhoPickerIfNeeded(), 380);
-      }
-    } else {
-      const err=document.getElementById('pw-error');
-      const inp=document.getElementById('pw-input');
-      err.style.display='block';inp.value='';inp.style.borderColor='#dc2626';
-      inp.style.animation='none';inp.offsetHeight;inp.style.animation='shake .4s ease';inp.focus();
-    }
-  };
-  window.togglePwVis=function(){
-    const inp=document.getElementById('pw-input'),eye=document.getElementById('pw-eye');
-    inp.type=inp.type==='password'?'text':'password';eye.textContent=inp.type==='password'?'👁':'🙈';
-  };
-  window.addEventListener('load',()=>setTimeout(()=>document.getElementById('pw-input').focus(),400));
+  // Legacy password gate is retired. The personal PIN gate above now handles
+  // identity, while this no-op keeps older inline handlers harmless.
+  window.checkPw = function(){};
+  window.togglePwVis = function(){};
+  document.getElementById('pw-gate')?.remove();
+  setTimeout(() => {
+    if (typeof showWhoPickerIfNeeded === 'function') showWhoPickerIfNeeded();
+  }, 80);
 })();
 </script>
 <!-- ═══════════════════════ END PASSWORD GATE ═══════════════════════ -->
