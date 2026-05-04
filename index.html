@@ -777,13 +777,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 
 /* ── Apple Calendar visual polish ──────────────────────────── */
-/* Today gets a soft red glow so it is easy to spot at a glance */
-.dc.today-ring{outline:1.5px solid rgba(220,38,38,.72);outline-offset:-2px;box-shadow:0 0 0 4px rgba(220,38,38,.12),0 0 18px rgba(220,38,38,.28),var(--shadow-md)}
+/* Today gets an unmistakable red highlight so it is easy to spot at a glance */
+.dc.today-ring{outline:2.5px solid rgba(220,38,38,.95);outline-offset:-2px;background:linear-gradient(135deg,rgba(220,38,38,.18),var(--card) 62%)!important;box-shadow:0 0 0 5px rgba(220,38,38,.18),0 0 26px rgba(220,38,38,.42),var(--shadow-lg)}
 .dc.today-ring .d-num{position:relative;color:#dc2626 !important}
 .dc.today-ring .d-num::after{display:none}
-.dc.today-ring .d-today{display:none !important}
-:root[data-theme="dark"] .dc.today-ring{outline-color:rgba(255,69,58,.82);box-shadow:0 0 0 4px rgba(255,69,58,.18),0 0 22px rgba(255,69,58,.38),var(--shadow-md)}
+.dc.today-ring .d-today{display:inline-block!important;background:#dc2626;color:#fff;border-radius:999px;padding:1px 5px;font-size:.5em;line-height:1.45;vertical-align:middle;margin-left:5px;letter-spacing:.04em}
+:root[data-theme="dark"] .dc.today-ring{outline-color:rgba(255,69,58,.95);background:linear-gradient(135deg,rgba(255,69,58,.25),var(--bg-2) 62%)!important;box-shadow:0 0 0 5px rgba(255,69,58,.22),0 0 30px rgba(255,69,58,.5),var(--shadow-lg)}
 :root[data-theme="dark"] .dc.today-ring .d-num{color:#ff453a !important}
+:root[data-theme="dark"] .dc.today-ring .d-today{background:#ff453a;color:#fff}
 
 /* Cleaner day-number typography (SF-style numerals) */
 .d-num{font-feature-settings:"tnum" 1;letter-spacing:-.5px}
@@ -808,7 +809,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dc.b-str{background:linear-gradient(135deg,rgba(236,72,153,.1),var(--card));border-color:rgba(236,72,153,.25);border-left-color:var(--b)}
 .dc.mid{border-left-color:#a78bfa}
 .dc.bday-x,.dc.pbday-j,.dc.pbday-b{border-left-color:var(--gold)}
-.dc.today-ring{box-shadow:0 0 0 4px rgba(220,38,38,.12),0 0 18px rgba(220,38,38,.28),var(--shadow-md)}
+.dc.today-ring{box-shadow:0 0 0 5px rgba(220,38,38,.18),0 0 26px rgba(220,38,38,.42),var(--shadow-lg)}
 .d-num{color:var(--text);margin-bottom:1px}
 .d-event,.d-note,.d-travel{
   display:-webkit-box;
