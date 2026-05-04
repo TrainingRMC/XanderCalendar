@@ -903,6 +903,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .history-filter.active{background:var(--text);border-color:var(--text);color:var(--card)}
 .history-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
 .history-sort{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:6px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif}
+.history-search-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px;margin:0 0 9px;display:grid;gap:7px}
+.history-search-input{width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:10px;padding:9px 11px;font-family:'DM Sans',sans-serif;font-size:.86em;font-weight:600}
+.history-search-input:focus,.history-date-input:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
+.history-date-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.history-date-input{min-width:0;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:9px;padding:8px 9px;font-family:'DM Sans',sans-serif;font-size:.8em;font-weight:700}
+.history-clear{border:1px solid var(--border);background:var(--bg-2);color:var(--muted);border-radius:9px;padding:8px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.travel-summary{background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card));border:1px solid rgba(16,185,129,.35);border-radius:12px;padding:10px 11px;margin:0 0 9px}
+.travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
+.travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
+.travel-summary-sub{font-size:.78em;color:var(--muted);line-height:1.35;margin-top:3px}
+.record-match{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:7px;cursor:pointer}
+.record-match:hover{border-color:var(--j);box-shadow:var(--shadow-sm)}
+.record-match-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text)}
+.record-match-sub{font-size:.76em;color:var(--muted);margin-top:2px;line-height:1.3}
 .inbox-history-row{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:10px 11px;margin-bottom:7px;font-size:.82em;line-height:1.35}
 .inbox-history-row.j{border-left-color:var(--j)}.inbox-history-row.b{border-left-color:var(--b)}
 .inbox-history-row.travel{border-left-color:var(--emerald)}.inbox-history-row.summer{border-left-color:var(--gold)}.inbox-history-row.school{border-left-color:#a78bfa}.inbox-history-row.system{border-left-color:var(--muted)}
@@ -940,6 +954,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 @media(max-width:380px){
   .dash-grid{grid-template-columns:1fr}
   .dash-actions{grid-template-columns:repeat(2,1fr)}
+  .history-date-row{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -3888,8 +3903,9 @@ function parseSearchDate(q) {
     if (q.startsWith(shortName)) {
       const rest = q.slice(longName.length).trim() || q.slice(shortName.length).trim();
       const parts = rest.split(/\s+/);
-      const d = parseInt(parts[0]) || 1;
-      let y = parts[1] ? parseInt(parts[1]) : new Date().getFullYear();
+      const first = parseInt(parts[0]);
+      const d = first && first < 100 ? first : 1;
+      let y = first && first > 999 ? first : (parts[1] ? parseInt(parts[1]) : new Date().getFullYear());
       if (y < 100) y += 2000;
       if (validDate(y,i,d)) return {year:y,month:i,day:d,event:'',owner:'',dateKey:`${y}-${String(i+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`};
     }
@@ -5513,6 +5529,9 @@ function _v13OpenInboxFromPage(e){
 let inboxViewMode = 'actions';
 let historyFilter = 'all';
 let historySort = 'newest';
+let historyQuery = '';
+let historyMonth = '';
+let historyDate = '';
 
 function setInboxView(mode, e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -5529,6 +5548,43 @@ function setHistoryFilter(filter, e){
 function setHistorySort(sort, e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   historySort = sort;
+  renderInboxBody();
+}
+
+function setHistoryQuery(value, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyQuery = value || '';
+  const pos = e && e.target ? e.target.selectionStart : null;
+  renderInboxBody();
+  if (e && e.target) {
+    const next = document.getElementById('history-search-input');
+    if (next) {
+      next.focus();
+      if (pos !== null) next.setSelectionRange(pos, pos);
+    }
+  }
+}
+
+function setHistoryMonth(value, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyMonth = value || '';
+  if (historyMonth) historyDate = '';
+  renderInboxBody();
+}
+
+function setHistoryDate(value, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyDate = value || '';
+  if (historyDate) historyMonth = '';
+  renderInboxBody();
+}
+
+function clearHistorySearch(e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyQuery = '';
+  historyMonth = '';
+  historyDate = '';
+  historyFilter = 'all';
   renderInboxBody();
 }
 
@@ -5576,6 +5632,122 @@ function _v13HistoryIcon(kind){
     school:'🏫',
     system:'•'
   }[kind] || '•';
+}
+
+function _v13HistoryMatchesSearch(entry){
+  const q = historyQuery.trim().toLowerCase();
+  const haystack = `${entry.by || ''} ${entry.type || ''} ${entry.msg || ''}`.toLowerCase();
+  const entryDay = (entry.ts || '').slice(0,10);
+  if (historyDate && entryDay !== historyDate) return false;
+  if (historyMonth && entryDay.slice(0,7) !== historyMonth) return false;
+  if (!q) return true;
+  const parsed = parseSearchDate(q);
+  if (parsed && entryDay === parsed.dateKey) return true;
+  return haystack.includes(q);
+}
+
+function _v13RangeOverlaps(start, end, filterStart, filterEnd){
+  if (!start || !end) return false;
+  return start <= filterEnd && end >= filterStart;
+}
+
+function _v13TravelMatchesSearch(t){
+  if (!t) return false;
+  const q = historyQuery.trim().toLowerCase();
+  const haystack = `${t.by || ''} ${t.label || ''} ${t.notes || ''} ${t.start || ''} ${t.end || ''}`.toLowerCase();
+  if (historyDate && !_v13RangeOverlaps(t.start, t.end, historyDate, historyDate)) return false;
+  if (historyMonth) {
+    const [y, m] = historyMonth.split('-').map(Number);
+    const monthStart = `${historyMonth}-01`;
+    const monthEnd = `${historyMonth}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+    if (!_v13RangeOverlaps(t.start, t.end, monthStart, monthEnd)) return false;
+  }
+  if (!q) return true;
+  if (q === 'travel' || q === 'traveled' || q === 'trip' || q === 'trips') return true;
+  const parsed = parseSearchDate(q);
+  if (parsed && _v13RangeOverlaps(t.start, t.end, parsed.dateKey, parsed.dateKey)) return true;
+  return haystack.includes(q);
+}
+
+function _v13TravelCountDays(t){
+  let start = t.start;
+  let end = t.end;
+  if (historyDate) {
+    start = historyDate;
+    end = historyDate;
+  } else if (historyMonth) {
+    const [y, m] = historyMonth.split('-').map(Number);
+    const monthStart = `${historyMonth}-01`;
+    const monthEnd = `${historyMonth}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+    start = start > monthStart ? start : monthStart;
+    end = end < monthEnd ? end : monthEnd;
+  }
+  return daysBetween(start, end);
+}
+
+function _v13BuildTravelSummary(){
+  const trips = (travelEntries || []).filter(_v13TravelMatchesSearch);
+  if (!trips.length) return '';
+  const totalDays = trips.reduce((sum, t) => sum + _v13TravelCountDays(t), 0);
+  const byParent = trips.reduce((acc, t) => {
+    const who = t.by || 'Unknown';
+    acc[who] = (acc[who] || 0) + _v13TravelCountDays(t);
+    return acc;
+  }, {});
+  const parentLine = Object.entries(byParent).map(([who, days]) => `${who}: ${days} day${days===1?'':'s'}`).join(' · ');
+  const rangeLine = trips
+    .slice()
+    .sort((a,b) => (a.start || '').localeCompare(b.start || ''))
+    .slice(0,3)
+    .map(t => `${fmtDate(t.start)}${t.end !== t.start ? ' - ' + fmtDate(t.end) : ''}${t.label ? ` (${_v13EscapeHtml(t.label)})` : ''}`)
+    .join('<br>');
+  return `<div class="travel-summary">
+    <div class="travel-summary-title">Travel Summary</div>
+    <div class="travel-summary-main">${trips.length} trip${trips.length===1?'':'s'} · ${totalDays} day${totalDays===1?'':'s'}</div>
+    <div class="travel-summary-sub">${parentLine}${rangeLine ? `<br>${rangeLine}` : ''}</div>
+  </div>`;
+}
+
+function _v13CalendarRecordMatches(){
+  if (!historyQuery.trim() && !historyMonth && !historyDate) return '';
+  const q = historyQuery.trim().toLowerCase();
+  const parsed = q ? parseSearchDate(q) : null;
+  const matches = [];
+  const seen = new Set();
+
+  Object.keys(DEFAULT).forEach(monthKey => {
+    Object.keys(DEFAULT[monthKey]).forEach(dayStr => {
+      const day = parseInt(dayStr);
+      const [yr, mo] = monthKey.split('-').map(Number);
+      const dateKey = `${yr}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      if (seen.has(dateKey)) return;
+      if (historyDate && dateKey !== historyDate) return;
+      if (historyMonth && dateKey.slice(0,7) !== historyMonth) return;
+
+      const base = DEFAULT[monthKey][dayStr];
+      const ov = overrides[dateKey] || {};
+      const event = (ov.event !== undefined ? ov.event : base.event) || '';
+      const note = ov.note || '';
+      const owner = ov.owner || base.owner;
+      const haystack = `${dateKey} ${event} ${note} ${owner} ${base.is_bday ? 'birthday xander' : ''} ${base.parent_bday ? base.parent_bday + ' birthday' : ''}`.toLowerCase();
+      const matchesQuery = !q || haystack.includes(q) || (parsed && parsed.dateKey === dateKey);
+      if (!matchesQuery) return;
+      seen.add(dateKey);
+      matches.push({ year:yr, month:mo-1, day, dateKey, event:event || (base.is_bday ? "Xander's Birthday" : ''), note, owner });
+    });
+  });
+
+  if (!matches.length) return '';
+  return `<div class="inbox-section-head" style="margin-top:10px">
+    <div class="inbox-history-title" style="margin:0">Calendar Matches</div>
+    <div class="inbox-section-count">${matches.length} found</div>
+  </div>` + matches.slice(0,8).map(m => {
+    const dateText = new Date(m.year, m.month, m.day).toLocaleDateString('en-US', {weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    return `<div class="record-match" onclick="closeInbox();jumpToSearchResult(${m.year},${m.month},${m.day})">
+      <div class="record-match-title">${dateText}</div>
+      <div class="record-match-sub">${_v13EscapeHtml(m.event || 'Regular parenting time')} · ${_v13EscapeHtml(m.owner || '')}${m.note ? `<br>Note: ${_v13EscapeHtml(m.note)}` : ''}</div>
+    </div>`;
+  }).join('');
 }
 
 function _v13ShowSearch(){
@@ -5912,6 +6084,7 @@ renderInboxBody = function(){
   const allHistory = (activityLog || []);
   const filteredHistory = allHistory
     .filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter)
+    .filter(_v13HistoryMatchesSearch)
     .sort((a,b) => historySort === 'oldest'
       ? (a.ts || '').localeCompare(b.ts || '')
       : (b.ts || '').localeCompare(a.ts || ''));
@@ -5934,6 +6107,16 @@ renderInboxBody = function(){
     const count = key === 'all' ? allHistory.length : allHistory.filter(e => _v13HistoryKind(e.type) === key).length;
     return `<button class="history-filter ${historyFilter===key?'active':''}" onclick="setHistoryFilter('${key}', event)">${label} ${count}</button>`;
   }).join('')}</div>`;
+  const searchHtml = `<div class="history-search-panel">
+    <input id="history-search-input" class="history-search-input" value="${_v13EscapeHtml(historyQuery)}"
+      placeholder="Search record, travel, notes, events, or dates..."
+      oninput="setHistoryQuery(this.value, event)" onclick="event.stopPropagation()">
+    <div class="history-date-row">
+      <input class="history-date-input" type="month" value="${historyMonth}" onchange="setHistoryMonth(this.value, event)" onclick="event.stopPropagation()" aria-label="Filter by month">
+      <input class="history-date-input" type="date" value="${historyDate}" onchange="setHistoryDate(this.value, event)" onclick="event.stopPropagation()" aria-label="Filter by date">
+      <button class="history-clear" onclick="clearHistorySearch(event)">Clear</button>
+    </div>
+  </div>`;
   const sortHtml = `<div class="history-tools">
     <div class="inbox-history-title" style="margin:0">Sort by Date</div>
     <select class="history-sort" onchange="setHistorySort(this.value, event)" onclick="event.stopPropagation()">
@@ -5941,11 +6124,15 @@ renderInboxBody = function(){
       <option value="oldest" ${historySort==='oldest'?'selected':''}>Oldest first</option>
     </select>
   </div>`;
+  const travelSummaryHtml = (historyFilter === 'all' || historyFilter === 'travel' || historyQuery || historyMonth || historyDate)
+    ? _v13BuildTravelSummary()
+    : '';
+  const calendarMatchesHtml = _v13CalendarRecordMatches();
   const historyHtml = history.length
     ? `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
-      </div>${filterHtml}${sortHtml}` + history.map(e => {
+      </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
         const kind = _v13HistoryKind(e.type);
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
@@ -5959,7 +6146,7 @@ renderInboxBody = function(){
     : `<div class="inbox-section-head" style="margin-top:18px">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
-      </div>${filterHtml}${sortHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
+      </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
   const actionSection = `
     <div class="inbox-section-head">
