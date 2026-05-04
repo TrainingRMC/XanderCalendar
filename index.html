@@ -657,9 +657,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 
 /* ── HAMBURGER MENU ── */
-#menu-btn{background:var(--bg-2);color:var(--text);border:1px solid var(--border);width:38px;height:38px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .18s ease;margin-left:auto}
-#menu-btn:hover{background:var(--card-elev);border-color:var(--j)}
-.menu-dropdown{display:none;position:absolute;top:calc(100% - 6px);right:18px;background:var(--card-elev);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-xl);min-width:240px;z-index:200;padding:6px;animation:menuPop .18s cubic-bezier(.4,0,.2,1)}
+#menu-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .18s ease;backdrop-filter:blur(10px)}
+#menu-btn:hover{background:rgba(255,255,255,.22);transform:scale(1.06)}
+.menu-dropdown{display:none;position:fixed;top:58px;right:18px;background:var(--card-elev);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-xl);min-width:240px;z-index:2000;padding:6px;animation:menuPop .18s cubic-bezier(.4,0,.2,1)}
 .menu-dropdown.show{display:block}
 @keyframes menuPop{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .menu-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:none;background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92em;text-align:left;cursor:pointer;border-radius:9px;transition:background .14s}
@@ -672,8 +672,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* The year-tabs row needs position:relative for the absolute dropdown */
 .year-tabs{position:relative}
 
-:root[data-theme="dark"] #menu-btn{background:var(--card);color:var(--text);border-color:var(--border)}
-:root[data-theme="dark"] #menu-btn:hover{background:var(--card-elev);border-color:var(--j)}
 :root[data-theme="dark"] .menu-item:hover{background:var(--bg-2)}
 
 /* ═══════════════════════════════════════════════════════
@@ -844,6 +842,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
       <div style="display:flex;gap:7px;align-items:center">
+        <button id="menu-btn" onclick="toggleMenu(event)" title="Menu" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
         <div class="hdr-info"><b>Xander</b><br>Born May 27, 2012 · Age 13</div>
       </div>
@@ -926,50 +931,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </button>
     <div class="past-years-dropdown" id="past-years-dropdown"></div>
   </span>
-  <button id="menu-btn" onclick="toggleMenu(event)" title="Menu" aria-label="Menu">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
+</div>
+
+<div id="menu-dropdown" class="menu-dropdown">
+  <button class="menu-item" onclick="closeMenu();openExport()">
+    <span class="menu-icon">📲</span>
+    <div class="menu-text">
+      <div class="menu-label">Add to Phone</div>
+      <div class="menu-hint">iPhone calendar subscription</div>
+    </div>
   </button>
-  <div id="menu-dropdown" class="menu-dropdown">
-    <button class="menu-item" onclick="closeMenu();openExport()">
-      <span class="menu-icon">📲</span>
-      <div class="menu-text">
-        <div class="menu-label">Add to Phone</div>
-        <div class="menu-hint">iPhone calendar subscription</div>
-      </div>
-    </button>
-    <button class="menu-item" onclick="closeMenu();openNotifs()">
-      <span class="menu-icon">🔔</span>
-      <div class="menu-text">
-        <div class="menu-label">Notifications</div>
-        <div class="menu-hint" id="menu-notif-hint">Push alerts when needed</div>
-      </div>
-    </button>
-    <button class="menu-item" onclick="closeMenu();openTravel()">
-      <span class="menu-icon">✈️</span>
-      <div class="menu-text">
-        <div class="menu-label">Travel</div>
-        <div class="menu-hint">Add or manage trips</div>
-      </div>
-    </button>
-    <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
-      <span class="menu-icon">☀️</span>
-      <div class="menu-text">
-        <div class="menu-label">Summer Planner</div>
-        <div class="menu-hint">Plan & apply 2-week vacation blocks</div>
-      </div>
-    </button>
-    <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
-      <span class="menu-icon">🏫</span>
-      <div class="menu-text">
-        <div class="menu-label">School Calendar</div>
-        <div class="menu-hint">Breaks, first/last day, no-school days</div>
-      </div>
-    </button>
-  </div>
+  <button class="menu-item" onclick="closeMenu();openNotifs()">
+    <span class="menu-icon">🔔</span>
+    <div class="menu-text">
+      <div class="menu-label">Notifications</div>
+      <div class="menu-hint" id="menu-notif-hint">Push alerts when needed</div>
+    </div>
+  </button>
+  <button class="menu-item" onclick="closeMenu();openTravel()">
+    <span class="menu-icon">✈️</span>
+    <div class="menu-text">
+      <div class="menu-label">Travel</div>
+      <div class="menu-hint">Add or manage trips</div>
+    </div>
+  </button>
+  <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
+    <span class="menu-icon">☀️</span>
+    <div class="menu-text">
+      <div class="menu-label">Summer Planner</div>
+      <div class="menu-hint">Plan & apply 2-week vacation blocks</div>
+    </div>
+  </button>
+  <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
+    <span class="menu-icon">🏫</span>
+    <div class="menu-text">
+      <div class="menu-label">School Calendar</div>
+      <div class="menu-hint">Breaks, first/last day, no-school days</div>
+    </div>
+  </button>
 </div>
 
 <!-- MONTH GRID for selected year -->
