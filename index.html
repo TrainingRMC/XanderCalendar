@@ -4050,6 +4050,9 @@ function travelStatusLabel(t){
   const other = travelOtherParent(t);
   return isTravelAcknowledged(t) ? `${other} acknowledged` : `Awaiting ${other} acknowledgement`;
 }
+function travelActionLabel(t){
+  return t && t.updatedAt ? 'updated' : 'added';
+}
 function acknowledgeTravel(id){
   if (!currentUser) return;
   const t = (travelEntries || []).find(x => x.id === id);
@@ -4182,6 +4185,7 @@ function saveTravel() {
 
     // A meaningful edit needs fresh acknowledgement from the other parent.
     const ackKey = travelAckKey(existing.id);
+    existing.acknowledgedBy = {};
     if (inboxState[other] && inboxState[other].dismissed) delete inboxState[other].dismissed[ackKey];
     if (inboxState[other] && inboxState[other].read) delete inboxState[other].read[ackKey];
 
@@ -6310,8 +6314,8 @@ renderInboxItem = function(item){
         <div class="inbox-item-hdr">
           <span class="inbox-item-icon">✈️</span>
           <div class="inbox-item-meta">
-            <div class="inbox-item-t">${t.by} added work travel</div>
-            <div class="inbox-item-when">${formatLogTime(t.createdAt || t.start)}</div>
+            <div class="inbox-item-t">${t.by} ${travelActionLabel(t)} work travel</div>
+            <div class="inbox-item-when">${formatLogTime(t.updatedAt || t.createdAt || t.start)}</div>
           </div>
         </div>
         <div class="inbox-item-body">
