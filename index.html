@@ -141,8 +141,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 #sync-bar{background:var(--emerald-soft);border-bottom:1px solid var(--border-subtle);padding:7px 18px;display:flex;align-items:center;gap:9px;font-size:.74em;font-family:'DM Sans',sans-serif;flex-wrap:wrap;transition:background .3s ease}
 
-/* YEAR TABS */
-.year-tabs{background:var(--card);border-bottom:1px solid var(--border);padding:9px 18px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+/* CALENDAR TOOLBAR */
+.calendar-toolbar{max-width:980px;margin:10px auto 0;padding:0 12px}
+.cal-toolbar-shell{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);overflow:hidden}
+.cal-toolbar-top{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--border-subtle)}
+.cal-title-block{min-width:0;text-align:left}
+.cal-sub{font-size:.74em;color:var(--muted);margin-top:1px}
+.cal-icon-btn,.cal-today-btn{border:1px solid var(--border);background:var(--bg-2);color:var(--text);border-radius:10px;height:36px;min-width:36px;padding:0 10px;font-family:'Nunito',sans-serif;font-weight:900;cursor:pointer;transition:background .14s,transform .12s,border-color .14s}
+.cal-icon-btn{font-size:1.3em;line-height:1}
+.cal-today-btn{font-size:.78em}
+.cal-icon-btn:hover,.cal-today-btn:hover{background:var(--j-soft);border-color:var(--j);color:var(--j);transform:translateY(-1px)}
+.cal-picker-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:9px 10px;background:var(--bg-2)}
+.year-tabs{padding:0;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;background:transparent;border:0}
 .year-tab{background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:5px 15px;font-size:.81em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .18s ease;color:var(--muted)}
 .year-tab:hover{background:var(--j-soft);border-color:var(--j);color:var(--j)}
 .year-tab.active{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff;box-shadow:0 2px 8px var(--j-soft)}
@@ -158,20 +168,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .past-years-dropdown{background:var(--card-elev);border-color:var(--border)}
 :root[data-theme="dark"] .past-year-item:hover{background:var(--bg-2)}
 
-.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.month-lbl{font-family:'Nunito',sans-serif;font-size:1.32em;font-weight:900;min-width:200px;text-align:center;letter-spacing:-.5px;color:var(--text)}
+.nav{display:none}
+.month-lbl{font-family:'Nunito',sans-serif;font-size:1.32em;font-weight:900;letter-spacing:-.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav-btn{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:.86em;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .2s ease;box-shadow:0 2px 8px var(--j-soft)}
 .nav-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px var(--j-soft);filter:brightness(1.08)}
 .nav-btn:active{transform:translateY(0)}
 
 /* MONTH GRID ROW - shows all months in selected year */
-.month-grid{background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap}
+.month-grid{padding:0;display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.month-grid::-webkit-scrollbar{display:none}
 .mth-btn{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:.74em;font-weight:600;cursor:pointer;transition:all .15s ease;color:var(--text-2)}
 .mth-btn:hover{background:var(--j-soft);border-color:var(--j);color:var(--j)}
 .mth-btn.active{background:var(--j-soft);border-color:var(--j);color:var(--j);font-weight:800}
 
-.stats{display:flex;gap:9px;padding:10px 18px;background:var(--bg-2);border-bottom:1px solid var(--border);flex-wrap:wrap}
-.stat{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 14px;font-size:.78em;box-shadow:var(--shadow-sm)}
+.stats{max-width:980px;margin:8px auto 0;padding:0 12px;display:flex;gap:7px;flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:.76em;box-shadow:var(--shadow-sm)}
 .stat-dot{width:9px;height:9px;border-radius:50%}
 .stat-v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.12em}
 .stat-l{color:var(--muted);font-size:.82em}
@@ -291,7 +302,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 @media(max-width:600px){
   .dc{min-height:80px;padding:5px 4px}.cal-wrap{padding:7px 7px 18px}
-  .nav{padding:8px 11px}.month-lbl{font-size:1.05em;min-width:150px}
+  .calendar-toolbar{margin-top:8px;padding:0 8px}.cal-toolbar-top{grid-template-columns:auto 1fr auto auto;padding:10px 9px;gap:6px}.month-lbl{font-size:1.05em}.cal-sub{font-size:.68em}.cal-picker-row{grid-template-columns:1fr;padding:8px}.year-tabs{overflow-x:auto;scrollbar-width:none}.year-tab{padding:5px 12px}.mth-btn{padding:5px 10px}
   .week-grid,.time-row{grid-template-columns:1fr}
 }
 
@@ -632,11 +643,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 :root[data-theme="dark"] .legend{background:var(--bg-2);color:var(--text)}
 :root[data-theme="dark"] .lg{color:var(--text-2)}
 :root[data-theme="dark"] .legend-hint{color:var(--muted)}
-:root[data-theme="dark"] .stats{background:var(--bg)}
 :root[data-theme="dark"] .stat{background:var(--bg-2);border-color:var(--border)}
-:root[data-theme="dark"] .nav{background:var(--bg-2)}
-:root[data-theme="dark"] .year-tabs{background:var(--bg-2)}
-:root[data-theme="dark"] .month-grid{background:var(--bg-2)}
+:root[data-theme="dark"] .cal-toolbar-shell{background:var(--bg-2)}
+:root[data-theme="dark"] .cal-picker-row{background:var(--bg)}
 :root[data-theme="dark"] .mth-btn{background:var(--card);color:var(--text-2)}
 :root[data-theme="dark"] .mth-btn:hover{background:var(--card-elev)}
 :root[data-theme="dark"] .year-tab{background:var(--card);color:var(--text-2);border-color:var(--border)}
@@ -960,18 +969,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="search-results" id="search-results" style="display:none"></div>
 </div>
 
-<!-- YEAR TABS (rolling: current + next, with Past Years dropdown) -->
-<div class="year-tabs">
-  <span class="year-tab-lbl">Year:</span>
-  <span id="year-tabs-current" style="display:inline-flex;gap:7px"></span>
-  <span class="past-years-wrap" id="past-years-wrap" style="display:none;position:relative">
-    <button class="year-tab past-years-btn" id="past-years-btn" onclick="togglePastYears(event)" title="Past years">
-      <span id="past-years-btn-label">Past Years</span>
-      <span style="font-size:.65em;opacity:.7;margin-left:3px">▼</span>
-    </button>
-    <div class="past-years-dropdown" id="past-years-dropdown"></div>
-  </span>
-</div>
+<!-- CALENDAR TOOLBAR -->
+<section class="calendar-toolbar">
+  <div class="cal-toolbar-shell">
+    <div class="cal-toolbar-top">
+      <button class="cal-icon-btn" onclick="changeMonth(-1)" aria-label="Previous month">‹</button>
+      <div class="cal-title-block">
+        <div class="month-lbl" id="month-lbl"></div>
+        <div class="cal-sub">Tap any day to edit details or add a note</div>
+      </div>
+      <button class="cal-today-btn" onclick="jumpTo(today.getFullYear(),today.getMonth())">Today</button>
+      <button class="cal-icon-btn" onclick="changeMonth(1)" aria-label="Next month">›</button>
+    </div>
+    <div class="cal-picker-row">
+      <div class="year-tabs">
+        <span id="year-tabs-current" style="display:inline-flex;gap:6px"></span>
+        <span class="past-years-wrap" id="past-years-wrap" style="display:none;position:relative">
+          <button class="year-tab past-years-btn" id="past-years-btn" onclick="togglePastYears(event)" title="Past years">
+            <span id="past-years-btn-label">Past Years</span>
+            <span style="font-size:.65em;opacity:.7;margin-left:3px">▼</span>
+          </button>
+          <div class="past-years-dropdown" id="past-years-dropdown"></div>
+        </span>
+      </div>
+      <div class="month-grid" id="month-grid"></div>
+    </div>
+  </div>
+</section>
 
 <div id="menu-dropdown" class="menu-dropdown">
   <button class="menu-item" onclick="closeMenu();openExport()">
@@ -1009,15 +1033,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="menu-hint">Breaks, first/last day, no-school days</div>
     </div>
   </button>
-</div>
-
-<!-- MONTH GRID for selected year -->
-<div class="month-grid" id="month-grid"></div>
-
-<div class="nav">
-  <button class="nav-btn" onclick="changeMonth(-1)">◀ Prev</button>
-  <div class="month-lbl" id="month-lbl"></div>
-  <button class="nav-btn" onclick="changeMonth(1)">Next ▶</button>
 </div>
 
 <div id="sum-banner"></div>
@@ -1319,6 +1334,7 @@ function renderMonthGrid(){
   mg.innerHTML = months.map(m =>
     `<button class="mth-btn${m===cM?' active':''}" onclick="jumpTo(${cY},${m})">${MN_SHORT[m]}</button>`
   ).join('');
+  requestAnimationFrame(() => mg.querySelector('.mth-btn.active')?.scrollIntoView({inline:'center',block:'nearest'}));
 }
 
 // ── RENDER ───────────────────────────────────────────────────────
