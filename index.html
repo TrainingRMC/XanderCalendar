@@ -533,7 +533,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .travel-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
 .travel-sub{font-size:.83em;opacity:.92;margin-top:2px}
 .travel-body{padding:18px 20px}
-.travel-list{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.travel-list{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .travel-list-title{font-size:.74em;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .travel-item{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
 .travel-item-icon{font-size:1.3em;line-height:1}
@@ -545,6 +545,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .travel-status.wait{background:var(--gold-soft);border-color:var(--gold);color:#92400e}
 .travel-item-rm{background:none;border:none;color:#dc2626;cursor:pointer;font-size:1.1em;padding:4px 8px;border-radius:6px;line-height:1}
 .travel-item-rm:hover{background:rgba(220,38,38,.1)}
+.travel-item-actions{display:flex;gap:5px;flex-shrink:0}
+.travel-item-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:7px;padding:6px 9px;font-size:.78em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;transition:background .14s,transform .12s}
+.travel-item-btn:hover{background:var(--j-soft);color:var(--j);transform:translateY(-1px)}
+.travel-item-btn.delete{color:#dc2626}
+.travel-item-btn.delete:hover{background:rgba(220,38,38,.1);color:#dc2626}
+.travel-edit-banner{display:none;background:var(--emerald-soft);border:1px solid rgba(16,185,129,.35);border-radius:9px;padding:8px 11px;margin-bottom:11px;font-size:.82em;color:var(--text);font-weight:700}
+.travel-edit-banner.show{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.travel-edit-cancel{border:none;background:transparent;color:#dc2626;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
 .travel-empty{text-align:center;color:var(--muted);font-size:.84em;padding:14px;font-style:italic}
 
 /* Make the existing log drawer match dark theme */
@@ -825,6 +833,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   .dash-actions{grid-template-columns:repeat(4,minmax(0,1fr))}
   .dash-action{padding:8px 4px;font-size:.7em}
   .dash-title{font-size:1.18em}
+  .travel-item{align-items:flex-start}
+  .travel-item-actions{flex-direction:column}
 }
 @media(max-width:380px){
   .dash-grid{grid-template-columns:1fr}
@@ -1119,6 +1129,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="travel-sub">Notifies the other parent · doesn't change parenting time</div>
     </div>
     <div class="travel-body" id="travel-body">
+      <div class="travel-list" id="travel-list"></div>
+
+      <div class="travel-edit-banner" id="travel-edit-banner">
+        <span id="travel-edit-text">Editing travel</span>
+        <button class="travel-edit-cancel" onclick="cancelTravelEdit()">Cancel edit</button>
+      </div>
+
       <div class="field-lbl">Start Date</div>
       <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31">
 
@@ -1133,10 +1150,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
       <div class="btn-row">
         <button class="btn btn-cancel" onclick="closeTravel()">Cancel</button>
-        <button class="btn btn-save" onclick="saveTravel()">✈️ Add & Notify</button>
+        <button class="btn btn-save" id="tr-save-btn" onclick="saveTravel()">✈️ Add & Notify</button>
       </div>
-
-      <div class="travel-list" id="travel-list"></div>
     </div>
   </div>
 </div>
@@ -3608,6 +3623,7 @@ function validDate(y, m, d) {
 // ═══════════════════════════════════════════════════════
 
 let travelEntries = []; // {id, start, end, label, notes, by, createdAt}
+let editingTravelId = null;
 
 function travelAckKey(id){ return 'travel-' + id; }
 function travelOtherParent(t){ return t.by === 'Justin' ? 'Brittany' : 'Justin'; }
@@ -3638,10 +3654,12 @@ function acknowledgeTravel(id){
 }
 
 function openTravel(prefillStart, prefillEnd) {
+  editingTravelId = null;
   document.getElementById('tr-start').value = prefillStart || '';
   document.getElementById('tr-end').value = prefillEnd || prefillStart || '';
   document.getElementById('tr-label').value = '';
   document.getElementById('tr-notes').value = '';
+  updateTravelEditMode();
   renderTravelList();
   document.getElementById('travel-overlay').classList.add('show');
 }
@@ -3656,11 +3674,43 @@ function closeTravel() {
   document.getElementById('travel-overlay').classList.remove('show');
 }
 
+function updateTravelEditMode() {
+  const banner = document.getElementById('travel-edit-banner');
+  const text = document.getElementById('travel-edit-text');
+  const saveBtn = document.getElementById('tr-save-btn');
+  const editing = editingTravelId ? (travelEntries || []).find(t => t.id === editingTravelId) : null;
+  if (banner) banner.classList.toggle('show', !!editing);
+  if (text && editing) text.textContent = `Editing ${fmtDate(editing.start)} → ${fmtDate(editing.end)}`;
+  if (saveBtn) saveBtn.textContent = editing ? '✓ Update Travel' : '✈️ Add & Notify';
+}
+
+function editTravel(id) {
+  const t = (travelEntries || []).find(x => x.id === id);
+  if (!t) return;
+  editingTravelId = id;
+  document.getElementById('tr-start').value = t.start || '';
+  document.getElementById('tr-end').value = t.end || t.start || '';
+  document.getElementById('tr-label').value = t.label || '';
+  document.getElementById('tr-notes').value = t.notes || '';
+  updateTravelEditMode();
+  showToast('Editing travel');
+}
+
+function cancelTravelEdit() {
+  editingTravelId = null;
+  document.getElementById('tr-start').value = '';
+  document.getElementById('tr-end').value = '';
+  document.getElementById('tr-label').value = '';
+  document.getElementById('tr-notes').value = '';
+  updateTravelEditMode();
+}
+
 function renderTravelList() {
   const list = document.getElementById('travel-list');
   if (travelEntries.length === 0) {
     list.innerHTML = `<div class="travel-list-title">Active Travel</div>
       <div class="travel-empty">No travel scheduled yet</div>`;
+    updateTravelEditMode();
     return;
   }
   // Sort by start date
@@ -3683,10 +3733,14 @@ function renderTravelList() {
           <div class="travel-item-label" style="font-size:.7em;font-style:italic">added by ${t.by} · visible to both parents</div>
           <div class="travel-status ${isTravelAcknowledged(t)?'ok':'wait'}">${isTravelAcknowledged(t)?'✓':'•'} ${travelStatusLabel(t)}</div>
         </div>
-        <button class="travel-item-rm" onclick="removeTravel('${t.id}')" title="Remove">×</button>
+        <div class="travel-item-actions">
+          <button class="travel-item-btn" onclick="editTravel('${t.id}')" title="Edit trip">Edit</button>
+          <button class="travel-item-btn delete" onclick="removeTravel('${t.id}')" title="Delete trip">Delete</button>
+        </div>
       </div>`).join('');
   }
   list.innerHTML = html;
+  updateTravelEditMode();
 }
 
 function saveTravel() {
@@ -3699,30 +3753,57 @@ function saveTravel() {
   if (end < start) { alert('End date must be on or after start date'); return; }
   if (!currentUser) { alert('Please pick who you are first'); return; }
 
-  const entry = {
-    id: 'tr_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-    start: start,
-    end: end,
-    label: label,
-    notes: notes,
-    by: currentUser,
-    createdAt: new Date().toISOString()
-  };
-  travelEntries.push(entry);
-
-  // Log it
-  logAction(currentUser, 'travel',
-    `Added travel ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
-  );
-
-  // Notify the other parent (no approval needed)
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
-  triggerPushNotification(
-    other,
-    `${currentUser} added travel`,
-    `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
-    window.location.origin
-  );
+  const existing = editingTravelId ? travelEntries.find(x => x.id === editingTravelId) : null;
+  if (existing) {
+    const oldSummary = `${fmtDate(existing.start)} → ${fmtDate(existing.end)}${existing.label ? ` (${existing.label})` : ''}`;
+    existing.start = start;
+    existing.end = end;
+    existing.label = label;
+    existing.notes = notes;
+    existing.updatedBy = currentUser;
+    existing.updatedAt = new Date().toISOString();
+
+    // A meaningful edit needs fresh acknowledgement from the other parent.
+    const ackKey = travelAckKey(existing.id);
+    if (inboxState[other] && inboxState[other].dismissed) delete inboxState[other].dismissed[ackKey];
+    if (inboxState[other] && inboxState[other].read) delete inboxState[other].read[ackKey];
+
+    logAction(currentUser, 'travel',
+      `Updated travel from ${oldSummary} to ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
+    );
+    triggerPushNotification(
+      other,
+      `${currentUser} updated travel`,
+      `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
+      window.location.origin
+    );
+    editingTravelId = null;
+  } else {
+    const entry = {
+      id: 'tr_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      start: start,
+      end: end,
+      label: label,
+      notes: notes,
+      by: currentUser,
+      createdAt: new Date().toISOString()
+    };
+    travelEntries.push(entry);
+
+    // Log it
+    logAction(currentUser, 'travel',
+      `Added travel ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
+    );
+
+    // Notify the other parent (no approval needed)
+    triggerPushNotification(
+      other,
+      `${currentUser} added travel`,
+      `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
+      window.location.origin
+    );
+  }
 
   closeTravel();
   render();
@@ -3731,10 +3812,11 @@ function saveTravel() {
 }
 
 function removeTravel(id) {
-  if (!confirm('Remove this travel entry?')) return;
+  if (!confirm('Delete this travel entry?')) return;
   const t = travelEntries.find(x => x.id === id);
   if (t) {
     travelEntries = travelEntries.filter(x => x.id !== id);
+    if (editingTravelId === id) editingTravelId = null;
     logAction(currentUser, 'travel', `Removed travel ${fmtDate(t.start)} → ${fmtDate(t.end)}`);
     render();
     renderTravelList();
