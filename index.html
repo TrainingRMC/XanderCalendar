@@ -838,6 +838,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .inbox-history-row.j{border-left-color:var(--j)}.inbox-history-row.b{border-left-color:var(--b)}
 .inbox-history-who{font-weight:900;font-family:'Nunito',sans-serif;color:var(--text)}
 .inbox-history-when{font-size:.78em;color:var(--muted);font-style:italic;margin-top:2px}
+.mydays-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:92%;max-width:460px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+.mydays-hdr{background:var(--hdr-grad);color:#fff;padding:18px 20px 14px;flex-shrink:0}
+.mydays-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.14em}
+.mydays-sub{font-size:.82em;opacity:.88;margin-top:2px}
+.mydays-body{padding:14px 16px;overflow-y:auto}
+.myday-row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;background:var(--bg-2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;margin-bottom:8px;cursor:pointer}
+.myday-row:hover{border-color:var(--j);box-shadow:var(--shadow-sm)}
+.myday-date{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text)}
+.myday-meta{font-size:.84em;color:var(--text);line-height:1.35}
+.myday-note{font-size:.78em;color:var(--muted);margin-top:2px}
+.myday-action{font-size:.74em;font-weight:900;color:var(--j);font-family:'Nunito',sans-serif}
 #log-toggle{display:none!important}
 #search-bar{display:none}
 #search-bar.open{display:flex}
@@ -1171,6 +1182,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="btn btn-cancel" onclick="closeTravel()">Cancel</button>
         <button class="btn btn-save" id="tr-save-btn" onclick="saveTravel()">✈️ Add & Notify</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DAYS WITH XANDER SUMMARY ═══════════════════════ -->
+<div class="overlay" id="mydays-overlay">
+  <div class="mydays-modal">
+    <div class="mydays-hdr">
+      <div class="mydays-title" id="mydays-title">Days With Xander</div>
+      <div class="mydays-sub" id="mydays-sub">Next 14 days</div>
+    </div>
+    <div class="mydays-body" id="mydays-body"></div>
+    <div style="display:flex;gap:7px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)">
+      <button class="btn btn-cancel" onclick="closeMyDays()">Close</button>
+      <button class="btn btn-save" style="flex:1" onclick="closeMyDays();jumpTo(today.getFullYear(),today.getMonth())">Open Calendar</button>
     </div>
   </div>
 </div>
@@ -1894,11 +1920,18 @@ window.saveDay = function() {
     return;
   }
 
+  const ownerChanged = cur.owner !== newOwner;
+  const eventChanged = (cur.event||'') !== newEvent;
+  const noteChanged = (curOv.note||'') !== newNote;
+  const timeChanged = (curOv.timeMode||'all') !== newTm || (curOv.timeFrom||'') !== newFrom || (curOv.timeTo||'') !== newTo;
+  const changeType = noteChanged && !ownerChanged && !eventChanged && !timeChanged ? 'note' : 'swap';
+
   // Create pending swap
   const swapId = makeSwapId();
   pendingSwaps[swapId] = {
     date: editKey,
     by: currentUser,
+    changeType,
     fromOwner: cur.owner,
     toOwner: newOwner,
     fromEvent: cur.event || '',
@@ -1911,15 +1944,16 @@ window.saveDay = function() {
     createdAt: new Date().toISOString(),
   };
 
-  logAction(currentUser, 'proposed',
-    `Proposed change to ${formatLogDate(editKey)}: ${cur.owner} → ${newOwner}` +
-    (newEvent && newEvent !== (cur.event||'') ? ` · "${newEvent}"` : '')
-  );
+  const logMsg = changeType === 'note'
+    ? `Added note for ${formatLogDate(editKey)}: "${newNote}"`
+    : `Proposed change to ${formatLogDate(editKey)}: ${cur.owner} → ${newOwner}` +
+      (newEvent && newEvent !== (cur.event||'') ? ` · "${newEvent}"` : '');
+  logAction(currentUser, changeType === 'note' ? 'note' : 'proposed', logMsg);
 
   closeDay();
   render();
   scheduleSave();
-  showToast('📤 Change proposed — awaiting approval');
+  showToast(changeType === 'note' ? '📝 Note sent for awareness' : '📤 Change proposed — awaiting approval');
 };
 
 // OVERRIDE resetDay: also goes through swap workflow if it changes anything
@@ -2000,25 +2034,32 @@ function approveSwap(swapId) {
     };
   }
 
-  logAction(currentUser, 'approved',
-    `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+  const isNote = swap.changeType === 'note';
+  logAction(currentUser, isNote ? 'note-approved' : 'approved',
+    isNote
+      ? `Applied ${swap.by}'s note to ${formatLogDate(swap.date)}`
+      : `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
   );
 
   delete pendingSwaps[swapId];
   render();
   renderLogBody();
   scheduleSave();
-  showToast('✓ Swap approved & applied');
+  showToast(isNote ? '✓ Note applied' : '✓ Swap approved & applied');
 }
 
 function declineSwap(swapId) {
   const swap = pendingSwaps[swapId];
   if (!swap) return;
   if (swap.by === currentUser) return cancelSwap(swapId);
-  if (!confirm(`Decline ${swap.by}'s proposed change to ${formatLogDate(swap.date)}?`)) return;
-
-  logAction(currentUser, 'declined',
-    `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+  const isNote = swap.changeType === 'note';
+  if (!confirm(isNote
+    ? `Dismiss ${swap.by}'s note for ${formatLogDate(swap.date)}?`
+    : `Decline ${swap.by}'s proposed change to ${formatLogDate(swap.date)}?`)) return;
+  logAction(currentUser, isNote ? 'note-dismissed' : 'declined',
+    isNote
+      ? `Dismissed ${swap.by}'s note for ${formatLogDate(swap.date)}`
+      : `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
   );
   delete pendingSwaps[swapId];
   render();
@@ -2386,14 +2427,17 @@ approveSwap = function(swapId) {
         proposedBy: swap.by,
       };
     }
-    logAction(currentUser, 'approved',
-      `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+    const isNote = swap.changeType === 'note';
+    logAction(currentUser, isNote ? 'note-approved' : 'approved',
+      isNote
+        ? `Applied ${swap.by}'s note to ${formatLogDate(swap.date)}`
+        : `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
     );
     delete pendingSwaps[swapId];
     render();
     renderLogBody();
     scheduleSave();
-    showToast('✓ Approved');
+    showToast(isNote ? '✓ Note applied' : '✓ Approved');
     return;
   }
   return _origApprove(swapId);
@@ -2404,14 +2448,17 @@ declineSwap = function(swapId) {
   if (_swapBlockActive) {
     const swap = pendingSwaps[swapId];
     if (!swap) return;
-    logAction(currentUser, 'declined',
-      `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+    const isNote = swap.changeType === 'note';
+    logAction(currentUser, isNote ? 'note-dismissed' : 'declined',
+      isNote
+        ? `Dismissed ${swap.by}'s note for ${formatLogDate(swap.date)}`
+        : `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
     );
     delete pendingSwaps[swapId];
     render();
     renderLogBody();
     scheduleSave();
-    showToast('✗ Declined');
+    showToast(isNote ? 'Note dismissed' : '✗ Declined');
     return;
   }
   return _origDecline(swapId);
@@ -3498,10 +3545,12 @@ window.saveDay = function() {
   _origSaveDayV9();
   // If a pending swap was added, fire notification
   if (Object.keys(pendingSwaps).length > beforePending) {
+    const newest = Object.values(pendingSwaps).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))[0];
+    const isNote = newest && newest.changeType === 'note';
     triggerPushNotification(
       otherParent,
-      `${currentUser} proposed a change`,
-      `Open the calendar to review and approve.`,
+      isNote ? `${currentUser} added a calendar note` : `${currentUser} proposed a change`,
+      isNote ? `Open the calendar to review the note.` : `Open the calendar to review and approve.`,
       window.location.origin
     );
   }
@@ -4076,6 +4125,9 @@ scheduleSave = function() {
 
 document.getElementById('travel-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeTravel();
+});
+document.getElementById('mydays-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeMyDays();
 });
 
 
@@ -5413,6 +5465,50 @@ function _v13FindNextMyDay(){
   return null;
 }
 
+function _v13BuildMyDays(days){
+  if (!currentUser) return [];
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  const rows = [];
+  for (let i = 0; i < days; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const info = _v13InfoForDate(d);
+    if (info.owner === currentUser){
+      rows.push({
+        date:_v13KeyFromDate(d),
+        event:info.event || '',
+        note:info.note || ''
+      });
+    }
+  }
+  return rows;
+}
+
+function openMyDaysSummary(){
+  if (!currentUser) {
+    showWhoPickerIfNeeded(true);
+    return;
+  }
+  const rows = _v13BuildMyDays(14);
+  document.getElementById('mydays-title').textContent = `${currentUser}'s Days With Xander`;
+  document.getElementById('mydays-sub').textContent = `${rows.length} of the next 14 days`;
+  document.getElementById('mydays-body').innerHTML = rows.length ? rows.map(r => `
+    <div class="myday-row" onclick="closeMyDays();_v13OpenDate('${r.date}')">
+      <div class="myday-date">${_v13ShortDate(r.date).replace(',', '')}</div>
+      <div class="myday-meta">
+        ${r.event ? `<b>${r.event}</b>` : 'Regular parenting time'}
+        ${r.note ? `<div class="myday-note">📝 ${r.note}</div>` : `<div class="myday-note">Tap to add a note or detail.</div>`}
+      </div>
+      <div class="myday-action">Open</div>
+    </div>
+  `).join('') : `<div class="inbox-empty" style="padding:24px 10px">No days with Xander in the next 14 days.</div>`;
+  document.getElementById('mydays-overlay').classList.add('open');
+}
+
+function closeMyDays(){
+  document.getElementById('mydays-overlay').classList.remove('open');
+}
+
 function _v13FindUpcomingTravel(){
   const nowKey = _v13TodayKey();
   const upcoming = (travelEntries || [])
@@ -5573,7 +5669,7 @@ function renderDashboard(){
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
   const travelAction = travel ? `_v13OpenDate('${travel.start}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
-  const myDaysAction = nextMyDay ? `_v13OpenDate('${nextMyDay.date}')` : `jumpTo(${today.getFullYear()},${today.getMonth()})`;
+  const myDaysAction = 'openMyDaysSummary()';
   const hasAttention = inboxCount > 0;
   const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
 
@@ -5685,6 +5781,35 @@ renderInboxBody = function(){
 
 const _v13_origRenderInboxItem = renderInboxItem;
 renderInboxItem = function(item){
+  if (item.type === 'swap'){
+    const unreadCls = item.unread ? ' unread' : '';
+    const s = item.data.swap;
+    const id = item.data.swapId;
+    const isNote = s.changeType === 'note' || (s.fromOwner === s.toOwner && (s.toNote || '') !== (s.fromNote || '') && (s.toEvent || '') === (s.fromEvent || ''));
+    const title = isNote ? `${s.by} added a note` : `${s.by} proposes a change`;
+    const ownerChange = s.fromOwner !== s.toOwner
+      ? `<b>${s.fromOwner}</b> → <b>${s.toOwner}</b>`
+      : `Owner stays <b>${s.toOwner}</b>`;
+    const eventLine = (s.toEvent && s.toEvent !== s.fromEvent) ? `<br><b>Event:</b> ${s.toEvent}` : '';
+    const noteLine = (s.toNote && s.toNote !== s.fromNote) ? `<br><b>Note:</b> ${s.toNote}` : '';
+    return `
+      <div class="inbox-item swap${unreadCls}">
+        <div class="inbox-item-hdr">
+          <span class="inbox-item-icon">${isNote ? '📝' : '🔄'}</span>
+          <div class="inbox-item-meta">
+            <div class="inbox-item-t">${title}</div>
+            <div class="inbox-item-when">${formatLogTime(s.createdAt)}</div>
+          </div>
+        </div>
+        <div class="inbox-item-body">
+          📅 <b>${formatLogDate(s.date)}</b><br>${isNote ? 'Awareness note for this date.' : ownerChange}${eventLine}${noteLine}
+        </div>
+        <div class="inbox-item-actions">
+          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Dismiss' : '✗ Decline'}</button>
+          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Apply Note' : '✓ Approve'}</button>
+        </div>
+      </div>`;
+  }
   if (item.type === 'travel'){
     const unreadCls = item.unread ? ' unread' : '';
     const t = item.data.travel;
