@@ -818,6 +818,14 @@ body.drawer-open{overflow:hidden}
 .sc-year-btn.active{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--j-soft)}
 .sc-section{background:var(--bg-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:11px}
 .sc-section-t{font-family:'Nunito',sans-serif;font-weight:800;font-size:.78em;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:9px}
+.sc-summary{background:linear-gradient(135deg,var(--j-soft),var(--card));border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 12px;margin-bottom:11px}
+.sc-summary-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.92em;color:var(--text);margin-bottom:4px}
+.sc-summary-sub{font-size:.78em;color:var(--muted);line-height:1.4}
+.sc-summary-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.sc-chip{border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 8px;font-size:.72em;font-family:'Nunito',sans-serif;font-weight:900;color:var(--muted)}
+.sc-chip.ok{border-color:rgba(16,185,129,.35);color:#047857;background:rgba(16,185,129,.12)}
+.sc-chip.warn{border-color:#f59e0b;color:#92400e;background:#fffbeb}
+.sc-warning{background:#fffbeb;border:1px solid #f59e0b;color:#92400e;border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:.78em;line-height:1.35}
 .sc-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .sc-row:last-child{margin-bottom:0}
 .sc-row-lbl{font-size:.86em;font-weight:700;color:var(--text);min-width:170px;flex-shrink:0}
@@ -4489,10 +4497,22 @@ function closeSchoolCal(){
   document.getElementById('school-overlay').classList.remove('open');
 }
 
+function summarizeSchoolCal(sc){
+  const breaks = ['fallBreak','thanksgivingBreak','winterBreak','springBreak'];
+  const completeBreaks = breaks.filter(k => sc[k] && sc[k].start && sc[k].end).length;
+  const noSchool = Array.isArray(sc.noSchoolDays) ? sc.noSchoolDays.filter(x => x && x.date).length : 0;
+  const missing = [];
+  if (!sc.firstDay) missing.push('first day');
+  if (!sc.lastDay) missing.push('last day');
+  if (completeBreaks < breaks.length) missing.push(`${breaks.length - completeBreaks} break${breaks.length - completeBreaks===1?'':'s'}`);
+  return { completeBreaks, noSchool, missing };
+}
+
 function renderSchoolCal(){
   const yKey = _activeSchoolYear;
   const sc = schoolCalendar[yKey] || {};
   const [y1, y2] = yKey.split('-').map(Number);
+  const summary = summarizeSchoolCal(sc);
 
   // Year picker buttons (cur, next, prev)
   const cur = today.getFullYear();
@@ -4541,6 +4561,22 @@ function renderSchoolCal(){
 
   document.getElementById('school-body').innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px;justify-content:center">${yearTabs}</div>
+
+    <div class="sc-summary">
+      <div class="sc-summary-title">${yKey} School Year</div>
+      <div class="sc-summary-sub">
+        ${sc.firstDay ? `Starts ${fmtDate(sc.firstDay)}` : 'First day not entered yet'}
+        ${sc.lastDay ? ` · Ends ${fmtDate(sc.lastDay)}` : ' · Last day not entered yet'}
+      </div>
+      <div class="sc-summary-chips">
+        <span class="sc-chip ${sc.firstDay?'ok':'warn'}">First day ${sc.firstDay?'set':'missing'}</span>
+        <span class="sc-chip ${sc.lastDay?'ok':'warn'}">Last day ${sc.lastDay?'set':'missing'}</span>
+        <span class="sc-chip ${summary.completeBreaks===4?'ok':'warn'}">${summary.completeBreaks}/4 breaks</span>
+        <span class="sc-chip ${summary.noSchool?'ok':''}">${summary.noSchool} no-school day${summary.noSchool===1?'':'s'}</span>
+      </div>
+    </div>
+
+    ${summary.missing.length ? `<div class="sc-warning">⚠️ Missing ${summary.missing.join(', ')}. You can still save, but the calendar is most reliable when these are filled in.</div>` : ''}
 
     <div class="sc-section">
       <div class="sc-section-t">📅 School Year Bookends</div>
@@ -4623,13 +4659,16 @@ function saveSchoolCal(){
   }
   schoolCalendar[yKey].updatedBy = currentUser || 'unknown';
   schoolCalendar[yKey].updatedAt = new Date().toISOString();
+  const summary = summarizeSchoolCal(schoolCalendar[yKey]);
   // Mark May reminder as seen for this year
   if (currentUser){
     if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
     inboxState[currentUser].dismissed[`schoolReminder-${yKey}`] = true;
   }
   if (typeof logAction === 'function'){
-    logAction(currentUser || 'unknown', 'school-cal', `Updated school calendar for ${yKey}`);
+    logAction(currentUser || 'unknown', 'school-cal',
+      `Updated school calendar for ${yKey}: first day ${schoolCalendar[yKey].firstDay ? fmtDate(schoolCalendar[yKey].firstDay) : 'missing'}, last day ${schoolCalendar[yKey].lastDay ? fmtDate(schoolCalendar[yKey].lastDay) : 'missing'}, ${summary.completeBreaks}/4 breaks, ${summary.noSchool} no-school day${summary.noSchool===1?'':'s'}`
+    );
   }
   closeSchoolCal();
   render();
