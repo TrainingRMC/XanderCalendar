@@ -235,6 +235,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .dc.pbday-b{background:linear-gradient(135deg,var(--b-soft),var(--b-l))!important;border-color:var(--b)!important}
 .dc.mid{background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.5)}
 .dc.today-ring{outline:2.5px solid var(--gold);outline-offset:-1px;box-shadow:0 0 0 4px var(--gold-soft),var(--shadow-md)}
+.dc.has-note{border-bottom:3px solid #a78bfa}
 .d-num{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.05em;line-height:1;letter-spacing:-.3px}
 .d-today{font-size:.55em;color:var(--gold);font-weight:800;vertical-align:middle;margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
 .d-event{font-size:.67em;color:var(--text-2);font-weight:600;line-height:1.25;margin-top:2px}
@@ -243,6 +244,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .d-owner.j{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;box-shadow:0 1px 3px var(--j-soft)}
 .d-owner.b{background:linear-gradient(135deg,var(--b-d),var(--b));color:#fff;box-shadow:0 1px 3px var(--b-soft)}
 .d-note{font-size:.62em;color:#a78bfa;font-style:italic;line-height:1.25;margin-top:2px}
+.note-only-hint{background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:.78em;color:var(--text-2);line-height:1.35}
+.day-quick-actions{display:flex;gap:6px;margin-bottom:9px}
 .d-mid{font-size:.6em;background:rgba(167,139,250,.22);color:#a78bfa;border-radius:5px;padding:2px 5px;font-weight:700;margin-top:2px;display:inline-block;font-family:'Nunito',sans-serif}
 .d-bday{font-size:.64em;background:linear-gradient(135deg,#d97706,var(--gold));color:#fff;border-radius:6px;padding:2px 6px;font-weight:800;margin-top:3px;display:inline-block;box-shadow:0 1px 3px var(--gold-soft);font-family:'Nunito',sans-serif}
 .d-pbday{font-size:.63em;border-radius:6px;padding:2px 6px;font-weight:800;margin-top:3px;display:inline-block;font-family:'Nunito',sans-serif}
@@ -1049,6 +1052,7 @@ body.drawer-open{overflow:hidden}
   .sel,.inp,.ta{font-size:.9em;padding:10px 12px}
   .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .btn-row .btn-save{grid-column:1/-1}
+  .day-quick-actions{display:grid;grid-template-columns:1fr;gap:8px}
   .btn{padding:11px 12px}
   .sum-modal,.travel-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal{width:96%;max-height:96vh;border-radius:16px}
   .sum-modal-hdr,.travel-hdr,.mydays-hdr,.summer-prop-hdr,.export-hdr,.notif-hdr,.swap-block-hdr{padding:15px 16px 12px}
@@ -1289,10 +1293,11 @@ body.drawer-open{overflow:hidden}
     <input class="inp" id="m-event" placeholder="e.g. Summer Vacation, Doctor Appt…">
 
     <div class="field-lbl">Notes</div>
-    <textarea class="ta" id="m-note" placeholder="Pickup time, swap reason, reminders…"></textarea>
+    <textarea class="ta" id="m-note" placeholder="Heads-up, reminder, pickup detail, school note…"></textarea>
 
-    <div style="display:flex;gap:6px;margin-bottom:9px">
+    <div class="day-quick-actions">
       <button class="btn" style="flex:1;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="addTravelFromDay()">✈️ Add Travel Range</button>
+      <button class="btn" style="flex:1;background:rgba(167,139,250,.15);color:#7c3aed;border:1px solid rgba(167,139,250,.35)" onclick="sendDateNoteOnly()">📝 Send Note</button>
     </div>
     <div class="btn-row">
       <button class="btn btn-reset"  onclick="resetDay()">↺ Reset</button>
@@ -1609,6 +1614,7 @@ function renderGrid(){
     else if(owner==='Justin') cls+=(strong?'j-str':'j-reg');
     else cls+=(strong?'b-str':'b-reg');
     if(isToday(d)) cls+=' today-ring';
+    if(info.note) cls+=' has-note';
 
     const cell=document.createElement('div');
     cell.className=cls;
@@ -2285,7 +2291,7 @@ function declineSwap(swapId) {
   render();
   renderLogBody();
   scheduleSave();
-  showToast('✗ Swap declined');
+  showToast(isNote ? 'Note dismissed' : '✗ Swap declined');
 }
 
 function cancelSwap(swapId) {
@@ -2506,7 +2512,17 @@ openDay = function(y,m,d) {
     const sub = document.getElementById('m-sub');
     sub.parentNode.insertBefore(banner, sub.nextSibling);
   }
-  banner.innerHTML = `<b>📤 Changes are proposals.</b> Saving will send this for ${currentUser==='Justin'?'Brittany':'Justin'} to approve before it appears on the calendar.`;
+  const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  banner.innerHTML = `<b>📤 Schedule changes are proposals.</b> Use <b>Send Note</b> for a simple heads-up to ${other || 'the other parent'}.`;
+  let noteHint = document.getElementById('note-only-hint');
+  if (!noteHint) {
+    noteHint = document.createElement('div');
+    noteHint.id = 'note-only-hint';
+    noteHint.className = 'note-only-hint';
+    const noteBox = document.getElementById('m-note');
+    noteBox.parentNode.insertBefore(noteHint, noteBox);
+  }
+  noteHint.textContent = 'Notes are for awareness: practice times, pickup details, reminders, or anything both homes should see.';
 };
 
 // Close drawer on backdrop click
@@ -6299,12 +6315,15 @@ renderInboxItem = function(item){
     const s = item.data.swap;
     const id = item.data.swapId;
     const isNote = s.changeType === 'note' || (s.fromOwner === s.toOwner && (s.toNote || '') !== (s.fromNote || '') && (s.toEvent || '') === (s.fromEvent || ''));
-    const title = isNote ? `${s.by} added a note` : `${s.by} proposes a change`;
+    const removesNote = isNote && !(s.toNote || '').trim();
+    const title = isNote ? `${s.by} sent a date note` : `${s.by} proposes a change`;
     const ownerChange = s.fromOwner !== s.toOwner
       ? `<b>${s.fromOwner}</b> → <b>${s.toOwner}</b>`
       : `Owner stays <b>${s.toOwner}</b>`;
     const eventLine = (s.toEvent && s.toEvent !== s.fromEvent) ? `<br><b>Event:</b> ${s.toEvent}` : '';
-    const noteLine = (s.toNote && s.toNote !== s.fromNote) ? `<br><b>Note:</b> ${s.toNote}` : '';
+    const noteLine = isNote
+      ? `<br><b>${removesNote ? 'Note removal:' : 'Note:'}</b> ${removesNote ? 'Clear the note from this date.' : s.toNote}`
+      : ((s.toNote && s.toNote !== s.fromNote) ? `<br><b>Note:</b> ${s.toNote}` : '');
     return `
       <div class="inbox-item swap${unreadCls}">
         <div class="inbox-item-hdr">
@@ -6315,11 +6334,11 @@ renderInboxItem = function(item){
           </div>
         </div>
         <div class="inbox-item-body">
-          📅 <b>${formatLogDate(s.date)}</b><br>${isNote ? 'Awareness note for this date.' : ownerChange}${eventLine}${noteLine}
+          📅 <b>${formatLogDate(s.date)}</b><br>${isNote ? 'Heads-up only. This does not change parenting time.' : ownerChange}${eventLine}${noteLine}
         </div>
         <div class="inbox-item-actions">
           <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Dismiss' : '✗ Decline'}</button>
-          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Apply Note' : '✓ Approve'}</button>
+          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? (removesNote ? 'Acknowledge & Clear' : 'Acknowledge & Add') : '✓ Approve'}</button>
         </div>
       </div>`;
   }
@@ -6781,6 +6800,53 @@ initFirebase = function(){
     }
   });
 };
+
+// ═══════════════════════════════════════════════════════
+//  V17: Lightweight date notes
+// ═══════════════════════════════════════════════════════
+
+function sendDateNoteOnly(){
+  if (!editKey) return;
+  if (!currentUser) {
+    alert('Unlock with your PIN first so the note is attributed correctly.');
+    return;
+  }
+  const note = document.getElementById('m-note').value.trim();
+  const [yStr, mStr, dStr] = editKey.split('-');
+  const y = parseInt(yStr), m = parseInt(mStr)-1, d = parseInt(dStr);
+  const cur = getInfo(y, m, d) || { owner:'Brittany', event:'', note:'' };
+  const curOv = overrides[editKey] || {};
+  const currentNote = (curOv.note || '').trim();
+  if (note === currentNote) {
+    closeDay();
+    showToast('No note changes made');
+    return;
+  }
+  const swapId = makeSwapId();
+  pendingSwaps[swapId] = {
+    date: editKey,
+    by: currentUser,
+    changeType: 'note',
+    fromOwner: cur.owner,
+    toOwner: cur.owner,
+    fromEvent: cur.event || '',
+    toEvent: cur.event || '',
+    fromNote: curOv.note || '',
+    toNote: note,
+    timeMode: curOv.timeMode || 'all',
+    timeFrom: curOv.timeFrom || '',
+    timeTo: curOv.timeTo || '',
+    createdAt: new Date().toISOString(),
+  };
+  logAction(currentUser, 'note', note
+    ? `Sent note for ${formatLogDate(editKey)}: "${note}"`
+    : `Requested note removal for ${formatLogDate(editKey)}`
+  );
+  closeDay();
+  render();
+  scheduleSave();
+  showToast(note ? '📝 Note sent for awareness' : '📝 Note removal sent');
+}
 
 // Init
 render();
