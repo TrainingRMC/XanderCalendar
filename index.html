@@ -319,6 +319,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .summer-warning.actionable{cursor:pointer;font-weight:800}
 .summer-warning.actionable:hover{box-shadow:var(--shadow-sm);filter:brightness(.99)}
 .summer-warning.ok{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.12);color:#047857}
+.summer-apply-panel{background:linear-gradient(135deg,rgba(16,185,129,.12),var(--card));border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:10px 11px;margin-bottom:10px}
+.summer-apply-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text);margin-bottom:3px}
+.summer-apply-sub{font-size:.78em;color:var(--muted);line-height:1.4}
+.summer-apply-panel.warn{background:#fffbeb;border-color:#f59e0b}
+.summer-apply-panel.warn .summer-apply-title{color:#92400e}
 .summer-gap-panel{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:10px 11px;margin-bottom:10px}
 .summer-gap-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text);margin-bottom:3px}
 .summer-gap-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-bottom:8px}
@@ -5328,10 +5333,28 @@ function findSummerDrift(){
     btn.title = 'Write current blocks directly to the calendar without the proposal workflow';
     btn.textContent = '⚡ Apply Picks to Calendar Now';
     btn.onclick = function(){
+      const summary = summarizeSummerPlan(activeSummerYear);
+      if (summary.warnings.length) {
+        summerGapPanelOpen = true;
+        renderSummerBody();
+        showToast('Fix summer warnings before applying');
+        return;
+      }
       const n = applySummerDirect(activeSummerYear);
       if (n > 0){
         if (typeof logAction === 'function' && currentUser){
-          logAction(currentUser, 'summer-apply', `Applied ${activeSummerYear} picks directly to calendar (${n} days)`);
+          logAction(currentUser, 'summer-apply',
+            `Applied Summer ${activeSummerYear} plan: ${n} days, ${summary.blocks.length} blocks, Justin ${summary.justin} days, Brittany ${summary.brittany} days`
+          );
+        }
+        if (typeof triggerPushNotification === 'function' && currentUser){
+          const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+          triggerPushNotification(
+            other,
+            `${currentUser} applied Summer ${activeSummerYear} plan`,
+            `${n} days updated · Justin ${summary.justin}, Brittany ${summary.brittany}`,
+            window.location.origin
+          );
         }
         closeSummer();
         render();
@@ -6532,6 +6555,21 @@ function renderSummerGapPanel(summary){
   </div>`;
 }
 
+function renderSummerApplyPanel(summary){
+  const blockWord = summary.blocks.length === 1 ? 'block' : 'blocks';
+  if (summary.warnings.length) {
+    return `<div class="summer-apply-panel warn">
+      <div class="summer-apply-title">Review before applying</div>
+      <div class="summer-apply-sub">Fix the warning${summary.warnings.length===1?'':'s'} above first. Once everything is assigned cleanly, applying will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} on the shared calendar.</div>
+    </div>`;
+  }
+  const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  return `<div class="summer-apply-panel">
+    <div class="summer-apply-title">Ready to apply</div>
+    <div class="summer-apply-sub">This will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} with ${summary.blocks.length} ${blockWord}: Justin ${summary.justin} days, Brittany ${summary.brittany} days. ${currentUser ? `${other} will see the updated summer plan.` : 'Both parents will see the updated summer plan.'}</div>
+  </div>`;
+}
+
 function renderSummerBody(){
   const body = document.getElementById('sum-body');
   if (!body) return;
@@ -6548,6 +6586,7 @@ function renderSummerBody(){
       }).join('')}</div>`
     : `<div class="summer-warnings"><div class="summer-warning ok">✓ Blocks look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
   const gapPanelHtml = renderSummerGapPanel(summary);
+  const applyPanelHtml = renderSummerApplyPanel(summary);
 
   body.innerHTML = `
     <div class="summer-overview">
@@ -6566,6 +6605,7 @@ function renderSummerBody(){
     </div>
     ${warningsHtml}
     ${gapPanelHtml}
+    ${applyPanelHtml}
     <div class="quick-blocks">
       <button class="quick-block-btn" onclick="addTwoWeekBlock('Justin')">+ Justin 2-week block</button>
       <button class="quick-block-btn" onclick="addTwoWeekBlock('Brittany')">+ Brittany 2-week block</button>
@@ -6614,6 +6654,16 @@ function renderSummerBody(){
 
 function renderSummerStats(){
   const summary = summarizeSummerPlan(activeSummerYear);
+  const directBtn = document.getElementById('sum-apply-direct-btn');
+  if (directBtn) {
+    const blocked = summary.warnings.length > 0;
+    directBtn.disabled = blocked;
+    directBtn.style.opacity = blocked ? '.55' : '1';
+    directBtn.style.cursor = blocked ? 'not-allowed' : 'pointer';
+    directBtn.title = blocked
+      ? 'Fix summer warnings before applying the plan'
+      : `Apply ${summary.blocks.length} blocks to the shared calendar`;
+  }
   document.getElementById('sum-stats').innerHTML = `
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--j)"></div><b style="color:var(--j)">${summary.justin}</b> Justin</div>
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--b)"></div><b style="color:var(--b)">${summary.brittany}</b> Brittany</div>
@@ -6628,6 +6678,9 @@ setTimeout(() => {
     directBtn.textContent = '✓ Apply Summer Plan';
     directBtn.title = 'Apply these summer blocks to the calendar and record the update';
   }
+  const proposalBtn = document.querySelector('#sum-overlay .sum-modal-ftr .btn-save:not(#sum-apply-direct-btn)');
+  if (proposalBtn) proposalBtn.textContent = 'Submit for Review';
+  if (document.getElementById('sum-stats')) renderSummerStats();
 }, 700);
 
 // ═══════════════════════════════════════════════════════
