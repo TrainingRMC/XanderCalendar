@@ -35,15 +35,27 @@
       pendingSwaps: pendingSwaps || {},
       activityLog:  activityLog  || [],
       updatedAt:    new Date().toISOString(),
-    }).then(() => window._setSyncStatus("saved"))
-      .catch(err => { window._setSyncStatus("error"); console.error(err); });
+    }).then(() => {
+      window._setSyncStatus("saved");
+      window.dispatchEvent(new CustomEvent("fbSaveSuccess"));
+    }).catch(err => {
+      window._setSyncStatus("error");
+      window.dispatchEvent(new CustomEvent("fbSaveError", { detail: { error: err } }));
+      console.error(err);
+    });
   };
 
   // Direct write helper used by v7+ for any-shape payload
   window._fbDirectWrite = function(payload) {
-    set(CAL_REF, payload)
-      .then(() => window._setSyncStatus("saved"))
-      .catch(err => { window._setSyncStatus("error"); console.error(err); });
+    return set(CAL_REF, payload)
+      .then(() => {
+        window._setSyncStatus("saved");
+        window.dispatchEvent(new CustomEvent("fbSaveSuccess", { detail: { payload } }));
+      }).catch(err => {
+        window._setSyncStatus("error");
+        window.dispatchEvent(new CustomEvent("fbSaveError", { detail: { error: err, payload } }));
+        console.error(err);
+      });
   };
 
   window._fbListen = function(onData) {
@@ -942,6 +954,9 @@ body.drawer-open{overflow:hidden}
 .history-date-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
 .history-date-input{min-width:0;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:9px;padding:8px 9px;font-family:'DM Sans',sans-serif;font-size:.8em;font-weight:700}
 .history-clear{border:1px solid var(--border);background:var(--bg-2);color:var(--muted);border-radius:9px;padding:8px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.save-confidence{background:linear-gradient(135deg,rgba(16,185,129,.12),var(--card));border:1px solid rgba(16,185,129,.28);border-radius:12px;padding:9px 11px;margin:0 0 9px;font-size:.8em;color:var(--muted);line-height:1.35}
+.save-confidence.warn{background:linear-gradient(135deg,rgba(245,158,11,.16),var(--card));border-color:rgba(245,158,11,.38);color:#92400e}
+.save-confidence-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
 .travel-summary{background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card));border:1px solid rgba(16,185,129,.35);border-radius:12px;padding:10px 11px;margin:0 0 9px}
 .travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
 .travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
@@ -6241,13 +6256,14 @@ renderInboxBody = function(){
   const travelSummaryHtml = (historyFilter === 'all' || historyFilter === 'travel' || historyQuery || historyMonth || historyDate)
     ? _v13BuildTravelSummary()
     : '';
+  const saveStatusHtml = typeof _v16SaveDetailHtml === 'function' ? _v16SaveDetailHtml() : '';
   const calendarMatchesHtml = _v13CalendarRecordMatches();
   const historyTop = inboxViewMode === 'history' ? '0' : '18px';
   const historyHtml = history.length
     ? `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
-      </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
+      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
         const kind = _v13HistoryKind(e.type);
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
@@ -6261,7 +6277,7 @@ renderInboxBody = function(){
     : `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
-      </div>${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
+      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
   const actionSection = `
     <div class="inbox-section-head">
@@ -6591,6 +6607,177 @@ setTimeout(() => {
     directBtn.title = 'Apply these summer blocks to the calendar and record the update';
   }
 }, 700);
+
+// ═══════════════════════════════════════════════════════
+//  V16: Save confidence, retry, and local safety backup
+// ═══════════════════════════════════════════════════════
+
+const SAVE_BACKUP_KEY = 'xander_cal_save_backup_v1';
+let _v16RetryCount = 0;
+let _v16RetryTimer = null;
+let _v16LastRemoteAt = null;
+
+function _v16BuildSavePayload(){
+  return {
+    overrides:         overrides,
+    summerPlan:        summerPlan,
+    pendingSwaps:      pendingSwaps   || {},
+    activityLog:       activityLog    || [],
+    summerProposal:    summerProposal || null,
+    pushSubscriptions: window._currentNotifSubs || {},
+    travelEntries:     travelEntries  || [],
+    schoolCalendar:    schoolCalendar || {},
+    inboxState:        inboxState     || {},
+    summerSubmitted:   summerSubmitted || {},
+    updatedAt:         new Date().toISOString(),
+    updatedBy:         currentUser || 'unknown'
+  };
+}
+
+function _v16StoreBackup(payload, status){
+  try {
+    localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
+      status,
+      savedAt: new Date().toISOString(),
+      payload
+    }));
+  } catch(e) {
+    console.warn('Could not store local save backup', e);
+  }
+}
+
+function _v16ReadBackup(){
+  try { return JSON.parse(localStorage.getItem(SAVE_BACKUP_KEY) || 'null'); }
+  catch(e) { return null; }
+}
+
+function _v16PayloadTime(payload){
+  return payload && payload.updatedAt ? new Date(payload.updatedAt).getTime() : 0;
+}
+
+function _v16ApplyPayload(data){
+  if (!data) return;
+  if (data.overrides)         overrides         = data.overrides;
+  if (data.summerPlan)        summerPlan        = data.summerPlan;
+  if (data.pendingSwaps)      pendingSwaps      = data.pendingSwaps;
+  if (data.activityLog)       activityLog       = data.activityLog;
+  if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
+  if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
+  if (data.travelEntries)     travelEntries     = data.travelEntries;
+  if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
+  if (data.inboxState)        inboxState        = data.inboxState;
+  if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
+}
+
+function _v16SaveDetailHtml(){
+  const backup = _v16ReadBackup();
+  const saved = backup && backup.status === 'synced' ? backup.savedAt : _v16LastRemoteAt;
+  const pending = backup && backup.status === 'pending';
+  const trouble = backup && backup.status === 'error';
+  const label = pending ? 'Local backup waiting to sync'
+    : trouble ? 'Local backup protected after save trouble'
+    : saved ? `Last shared save ${formatLogTime(saved)}`
+    : 'Shared save status will appear here after the next update.';
+  const cls = pending || trouble ? ' warn' : '';
+  return `<div class="save-confidence${cls}">
+    <div class="save-confidence-title">Save Status</div>
+    <div>${label}</div>
+  </div>`;
+}
+
+window.addEventListener('fbSaveSuccess', (e) => {
+  _v16RetryCount = 0;
+  clearTimeout(_v16RetryTimer);
+  const payload = e.detail && e.detail.payload ? e.detail.payload : _v16BuildSavePayload();
+  _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
+  _v16StoreBackup(payload, 'synced');
+  if (inboxViewMode === 'history') renderInboxBody();
+});
+
+window.addEventListener('fbSaveError', (e) => {
+  const payload = e.detail && e.detail.payload ? e.detail.payload : _v16BuildSavePayload();
+  _v16StoreBackup(payload, 'error');
+  if (_v16RetryCount < 3){
+    _v16RetryCount++;
+    const delay = 2500 * _v16RetryCount;
+    _setSyncStatus('error', `Trouble saving - local backup kept. Retrying ${_v16RetryCount}/3...`);
+    clearTimeout(_v16RetryTimer);
+    _v16RetryTimer = setTimeout(() => {
+      if (window._fbDirectWrite){
+        _setSyncStatus('saving', 'Retrying shared save...');
+        window._fbDirectWrite(payload);
+      }
+    }, delay);
+  } else {
+    _setSyncStatus('error', 'Trouble saving - local backup kept on this phone');
+  }
+  if (inboxViewMode === 'history') renderInboxBody();
+});
+
+const _v16BaseSetSyncStatus = window._setSyncStatus;
+window._setSyncStatus = function(state, detail){
+  _v16BaseSetSyncStatus(state, detail);
+  const msg = document.getElementById('sync-msg');
+  if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
+};
+
+scheduleSave = function(){
+  _setSyncStatus('saving', 'Saving to shared calendar...');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    const payload = _v16BuildSavePayload();
+    _v16StoreBackup(payload, 'pending');
+    if (window._fbDirectWrite){
+      _ignoreNext = true;
+      window._fbDirectWrite(payload);
+      setTimeout(() => { _ignoreNext = false; }, 2500);
+    } else {
+      _v16StoreBackup(payload, 'error');
+      _setSyncStatus('error', 'Offline - local backup kept on this phone');
+    }
+  }, 800);
+};
+
+initFirebase = function(){
+  _setSyncStatus('connecting');
+  window._fbListen(function(data){
+    if (_ignoreNext) return;
+    const backup = _v16ReadBackup();
+    let chosen = data;
+    let restoredLocal = false;
+    if (backup && backup.payload && backup.status !== 'synced'){
+      const remoteTime = _v16PayloadTime(data);
+      const localTime = _v16PayloadTime(backup.payload);
+      if (!data || localTime > remoteTime){
+        chosen = backup.payload;
+        restoredLocal = true;
+      }
+    }
+    if (!chosen){
+      _setSyncStatus('synced', '✓ Connected - no shared data yet');
+      return;
+    }
+
+    _v16ApplyPayload(chosen);
+    render();
+    if (typeof renderLogBody === 'function') renderLogBody();
+    setTimeout(() => { if (typeof checkBlockingSwaps === 'function') checkBlockingSwaps(); }, 400);
+    setTimeout(() => { if (typeof maybeAutoShowSummerProposal === 'function') maybeAutoShowSummerProposal(); }, 700);
+    setTimeout(() => { if (typeof maybeRunSummerRecovery === 'function') maybeRunSummerRecovery(); }, 1800);
+
+    if (restoredLocal){
+      _setSyncStatus('error', 'Restored unsaved local changes - retrying shared save');
+      setTimeout(scheduleSave, 900);
+    } else if (chosen.updatedAt){
+      _v16LastRemoteAt = chosen.updatedAt;
+      const ts = new Date(chosen.updatedAt).toLocaleString('en-US',
+        {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      _setSyncStatus('remote', `📲 Last updated ${ts}`);
+    } else {
+      _setSyncStatus('synced');
+    }
+  });
+};
 
 // Init
 render();
