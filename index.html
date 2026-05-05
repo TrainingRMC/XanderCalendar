@@ -5967,10 +5967,25 @@ function _v13CalendarRecordMatches(){
 function _v13ShowSearch(){
   const bar = document.getElementById('search-bar');
   const input = document.getElementById('search-input');
-  if (bar) bar.classList.add('open');
+  if (bar) {
+    bar.classList.add('open');
+    bar.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
   if (input) {
     input.focus();
     input.select();
+  }
+}
+
+function _v17OpenTravelFromDashboard(id){
+  const trip = id ? (travelEntries || []).find(t => t.id === id) : null;
+  if (trip && currentUser && currentUser === travelOtherParent(trip) && !isTravelAcknowledged(trip)){
+    _v13OpenInboxFromPage();
+    return;
+  }
+  openTravel();
+  if (trip && currentUser === trip.by){
+    setTimeout(() => editTravel(id), 80);
   }
 }
 
@@ -6139,6 +6154,7 @@ function _v13BuildTimeline(){
       title:t.label || `${t.by || 'Parent'} travel`,
       sub:`${fmtDate(t.start)}${t.end !== t.start ? ' - ' + fmtDate(t.end) : ''}`,
       owner:t.by,
+      travelId:t.id,
       travel:true
     });
   });
@@ -6185,7 +6201,12 @@ function renderTimeline(){
   }
   el.innerHTML = items.map(item => {
     const cls = item.attention ? 'attn' : item.travel ? 'travel' : (item.owner === 'Justin' ? 'j' : item.owner === 'Brittany' ? 'b' : '');
-    return `<div class="timeline-item ${cls}" onclick="${item.attention ? '_v13OpenInboxFromPage(event)' : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`}" style="cursor:pointer">
+    const action = item.attention
+      ? '_v13OpenInboxFromPage(event)'
+      : item.travel
+        ? `_v17OpenTravelFromDashboard('${item.travelId || ''}')`
+        : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`;
+    return `<div class="timeline-item ${cls}" onclick="${action}" style="cursor:pointer">
       <div class="timeline-icon">${item.icon}</div>
       <div>
         <div class="timeline-title">${item.title}</div>
@@ -6211,7 +6232,7 @@ function renderDashboard(){
   const myDays = _v13CountMyDays(14);
   const nextMyDay = _v13FindNextMyDay();
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
-  const travelAction = travel ? `_v13OpenDate('${travel.start}')` : 'openTravel()';
+  const travelAction = travel ? `_v17OpenTravelFromDashboard('${travel.id || ''}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
   const myDaysAction = 'openMyDaysSummary()';
   const hasAttention = inboxCount > 0;
