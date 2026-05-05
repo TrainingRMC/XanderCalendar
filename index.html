@@ -1122,8 +1122,8 @@ body.drawer-open{overflow:hidden}
     </div>
   </div>
   <div class="badges">
-    <div class="badge badge-j">👨 Justin — Father (Noncustodial)</div>
-    <div class="badge badge-b">👩 Brittany — Mother (Custodial)</div>
+    <div class="badge badge-j">👨 Justin — Father</div>
+    <div class="badge badge-b">👩 Brittany — Mother</div>
   </div>
 </div>
 
@@ -1341,8 +1341,8 @@ body.drawer-open{overflow:hidden}
 <div id="swap-block-overlay">
   <div class="swap-block-modal">
     <div class="swap-block-hdr">
-      <div class="swap-block-title">⚠️ Action Required</div>
-      <div class="swap-block-sub" id="swap-block-sub">Pending change needs your decision</div>
+      <div class="swap-block-title">⚠️ Needs Your Attention</div>
+      <div class="swap-block-sub" id="swap-block-sub">A shared-calendar update is waiting on you</div>
     </div>
     <div class="swap-block-progress" id="swap-block-progress"></div>
     <div class="swap-block-body" id="swap-block-body"></div>
@@ -1353,7 +1353,7 @@ body.drawer-open{overflow:hidden}
 <div id="summer-prop-overlay">
   <div class="summer-prop-modal">
     <div class="summer-prop-hdr">
-      <div class="summer-prop-title" id="sp-title">☀️ Summer Plan Proposal</div>
+      <div class="summer-prop-title" id="sp-title">☀️ Summer Plan</div>
       <div class="summer-prop-sub" id="sp-sub"></div>
     </div>
     <div class="summer-prop-body" id="sp-body"></div>
@@ -1381,7 +1381,7 @@ body.drawer-open{overflow:hidden}
   <div class="notif-modal">
     <div class="notif-hdr">
       <div class="notif-title">🔔 Push Notifications</div>
-      <div class="notif-sub">Get notified when you have something to review</div>
+      <div class="notif-sub">Get notified when something needs your attention</div>
     </div>
     <div class="notif-body" id="notif-body"></div>
   </div>
@@ -2185,14 +2185,14 @@ window.saveDay = function() {
 
   const logMsg = changeType === 'note'
     ? `Added note for ${formatLogDate(editKey)}: "${newNote}"`
-    : `Proposed change to ${formatLogDate(editKey)}: ${cur.owner} → ${newOwner}` +
+    : `Sent calendar change for ${formatLogDate(editKey)}: ${cur.owner} → ${newOwner}` +
       (newEvent && newEvent !== (cur.event||'') ? ` · "${newEvent}"` : '');
   logAction(currentUser, changeType === 'note' ? 'note' : 'proposed', logMsg);
 
   closeDay();
   render();
   scheduleSave();
-  showToast(changeType === 'note' ? '📝 Note sent for awareness' : '📤 Change proposed — awaiting approval');
+  showToast(changeType === 'note' ? '📝 Note sent for awareness' : '📤 Change sent — waiting on reply');
 };
 
 // OVERRIDE resetDay: also goes through swap workflow if it changes anything
@@ -2228,11 +2228,11 @@ window.resetDay = function() {
     createdAt: new Date().toISOString(),
   };
 
-  logAction(currentUser, 'proposed', `Proposed reset of ${formatLogDate(editKey)} to default`);
+  logAction(currentUser, 'proposed', `Requested reset of ${formatLogDate(editKey)} to default`);
   closeDay();
   render();
   scheduleSave();
-  showToast('📤 Reset proposed — awaiting approval');
+  showToast('📤 Reset sent — waiting on reply');
 };
 
 // OVERRIDE applySummer: summer plan changes also go through approval as one batch
@@ -2251,7 +2251,7 @@ function approveSwap(swapId) {
   const swap = pendingSwaps[swapId];
   if (!swap) return;
   if (swap.by === currentUser) {
-    if (!confirm("This is your own proposal. You can't approve your own change. Cancel it instead?")) return;
+    if (!confirm("This is your own update. Cancel it instead?")) return;
     return cancelSwap(swapId);
   }
 
@@ -2277,14 +2277,14 @@ function approveSwap(swapId) {
   logAction(currentUser, isNote ? 'note-approved' : 'approved',
     isNote
       ? `Applied ${swap.by}'s note to ${formatLogDate(swap.date)}`
-      : `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+      : `Accepted ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
   );
 
   delete pendingSwaps[swapId];
   render();
   renderLogBody();
   scheduleSave();
-  showToast(isNote ? '✓ Note applied' : '✓ Swap approved & applied');
+  showToast(isNote ? '✓ Note added' : '✓ Change accepted');
 }
 
 function declineSwap(swapId) {
@@ -2294,30 +2294,30 @@ function declineSwap(swapId) {
   const isNote = swap.changeType === 'note';
   if (!confirm(isNote
     ? `Dismiss ${swap.by}'s note for ${formatLogDate(swap.date)}?`
-    : `Decline ${swap.by}'s proposed change to ${formatLogDate(swap.date)}?`)) return;
+    : `Pass on ${swap.by}'s requested change to ${formatLogDate(swap.date)}?`)) return;
   logAction(currentUser, isNote ? 'note-dismissed' : 'declined',
     isNote
       ? `Dismissed ${swap.by}'s note for ${formatLogDate(swap.date)}`
-      : `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+      : `Passed on ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
   );
   delete pendingSwaps[swapId];
   render();
   renderLogBody();
   scheduleSave();
-  showToast(isNote ? 'Note dismissed' : '✗ Swap declined');
+  showToast(isNote ? 'Note dismissed' : 'Change passed');
 }
 
 function cancelSwap(swapId) {
   const swap = pendingSwaps[swapId];
   if (!swap) return;
-  if (!confirm(`Cancel your proposed change to ${formatLogDate(swap.date)}?`)) return;
+  if (!confirm(`Cancel your requested change to ${formatLogDate(swap.date)}?`)) return;
 
-  logAction(currentUser, 'canceled', `Canceled own proposal for ${formatLogDate(swap.date)}`);
+  logAction(currentUser, 'canceled', `Canceled own requested change for ${formatLogDate(swap.date)}`);
   delete pendingSwaps[swapId];
   render();
   renderLogBody();
   scheduleSave();
-  showToast('Proposal canceled');
+  showToast('Request canceled');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2390,7 +2390,7 @@ function renderLogBody() {
 
   if (logTab === 'pending') {
     if (pendingArr.length === 0) {
-      body.innerHTML = '<div class="log-empty">✨ No pending swaps<br><span style="font-size:.85em">Edits proposed by either parent will show up here for approval</span></div>';
+      body.innerHTML = '<div class="log-empty">✨ Nothing waiting<br><span style="font-size:.85em">Shared-calendar updates will show up here when they need attention</span></div>';
       return;
     }
     body.innerHTML = pendingArr.map(([id, s]) => {
@@ -2407,13 +2407,13 @@ function renderLogBody() {
 
       const actions = isMine
         ? `<button class="swap-btn swap-cancel" onclick="cancelSwap('${id}')">Cancel</button>`
-        : `<button class="swap-btn swap-decline" onclick="declineSwap('${id}')">✗ Decline</button>
-           <button class="swap-btn swap-approve" onclick="approveSwap('${id}')">✓ Approve</button>`;
+        : `<button class="swap-btn swap-decline" onclick="declineSwap('${id}')">Pass</button>
+           <button class="swap-btn swap-approve" onclick="approveSwap('${id}')">✓ Accept</button>`;
 
       return `<div class="swap-card">
         <div class="swap-card-hdr">
           <span class="swap-by" style="color:${s.by==='Justin'?'var(--j-d)':'var(--b-d)'}">
-            ${s.by==='Justin'?'👨':'👩'} ${s.by}${isMine?' (you)':''} proposes:
+            ${s.by==='Justin'?'👨':'👩'} ${s.by}${isMine?' (you)':''} sent:
           </span>
           <span class="swap-when">${formatLogTime(s.createdAt)}</span>
         </div>
@@ -2424,7 +2424,7 @@ function renderLogBody() {
     }).join('');
   } else {
     if (activityLog.length === 0) {
-      body.innerHTML = '<div class="log-empty">No activity yet<br><span style="font-size:.85em">All edits and approvals will appear here</span></div>';
+      body.innerHTML = '<div class="log-empty">No activity yet<br><span style="font-size:.85em">Shared updates and acknowledgements will appear here</span></div>';
       return;
     }
     body.innerHTML = activityLog.slice(0, 100).map(e => {
@@ -2461,7 +2461,7 @@ renderGrid = function() {
     if (pendingByDate[key]) {
       const dot = document.createElement('div');
       dot.className = 'pending-dot';
-      dot.title = `${pendingByDate[key]} pending swap`;
+      dot.title = `${pendingByDate[key]} calendar update waiting`;
       cell.appendChild(dot);
     }
   });
@@ -2526,7 +2526,7 @@ openDay = function(y,m,d) {
     sub.parentNode.insertBefore(banner, sub.nextSibling);
   }
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
-  banner.innerHTML = `<b>📤 Schedule changes are proposals.</b> Use <b>Send Note</b> for a simple heads-up to ${other || 'the other parent'}.`;
+  banner.innerHTML = `<b>📤 Schedule changes wait for a reply.</b> Use <b>Send Note</b> for a simple heads-up to ${other || 'the other parent'}.`;
   let noteHint = document.getElementById('note-only-hint');
   if (!noteHint) {
     noteHint = document.createElement('div');
@@ -2598,25 +2598,25 @@ function showBlockingSwap(queue, idx) {
   const resetLine = s.isReset ? `<div style="margin-top:6px;color:#92400e;font-style:italic">(this is a reset to default)</div>` : '';
 
   document.getElementById('swap-block-sub').textContent =
-    `${s.by} proposed a change · waiting on you`;
+    `${s.by} sent a calendar change · waiting on you`;
   document.getElementById('swap-block-progress').textContent =
-    queue.length > 1 ? `Decision ${idx+1} of ${queue.length}` : `1 pending decision`;
+    queue.length > 1 ? `Item ${idx+1} of ${queue.length}` : `1 item waiting`;
   document.getElementById('swap-block-body').innerHTML = `
     <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Date</div>
     <div style="font-size:1.05em;font-weight:800;color:var(--text);margin-bottom:13px">📅 ${formatLogDate(s.date)}</div>
 
-    <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Proposed Change</div>
+    <div style="font-size:.78em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Calendar Update</div>
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:11px 13px;font-size:.92em;line-height:1.5;margin-bottom:14px">
       ${ownerChange}${eventLine}${noteLine}${timeLine}${resetLine}
     </div>
 
     <div style="font-size:.78em;color:var(--muted);margin-bottom:11px;font-style:italic">
-      Proposed by <b style="color:${s.by==='Justin'?'var(--j-d)':'var(--b-d)'};font-style:normal">${s.by}</b> · ${formatLogTime(s.createdAt)}
+      Sent by <b style="color:${s.by==='Justin'?'var(--j-d)':'var(--b-d)'};font-style:normal">${s.by}</b> · ${formatLogTime(s.createdAt)}
     </div>
 
     <div style="display:flex;gap:7px;margin-top:6px">
-      <button class="swap-btn swap-decline" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'decline')">✗ Decline</button>
-      <button class="swap-btn swap-approve" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'approve')">✓ Approve</button>
+      <button class="swap-btn swap-decline" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'decline')">Pass</button>
+      <button class="swap-btn swap-approve" style="flex:1;padding:11px" onclick="handleBlockingDecision('${id}', 'approve')">✓ Accept</button>
     </div>
     ${queue.length > 1 ? `<div style="text-align:center;margin-top:9px"><button class="swap-btn swap-cancel" style="font-size:.78em;padding:6px 11px" onclick="handleBlockingDecision('${id}', 'skip')">Skip for now</button></div>` : ''}
   `;
@@ -2680,13 +2680,13 @@ approveSwap = function(swapId) {
     logAction(currentUser, isNote ? 'note-approved' : 'approved',
       isNote
         ? `Applied ${swap.by}'s note to ${formatLogDate(swap.date)}`
-        : `Approved ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+        : `Accepted ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
     );
     delete pendingSwaps[swapId];
     render();
     renderLogBody();
     scheduleSave();
-    showToast(isNote ? '✓ Note applied' : '✓ Approved');
+    showToast(isNote ? '✓ Note added' : '✓ Accepted');
     return;
   }
   return _origApprove(swapId);
@@ -2701,13 +2701,13 @@ declineSwap = function(swapId) {
     logAction(currentUser, isNote ? 'note-dismissed' : 'declined',
       isNote
         ? `Dismissed ${swap.by}'s note for ${formatLogDate(swap.date)}`
-        : `Declined ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
+        : `Passed on ${swap.by}'s change to ${formatLogDate(swap.date)}: ${swap.fromOwner} → ${swap.toOwner}`
     );
     delete pendingSwaps[swapId];
     render();
     renderLogBody();
     scheduleSave();
-    showToast(isNote ? 'Note dismissed' : '✗ Declined');
+    showToast(isNote ? 'Note dismissed' : 'Change passed');
     return;
   }
   return _origDecline(swapId);
@@ -2745,13 +2745,13 @@ function renderMonthReminder() {
   } else if (forMe > 0) {
     msg = `${forMe} pending change${forMe===1?'':'s'} need${forMe===1?'s':''} your decision`;
   } else {
-    msg = `${myProposals} of your proposal${myProposals===1?' is':'s are'} awaiting reply from ${currentUser==='Justin'?'Brittany':'Justin'}`;
+    msg = `${myProposals} of your update${myProposals===1?' is':'s are'} awaiting reply from ${currentUser==='Justin'?'Brittany':'Justin'}`;
   }
 
   banner.innerHTML = `
     <div class="month-reminder-icon">⚠️</div>
     <div class="month-reminder-text">
-      <div class="month-reminder-t">${monthSwaps.length} pending swap${monthSwaps.length===1?'':'s'} this month</div>
+      <div class="month-reminder-t">${monthSwaps.length} calendar update${monthSwaps.length===1?'':'s'} this month</div>
       <div class="month-reminder-s">${msg}</div>
     </div>
     <div class="month-reminder-arrow">→</div>
@@ -2854,9 +2854,9 @@ function renderSummerAlert() {
       <div id="summer-alert" class="summer-alert brittany" onclick="openSummerProposalReview()">
         <div class="summer-alert-icon">☀️</div>
         <div class="summer-alert-body">
-          <div class="summer-alert-t">Justin submitted Summer ${summerProposal.year} plan</div>
-          <div class="summer-alert-s">Review and accept, or suggest changes with reasoning</div>
-          <span class="summer-alert-cta">Review proposal →</span>
+          <div class="summer-alert-t">Justin shared Summer ${summerProposal.year} plan</div>
+          <div class="summer-alert-s">Look it over, accept it, or suggest changes with reasoning</div>
+          <span class="summer-alert-cta">Open plan →</span>
         </div>
       </div>`;
   } else if (shouldShowJustinReview()) {
@@ -2865,8 +2865,8 @@ function renderSummerAlert() {
         <div class="summer-alert-icon">☀️</div>
         <div class="summer-alert-body">
           <div class="summer-alert-t">Brittany suggested changes to Summer ${summerProposal.year}</div>
-          <div class="summer-alert-s">Review her suggestions — you have final say as noncustodial parent</div>
-          <span class="summer-alert-cta">Review →</span>
+          <div class="summer-alert-s">Look over her suggestions and finalize the summer plan</div>
+          <span class="summer-alert-cta">Open plan →</span>
         </div>
       </div>`;
   } else if (shouldRemindJustinPostDeadline()) {
@@ -2887,7 +2887,7 @@ function renderSummerAlert() {
         <div class="summer-alert-icon">☀️</div>
         <div class="summer-alert-body">
           <div class="summer-alert-t">Summer ${yr} plan due in ${daysLeft} day${daysLeft===1?'':'s'}</div>
-          <div class="summer-alert-s">As noncustodial parent, you select your summer days by April 1. Submit your plan to lock in your weeks.</div>
+          <div class="summer-alert-s">Summer dates are due by April 1. Submit your plan to lock in your weeks.</div>
           <span class="summer-alert-cta">Plan Summer ${yr} →</span>
         </div>
       </div>`;
@@ -2924,7 +2924,7 @@ window.applySummer = function() {
           isInitial: true
         }]
       };
-      logAction('Justin', 'summer', `Submitted initial Summer ${yr} plan to Brittany for review`);
+      logAction('Justin', 'summer', `Shared initial Summer ${yr} plan with Brittany`);
     } else if (summerProposal.stage === 'pending_justin') {
       // Justin is countering Brittany's suggestion — final say
       summerProposal.blocks = JSON.parse(JSON.stringify(yearBlocks));
@@ -2936,7 +2936,7 @@ window.applySummer = function() {
         justification: '',
         isFinal: true
       });
-      logAction('Justin', 'summer', `Approved final Summer ${yr} plan (after Brittany's suggestion)`);
+      logAction('Justin', 'summer', `Finalized Summer ${yr} plan after Brittany's suggestion`);
       // Apply to calendar
       _applySummerToCalendar(yr, yearBlocks);
     } else {
@@ -2946,14 +2946,14 @@ window.applySummer = function() {
   } else {
     // Brittany editing summer (rare path) — just applies
     _applySummerToCalendar(yr, yearBlocks);
-    logAction('Brittany', 'summer', `Edited Summer ${yr} plan directly (custodial parent override)`);
+    logAction('Brittany', 'summer', `Updated Summer ${yr} plan`);
   }
 
   closeSummer();
   render();
   scheduleSave();
   showToast(currentUser === 'Justin' && summerProposal && summerProposal.stage === 'pending_brittany'
-    ? '☀️ Submitted to Brittany for review' : '☀️ Summer plan saved');
+    ? '☀️ Shared with Brittany' : '☀️ Summer plan saved');
 };
 
 function _applySummerToCalendar(yr, blocks) {
@@ -3012,18 +3012,18 @@ function renderSummerProposalModal() {
 
   document.getElementById('sp-title').textContent =
     _spReviewMode === 'brittany_review'
-      ? `☀️ Justin's Summer ${yr} Proposal`
-      : `☀️ Brittany's Suggested Changes — Summer ${yr}`;
+      ? `☀️ Justin's Summer ${yr} Plan`
+      : `☀️ Brittany's Suggested Changes - Summer ${yr}`;
 
   document.getElementById('sp-sub').textContent =
     _spReviewMode === 'brittany_review'
-      ? 'Justin proposes these summer dates · Approve or suggest changes'
+      ? 'Justin shared these summer dates · Accept or suggest changes'
       : 'Brittany suggests these adjustments · You have final say';
 
   // Stage banner
   const stageBanner = _spReviewMode === 'brittany_review'
-    ? `<div class="sp-stage-banner">📥 Submitted by Justin · Per IPG, noncustodial parent selects summer dates by April 1. Brittany may suggest changes (with reasoning) but Justin has final approval.</div>`
-    : `<div class="sp-stage-banner">📥 Counter-suggested by Brittany · As noncustodial parent, you have the final call. Approve her suggestions, or revise and finalize.</div>`;
+    ? `<div class="sp-stage-banner">📥 Shared by Justin · Summer dates are due by April 1. Brittany can suggest changes with reasoning.</div>`
+    : `<div class="sp-stage-banner">📥 Suggested by Brittany · Look over her changes, then accept or revise and finalize.</div>`;
 
   // Build blocks list (display-only or editable)
   let blocksHtml = '<div class="sp-blocks">';
@@ -3044,10 +3044,10 @@ function renderSummerProposalModal() {
   let historyHtml = '';
   if (summerProposal.history.length > 0) {
     historyHtml = `<div class="sp-history">
-      <div class="sp-history-title">Proposal History</div>
+      <div class="sp-history-title">Plan History</div>
       ${summerProposal.history.map(h => `
         <div class="sp-history-item ${h.by==='Justin'?'j':'b'}">
-          <b>${h.by==='Justin'?'👨':'👩'} ${h.by}</b> ${h.isInitial?'submitted initial plan':(h.isFinal?'approved final plan':'suggested changes')}
+          <b>${h.by==='Justin'?'👨':'👩'} ${h.by}</b> ${h.isInitial?'shared initial plan':(h.isFinal?'finalized the plan':'suggested changes')}
           <span class="sp-history-when"> · ${formatLogTime(h.ts)}</span>
           ${h.justification ? `<div style="margin-top:3px;font-size:.92em;color:var(--text)"><i>"${h.justification}"</i></div>` : ''}
         </div>
@@ -3065,7 +3065,7 @@ function renderSummerProposalModal() {
         <textarea class="sp-justify-ta" id="sp-justify-text"
           placeholder="e.g. The first week conflicts with my family reunion. I'd like to swap weeks 1 and 3 so I have Xander for the reunion."></textarea>
         <div style="font-size:.74em;color:var(--muted);margin-top:5px;font-style:italic">
-          Justin will see your reasoning when reviewing your suggestion.
+          Justin will see your reasoning with your suggestion.
         </div>
         <div style="margin-top:11px;padding:10px 12px;background:#f8fafc;border-radius:8px;font-size:.82em;color:var(--text);line-height:1.5">
           <b>Note:</b> To suggest specific date changes, close this dialog, then open the Summer Planner from the calendar to edit dates and re-submit.
@@ -3083,13 +3083,13 @@ function renderSummerProposalModal() {
     ftr = `
       <button class="btn btn-cancel" onclick="closeSummerProposalReview()">Close</button>
       <button class="btn" style="background:#fef3c7;color:#92400e" onclick="brittanyShowSuggest()">📝 Suggest Changes</button>
-      <button class="btn btn-save" style="flex:1" onclick="brittanyApproveSummer()">✓ Approve Plan</button>
+      <button class="btn btn-save" style="flex:1" onclick="brittanyApproveSummer()">✓ Accept Plan</button>
     `;
   } else {
     ftr = `
       <button class="btn btn-cancel" onclick="closeSummerProposalReview()">Close</button>
       <button class="btn" style="background:#fef3c7;color:#92400e" onclick="closeSummerProposalReview();openSummer(${yr})">📝 Revise & Re-submit</button>
-      <button class="btn btn-save" style="flex:1;background:#10b981" onclick="justinApproveFinal()">✓ Accept Brittany's Suggestion (Final)</button>
+      <button class="btn btn-save" style="flex:1;background:#10b981" onclick="justinApproveFinal()">✓ Use Brittany's Suggestion</button>
     `;
   }
   document.getElementById('sp-ftr').innerHTML = ftr;
@@ -3121,11 +3121,11 @@ function brittanyApproveSummer() {
   // Sync summerPlan to match
   summerPlan = summerPlan.filter(b => !b.start || !b.start.startsWith(String(yr)));
   summerPlan = summerPlan.concat(summerProposal.blocks);
-  logAction('Brittany', 'summer', `Approved Justin's Summer ${yr} plan`);
+  logAction('Brittany', 'summer', `Accepted Justin's Summer ${yr} plan`);
   closeSummerProposalReview();
   render();
   scheduleSave();
-  showToast('✓ Summer plan approved & applied');
+  showToast('✓ Summer plan accepted & applied');
 }
 
 function brittanySubmitSuggestion(yr) {
@@ -3163,7 +3163,7 @@ function justinApproveFinal() {
   _applySummerToCalendar(yr, summerProposal.blocks);
   summerPlan = summerPlan.filter(b => !b.start || !b.start.startsWith(String(yr)));
   summerPlan = summerPlan.concat(summerProposal.blocks);
-  logAction('Justin', 'summer', `Approved final Summer ${yr} plan`);
+  logAction('Justin', 'summer', `Finalized Summer ${yr} plan`);
   closeSummerProposalReview();
   render();
   scheduleSave();
@@ -3480,7 +3480,7 @@ self.addEventListener('push', event => {
 
   const title = data.title || 'Xander Calendar';
   const options = {
-    body: data.body || 'You have something to review',
+    body: data.body || 'Something needs your attention',
     icon: data.icon || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">📅</text></svg>',
     badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="80">📅</text></svg>',
     tag: data.tag || 'cal-update',
@@ -3698,7 +3698,7 @@ async function renderNotifModal() {
     } else if (status.subscribed) {
       html += `
         <div class="notif-status ok">
-          ✓ Notifications enabled for <b>${currentUser}</b>. You'll get notified when ${currentUser==='Justin'?'Brittany':'Justin'} proposes changes that need your approval.
+          ✓ Notifications enabled for <b>${currentUser}</b>. You'll get notified when ${currentUser==='Justin'?'Brittany':'Justin'} sends calendar updates that need your attention.
         </div>
         <button class="notif-toggle-btn disable" onclick="handleDisableNotifs()">Turn Off Notifications</button>
       `;
@@ -3707,8 +3707,8 @@ async function renderNotifModal() {
         <div class="notif-step">
           <div class="notif-step-t">When you'll get notified</div>
           <div class="notif-step-body">
-            • When ${currentUser==='Justin'?'Brittany':'Justin'} proposes a change to a day<br>
-            • When a summer plan is submitted for your review<br>
+            • When ${currentUser==='Justin'?'Brittany':'Justin'} sends a change to a day<br>
+            • When a summer plan needs your attention<br>
             • Notifications appear instantly even when the app is closed
           </div>
         </div>
@@ -3798,8 +3798,8 @@ window.saveDay = function() {
     const isNote = newest && newest.changeType === 'note';
     triggerPushNotification(
       otherParent,
-      isNote ? `${currentUser} added a calendar note` : `${currentUser} proposed a change`,
-      isNote ? `Open the calendar to review the note.` : `Open the calendar to review and approve.`,
+      isNote ? `${currentUser} added a calendar note` : `${currentUser} sent a calendar change`,
+      isNote ? `Open the calendar to view the note.` : `Open the calendar to respond.`,
       window.location.origin
     );
   }
@@ -3814,8 +3814,8 @@ window.resetDay = function() {
   if (Object.keys(pendingSwaps).length > beforePending) {
     triggerPushNotification(
       otherParent,
-      `${currentUser} proposed a reset`,
-      `Open the calendar to review.`,
+      `${currentUser} sent a reset request`,
+      `Open the calendar to respond.`,
       window.location.origin
     );
   }
@@ -3831,8 +3831,8 @@ window.applySummer = function() {
     if (summerProposal.stage === 'pending_brittany') {
       triggerPushNotification(
         'Brittany',
-        `Justin submitted Summer ${summerProposal.year} plan`,
-        'Open the calendar to review and approve.',
+        `Justin shared Summer ${summerProposal.year} plan`,
+        'Open the calendar to look it over.',
         window.location.origin
       );
     }
@@ -3846,7 +3846,7 @@ window.brittanySubmitSuggestion = function(yr) {
   triggerPushNotification(
     'Justin',
     `Brittany suggested changes to Summer ${yr}`,
-    'Open the calendar to review her suggestion.',
+    'Open the calendar to look over her suggestion.',
     window.location.origin
   );
 };
@@ -4799,7 +4799,7 @@ function renderInboxBody(){
   const body = document.getElementById('inbox-body');
   const items = getInboxItems();
   if (items.length === 0){
-    body.innerHTML = '<div class="inbox-empty">✨ Inbox zero<br><span style="font-size:.86em">No pending swaps, travel notices, or reminders</span></div>';
+    body.innerHTML = '<div class="inbox-empty">✨ You’re all caught up<br><span style="font-size:.86em">Shared updates, travel notices, and reminders will show up here.</span></div>';
     return;
   }
   body.innerHTML = items.map(i => renderInboxItem(i)).join('');
@@ -4819,7 +4819,7 @@ function renderInboxItem(item){
         <div class="inbox-item-hdr">
           <span class="inbox-item-icon">🔄</span>
           <div class="inbox-item-meta">
-            <div class="inbox-item-t">${s.by} proposes a swap</div>
+            <div class="inbox-item-t">${s.by} sent a calendar change</div>
             <div class="inbox-item-when">${formatLogTime(s.createdAt)}</div>
           </div>
         </div>
@@ -4827,8 +4827,8 @@ function renderInboxItem(item){
           📅 <b>${formatLogDate(s.date)}</b><br>${ownerChange}${eventLine}
         </div>
         <div class="inbox-item-actions">
-          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">✗ Decline</button>
-          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">✓ Approve</button>
+          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">Pass</button>
+          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">✓ Accept</button>
         </div>
       </div>`;
   }
@@ -5166,7 +5166,7 @@ renderInboxItem = function(item){
       : `Summer ${yr} plan due in ${daysLeft} day${daysLeft===1?'':'s'}`;
     const sub = overdue
       ? 'April 1 deadline passed — submit your plan to preserve selection rights.'
-      : 'As noncustodial parent, you select your summer days by April 1.';
+      : 'Summer dates are due by April 1.';
     return `
       <div class="inbox-item ${overdue?'urgent':'summer'}${unreadCls}">
         <div class="inbox-item-hdr">
@@ -5190,14 +5190,14 @@ renderInboxItem = function(item){
         <div class="inbox-item-hdr">
           <span class="inbox-item-icon">☀️</span>
           <div class="inbox-item-meta">
-            <div class="inbox-item-t">Justin submitted Summer ${yr} plan</div>
-            <div class="inbox-item-when">Awaiting your review</div>
+            <div class="inbox-item-t">Justin shared Summer ${yr} plan</div>
+            <div class="inbox-item-when">Waiting on you</div>
           </div>
         </div>
-        <div class="inbox-item-body">Review and approve, or suggest changes with reasoning.</div>
+        <div class="inbox-item-body">Look it over and accept it, or suggest changes with reasoning.</div>
         <div class="inbox-item-actions">
           <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
-          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Review →</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Open →</button>
         </div>
       </div>`;
   }
@@ -5208,14 +5208,14 @@ renderInboxItem = function(item){
         <div class="inbox-item-hdr">
           <span class="inbox-item-icon">☀️</span>
           <div class="inbox-item-meta">
-            <div class="inbox-item-t">Brittany suggested changes — Summer ${yr}</div>
+            <div class="inbox-item-t">Brittany suggested changes - Summer ${yr}</div>
             <div class="inbox-item-when">You have final say</div>
           </div>
         </div>
-        <div class="inbox-item-body">Review her counter-suggestion and finalize.</div>
+        <div class="inbox-item-body">Look over her suggestion and finalize the plan.</div>
         <div class="inbox-item-actions">
           <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Later</button>
-          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Review →</button>
+          <button class="ix-btn ix-approve" onclick="closeInbox();openSummerProposalReview()">Open →</button>
         </div>
       </div>`;
   }
@@ -5369,7 +5369,7 @@ function findSummerDrift(){
     btn.id = 'sum-apply-direct-btn';
     btn.className = 'btn';
     btn.style.cssText = 'background:#10b981;color:#fff;font-weight:700';
-    btn.title = 'Write current blocks directly to the calendar without the proposal workflow';
+    btn.title = 'Apply current blocks directly to the calendar';
     btn.textContent = '⚡ Apply Picks to Calendar Now';
     btn.onclick = function(){
       const summary = summarizeSummerPlan(activeSummerYear);
@@ -6145,7 +6145,7 @@ function _v13BuildTimeline(){
 
   if (typeof getInboxItems === 'function'){
     getInboxItems().slice(0, 2).forEach(i => {
-      const label = i.type === 'swap' ? 'Swap needs review'
+      const label = i.type === 'swap' ? 'Calendar change'
         : i.type === 'travel' ? 'Travel acknowledgement'
         : i.type === 'school' ? 'School calendar reminder'
         : i.type && i.type.includes('summer') ? 'Summer planning'
@@ -6244,7 +6244,7 @@ function renderDashboard(){
     <div class="dash-card tap" onclick="${handoffAction}" role="button" tabindex="0">
       <div class="dash-card-title">Next Exchange</div>
       <div class="dash-card-main">${handoff ? _v13ShortDate(handoff.date) : 'None soon'}</div>
-      <div class="dash-card-sub">${handoff ? `${handoff.from} to ${handoff.owner}` : 'No owner change found in the next 90 days.'}</div>
+      <div class="dash-card-sub">${handoff ? `${handoff.from} to ${handoff.owner}` : 'No exchange found in the next 90 days.'}</div>
     </div>
     <div class="dash-card tap travel ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}" role="button" tabindex="0">
       <div class="dash-card-title">Travel</div>
@@ -6295,7 +6295,7 @@ renderInboxBody = function(){
   const items = getInboxItems();
   const actionHtml = items.length
     ? items.map(i => renderInboxItem(i)).join('')
-    : '<div class="inbox-empty">✨ No action needed<br><span style="font-size:.86em">Swaps, travel acknowledgements, summer planning, and school reminders will show up here.</span></div>';
+    : '<div class="inbox-empty">✨ No action needed<br><span style="font-size:.86em">Calendar changes, travel acknowledgements, summer planning, and school reminders will show up here.</span></div>';
 
   const allHistory = (activityLog || []);
   const filteredHistory = allHistory
@@ -6378,7 +6378,7 @@ renderInboxItem = function(item){
     const id = item.data.swapId;
     const isNote = s.changeType === 'note' || (s.fromOwner === s.toOwner && (s.toNote || '') !== (s.fromNote || '') && (s.toEvent || '') === (s.fromEvent || ''));
     const removesNote = isNote && !(s.toNote || '').trim();
-    const title = isNote ? `${s.by} sent a date note` : `${s.by} proposes a change`;
+    const title = isNote ? `${s.by} sent a date note` : `${s.by} sent a calendar change`;
     const ownerChange = s.fromOwner !== s.toOwner
       ? `<b>${s.fromOwner}</b> → <b>${s.toOwner}</b>`
       : `Owner stays <b>${s.toOwner}</b>`;
@@ -6399,8 +6399,8 @@ renderInboxItem = function(item){
           📅 <b>${formatLogDate(s.date)}</b><br>${isNote ? 'Heads-up only. This does not change parenting time.' : ownerChange}${eventLine}${noteLine}
         </div>
         <div class="inbox-item-actions">
-          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Dismiss' : '✗ Decline'}</button>
-          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? (removesNote ? 'Acknowledge & Clear' : 'Acknowledge & Add') : '✓ Approve'}</button>
+          <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? 'Dismiss' : 'Pass'}</button>
+          <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">${isNote ? (removesNote ? 'Acknowledge & Clear' : 'Acknowledge & Add') : '✓ Accept'}</button>
         </div>
       </div>`;
   }
@@ -6598,7 +6598,7 @@ function renderSummerApplyPanel(summary){
   const blockWord = summary.blocks.length === 1 ? 'block' : 'blocks';
   if (summary.warnings.length) {
     return `<div class="summer-apply-panel warn">
-      <div class="summer-apply-title">Review before applying</div>
+      <div class="summer-apply-title">Check before applying</div>
       <div class="summer-apply-sub">Fix the warning${summary.warnings.length===1?'':'s'} above first. Once everything is assigned cleanly, applying will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} on the shared calendar.</div>
     </div>`;
   }
@@ -6621,7 +6621,7 @@ function renderSummerBody(){
   const warningsHtml = summary.warnings.length
     ? `<div class="summer-warnings">${summary.warnings.slice(0,4).map(w => {
         const isGap = w.includes('not assigned yet');
-        return `<div class="summer-warning ${isGap?'actionable':''}" ${isGap?'onclick="toggleSummerGapPanel()"':''}>⚠️ ${w}${isGap?' <span style="text-decoration:underline">Review dates</span>':''}</div>`;
+        return `<div class="summer-warning ${isGap?'actionable':''}" ${isGap?'onclick="toggleSummerGapPanel()"':''}>⚠️ ${w}${isGap?' <span style="text-decoration:underline">Open dates</span>':''}</div>`;
       }).join('')}</div>`
     : `<div class="summer-warnings"><div class="summer-warning ok">✓ Blocks look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
   const gapPanelHtml = renderSummerGapPanel(summary);
@@ -6707,7 +6707,7 @@ function renderSummerStats(){
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--j)"></div><b style="color:var(--j)">${summary.justin}</b> Justin</div>
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--b)"></div><b style="color:var(--b)">${summary.brittany}</b> Brittany</div>
     <div class="sum-stat"><div class="sum-stat-dot" style="background:#94a3b8"></div><b>${summary.planned}</b> of ${summary.total} planned</div>
-    ${summary.warnings.length ? `<div class="sum-stat" style="color:#92400e">⚠️ ${summary.warnings.length} item${summary.warnings.length===1?'':'s'} to review</div>` : '<div class="sum-stat">✓ Ready to apply</div>'}
+    ${summary.warnings.length ? `<div class="sum-stat" style="color:#92400e">⚠️ ${summary.warnings.length} item${summary.warnings.length===1?'':'s'} to check</div>` : '<div class="sum-stat">✓ Ready to apply</div>'}
   `;
 }
 
@@ -6718,7 +6718,7 @@ setTimeout(() => {
     directBtn.title = 'Apply these summer blocks to the calendar and record the update';
   }
   const proposalBtn = document.querySelector('#sum-overlay .sum-modal-ftr .btn-save:not(#sum-apply-direct-btn)');
-  if (proposalBtn) proposalBtn.textContent = 'Submit for Review';
+  if (proposalBtn) proposalBtn.textContent = 'Share Plan';
   if (document.getElementById('sum-stats')) renderSummerStats();
 }, 700);
 
@@ -6967,7 +6967,7 @@ setTimeout(() => {
   </div>
   <div class="log-tabs">
     <button class="log-tab active" id="tab-pending" onclick="switchLogTab('pending')">
-      Pending Swaps <span class="ct zero" id="ct-pending">0</span>
+      Waiting Updates <span class="ct zero" id="ct-pending">0</span>
     </button>
     <button class="log-tab" id="tab-history" onclick="switchLogTab('history')">
       History <span class="ct zero" id="ct-history">0</span>
