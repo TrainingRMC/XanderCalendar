@@ -977,6 +977,19 @@ body.drawer-open{overflow:hidden}
 .travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
 .travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
 .travel-summary-sub{font-size:.78em;color:var(--muted);line-height:1.35;margin-top:3px}
+.ipg-confidence{background:linear-gradient(135deg,var(--j-soft),var(--card));border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 12px;margin:10px 0 13px;box-shadow:var(--shadow-sm)}
+.ipg-confidence-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.ipg-confidence-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.ipg-owner-pill{border-radius:999px;padding:4px 9px;font-family:'Nunito',sans-serif;font-size:.74em;font-weight:900;color:#fff;white-space:nowrap}
+.ipg-owner-pill.j{background:var(--j)}.ipg-owner-pill.b{background:var(--b)}
+.ipg-confidence-main{font-size:.86em;color:var(--text);font-weight:700;line-height:1.35;margin-bottom:8px}
+.ipg-reason-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.ipg-reason{border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 8px;font-size:.72em;font-family:'Nunito',sans-serif;font-weight:900;color:var(--muted)}
+.ipg-reason.strong{border-color:rgba(245,158,11,.4);background:var(--gold-soft);color:#92400e}
+.ipg-confidence-note{font-size:.76em;color:var(--muted);line-height:1.35}
+.ipg-confidence-foot{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:8px;font-style:italic}
+:root[data-theme="dark"] .ipg-confidence{background:linear-gradient(135deg,rgba(10,132,255,.14),var(--card))}
+:root[data-theme="dark"] .ipg-reason{background:var(--bg-2)}
 .record-match{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:7px;cursor:pointer}
 .record-match:hover{border-color:var(--j);box-shadow:var(--shadow-sm)}
 .record-match-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text)}
@@ -2527,6 +2540,7 @@ openDay = function(y,m,d) {
   }
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   banner.innerHTML = `<b>📤 Schedule changes wait for a reply.</b> Use <b>Send Note</b> for a simple heads-up to ${other || 'the other parent'}.`;
+  renderIpgConfidencePanel(y,m,d, banner);
   let noteHint = document.getElementById('note-only-hint');
   if (!noteHint) {
     noteHint = document.createElement('div');
@@ -2537,6 +2551,78 @@ openDay = function(y,m,d) {
   }
   noteHint.textContent = 'Notes are for awareness: practice times, pickup details, reminders, or anything both homes should see.';
 };
+
+function buildIpgConfidence(y,m,d){
+  const key = dk(y,m,d);
+  const base = (DEFAULT[dataKey(y,m)] || {})[String(d)] || {};
+  const ov = overrides[key] || null;
+  const info = getInfo(y,m,d) || {};
+  const school = typeof getSchoolOverride === 'function' ? getSchoolOverride(y,m,d) : null;
+  const pending = Object.values(pendingSwaps || {}).filter(s => s && s.date === key);
+  const travel = (travelEntries || []).filter(t => t && key >= t.start && key <= t.end);
+  const reasons = [];
+  let main = `${info.owner || 'Brittany'} has Xander on this date.`;
+
+  if (ov) {
+    reasons.push({ label: ov._summer ? 'Summer plan applied' : 'Shared calendar change', strong:true });
+    main = `${info.owner || ov.owner} is shown because a shared calendar update is active for this day.`;
+  }
+  if (school) reasons.push({ label:'School calendar date', strong:true });
+  if (base.is_bday) reasons.push({ label:"Xander's birthday", strong:true });
+  if (base.parent_bday) reasons.push({ label:`${base.parent_bday}'s birthday`, strong:true });
+  if (base.is_holiday && base.event) reasons.push({ label:'Holiday / special day', strong:true });
+  if (base.is_summer || info.is_summer) reasons.push({ label:'IPG summer schedule', strong:true });
+  if (base.midweek && !ov) reasons.push({ label:'Tuesday/Thursday time', strong:false });
+  if (base.is_weekend && !ov) reasons.push({ label:'Weekend rotation', strong:false });
+  if (!reasons.length) reasons.push({ label:'Regular parenting schedule', strong:false });
+  if (info.event && !base.is_holiday && !school && !ov) reasons.push({ label:'Calendar label', strong:false });
+  if (pending.length) reasons.push({ label:`${pending.length} update${pending.length===1?'':'s'} waiting`, strong:true });
+  if (travel.length) reasons.push({ label:`${travel.length} travel notice${travel.length===1?'':'s'}`, strong:false });
+
+  const detail = [];
+  if (ov) {
+    detail.push(ov._summer
+      ? 'This day was written from the summer planner.'
+      : 'This day is using a shared-calendar update instead of the default schedule.');
+  } else if (school) {
+    detail.push(`School calendar marks this as ${school.event || 'a school date'}.`);
+  } else if (base.event) {
+    detail.push(`Default calendar label: ${base.event}.`);
+  } else {
+    detail.push('No manual change is active, so the default IPG schedule is being used.');
+  }
+  if (travel.length) {
+    detail.push(`Travel visible this day: ${travel.map(t => t.label || `${t.by} travel`).join(', ')}.`);
+  }
+  if (pending.length) {
+    detail.push('Inbox has an update connected to this date.');
+  }
+
+  return { owner: info.owner || 'Brittany', reasons, detail:detail.join(' ') };
+}
+
+function renderIpgConfidencePanel(y,m,d, anchor){
+  let panel = document.getElementById('ipg-confidence-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'ipg-confidence-panel';
+    panel.className = 'ipg-confidence';
+    anchor.parentNode.insertBefore(panel, anchor.nextSibling);
+  }
+  const confidence = buildIpgConfidence(y,m,d);
+  const ownerCls = confidence.owner === 'Justin' ? 'j' : 'b';
+  panel.innerHTML = `
+    <div class="ipg-confidence-top">
+      <div class="ipg-confidence-title">Why this day?</div>
+      <div class="ipg-owner-pill ${ownerCls}">${confidence.owner}</div>
+    </div>
+    <div class="ipg-confidence-main">${_v13EscapeHtml(confidence.detail)}</div>
+    <div class="ipg-reason-list">
+      ${confidence.reasons.map(r => `<span class="ipg-reason ${r.strong?'strong':''}">${_v13EscapeHtml(r.label)}</span>`).join('')}
+    </div>
+    <div class="ipg-confidence-foot">IPG custodial/noncustodial roles remain active behind the scenes for holiday, summer, and school-break logic.</div>
+  `;
+}
 
 // Close drawer on backdrop click
 document.addEventListener('click', function(e) {
