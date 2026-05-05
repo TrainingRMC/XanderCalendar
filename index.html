@@ -990,6 +990,25 @@ body.drawer-open{overflow:hidden}
 .ipg-confidence-foot{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:8px;font-style:italic}
 :root[data-theme="dark"] .ipg-confidence{background:linear-gradient(135deg,rgba(10,132,255,.14),var(--card))}
 :root[data-theme="dark"] .ipg-reason{background:var(--bg-2)}
+.trade-panel{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:520px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+.trade-hdr{background:linear-gradient(135deg,#047857,#0f766e);color:#fff;padding:18px 20px 14px;flex-shrink:0}
+.trade-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.16em}
+.trade-sub{font-size:.82em;opacity:.9;margin-top:2px;line-height:1.35}
+.trade-body{padding:14px 16px;overflow-y:auto}
+.trade-section{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:11px;margin-bottom:10px}
+.trade-section-title{font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.trade-date-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.trade-date-grid .inp{margin-bottom:0}
+.trade-balance{background:linear-gradient(135deg,var(--gold-soft),var(--card));border:1px solid rgba(245,158,11,.36);border-radius:12px;padding:11px;margin-bottom:10px}
+.trade-balance-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.trade-balance-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px}
+.trade-balance-label{font-size:.7em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:'Nunito',sans-serif}
+.trade-balance-main{font-family:'Nunito',sans-serif;font-size:1.02em;font-weight:900;color:var(--text);margin-top:3px}
+.trade-impact{font-size:.82em;color:var(--text);font-weight:700;line-height:1.35;margin-top:8px}
+.trade-split-bar{height:10px;border-radius:999px;background:var(--bg-2);overflow:hidden;display:flex;margin-top:9px;border:1px solid var(--border)}
+.trade-split-seg.j{background:var(--j)}.trade-split-seg.b{background:var(--b)}
+.trade-actions{display:grid;grid-template-columns:1fr;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--card-elev)}
+@media(max-width:520px){.trade-date-grid,.trade-balance-row{grid-template-columns:1fr}.trade-panel{width:96%;max-height:96vh}}
 .record-match{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:7px;cursor:pointer}
 .record-match:hover{border-color:var(--j);box-shadow:var(--shadow-sm)}
 .record-match-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.86em;color:var(--text)}
@@ -1323,6 +1342,7 @@ body.drawer-open{overflow:hidden}
 
     <div class="day-quick-actions">
       <button class="btn" style="flex:1;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="addTravelFromDay()">✈️ Add Travel Range</button>
+      <button class="btn" style="flex:1;background:rgba(245,158,11,.16);color:#92400e;border:1px solid rgba(245,158,11,.35)" onclick="openSummerTrade(editKey)">☀️ Adjust Summer Days</button>
       <button class="btn" style="flex:1;background:rgba(167,139,250,.15);color:#7c3aed;border:1px solid rgba(167,139,250,.35)" onclick="sendDateNoteOnly()">📝 Send Note</button>
     </div>
     <div class="btn-row">
@@ -1345,6 +1365,39 @@ body.drawer-open{overflow:hidden}
     <div class="sum-modal-ftr">
       <button class="btn btn-cancel" onclick="closeSummer()">Cancel</button>
       <button class="btn btn-save" style="flex:1" onclick="applySummer()">✓ Apply to Calendar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Summer Day Adjustment Modal -->
+<div class="overlay" id="trade-overlay">
+  <div class="trade-panel">
+    <div class="trade-hdr">
+      <div class="trade-title">☀️ Summer Day Adjustment</div>
+      <div class="trade-sub">Trade summer days cleanly and keep the split fair.</div>
+    </div>
+    <div class="trade-body">
+      <div class="trade-section">
+        <div class="trade-section-title">Days I need to switch</div>
+        <div class="trade-date-grid">
+          <input type="date" class="inp" id="trade-give-start" onchange="updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-give-end" onchange="updateSummerTradePreview()">
+        </div>
+      </div>
+      <div class="trade-section">
+        <div class="trade-section-title">Replacement days</div>
+        <div class="trade-date-grid">
+          <input type="date" class="inp" id="trade-get-start" onchange="updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-get-end" onchange="updateSummerTradePreview()">
+        </div>
+      </div>
+      <div class="field-lbl">Reason</div>
+      <textarea class="ta" id="trade-reason" placeholder="e.g. Work travel, conference, schedule changed..." oninput="updateSummerTradePreview()"></textarea>
+      <div id="trade-preview"></div>
+    </div>
+    <div class="trade-actions">
+      <button class="btn btn-save" onclick="sendSummerTrade()">Send Summer Adjustment</button>
+      <button class="btn btn-cancel" onclick="closeSummerTrade()">Cancel</button>
     </div>
   </div>
 </div>
@@ -7046,6 +7099,303 @@ function sendDateNoteOnly(){
   scheduleSave();
   showToast(note ? '📝 Note sent for awareness' : '📝 Note removal sent');
 }
+
+// ═══════════════════════════════════════════════════════
+//  V18: Summer Trade Assistant
+// ═══════════════════════════════════════════════════════
+
+function summerTradeYearFromDate(dateKey){
+  return dateKey ? parseInt(dateKey.slice(0,4)) : (today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1);
+}
+
+function datesBetweenKeys(start, end){
+  const out = [];
+  if (!start || !end || end < start) return out;
+  for (let d = new Date(start + 'T12:00:00'); d <= new Date(end + 'T12:00:00'); d.setDate(d.getDate()+1)){
+    out.push(_v13KeyFromDate(d));
+  }
+  return out;
+}
+
+function summerOwnerCounts(yr, changes){
+  const range = summerRangeForYear(yr);
+  const map = {};
+  (changes || []).forEach(c => { map[c.date] = c.owner; });
+  let justin = 0, brittany = 0;
+  datesBetweenKeys(range.min, range.max).forEach(dateKey => {
+    const d = _v13DateFromKey(dateKey);
+    const owner = map[dateKey] || (_v13InfoForDate(d).owner || 'Brittany');
+    if (owner === 'Justin') justin++;
+    else brittany++;
+  });
+  return { justin, brittany, total: justin + brittany, diff: justin - brittany };
+}
+
+function formatSummerDiff(diff){
+  if (diff === 0) return 'even';
+  return diff > 0 ? `Justin +${diff}` : `Brittany +${Math.abs(diff)}`;
+}
+
+function findReplacementSummerRange(yr, daysNeeded, owner){
+  const other = owner === 'Justin' ? 'Brittany' : 'Justin';
+  const range = summerRangeForYear(yr);
+  let open = [];
+  for (const dateKey of datesBetweenKeys(range.min, range.max)){
+    const d = _v13DateFromKey(dateKey);
+    const info = _v13InfoForDate(d);
+    const hasTravel = (travelEntries || []).some(t => t && t.by === owner && dateKey >= t.start && dateKey <= t.end);
+    if (info.owner === other && !hasTravel) {
+      open.push(dateKey);
+      if (open.length >= daysNeeded) return { start:open[0], end:open[open.length-1] };
+    } else {
+      open = [];
+    }
+  }
+  return null;
+}
+
+function travelReasonForRange(start, end){
+  const matches = (travelEntries || []).filter(t => t && (!currentUser || t.by === currentUser) && _v13RangeOverlaps(t.start, t.end, start, end));
+  if (!matches.length) return '';
+  const t = matches[0];
+  return `Work travel${t.label ? ` - ${t.label}` : ''}`;
+}
+
+function openSummerTrade(prefillDate){
+  if (!currentUser) {
+    alert('Unlock with your PIN first so the adjustment is attributed correctly.');
+    return;
+  }
+  const yr = summerTradeYearFromDate(prefillDate);
+  const range = summerRangeForYear(yr);
+  const dateKey = prefillDate && prefillDate >= range.min && prefillDate <= range.max ? prefillDate : range.min;
+  const giveStart = document.getElementById('trade-give-start');
+  const giveEnd = document.getElementById('trade-give-end');
+  const getStart = document.getElementById('trade-get-start');
+  const getEnd = document.getElementById('trade-get-end');
+  [giveStart, giveEnd, getStart, getEnd].forEach(inp => {
+    inp.min = range.min;
+    inp.max = range.max;
+  });
+  giveStart.value = dateKey;
+  giveEnd.value = dateKey;
+  const suggestion = findReplacementSummerRange(yr, 1, currentUser);
+  getStart.value = suggestion ? suggestion.start : '';
+  getEnd.value = suggestion ? suggestion.end : '';
+  document.getElementById('trade-reason').value = travelReasonForRange(dateKey, dateKey);
+  closeDay();
+  updateSummerTradePreview();
+  document.getElementById('trade-overlay').classList.add('open');
+}
+
+function closeSummerTrade(){
+  document.getElementById('trade-overlay').classList.remove('open');
+}
+
+function summerTradeChangesFromInputs(){
+  const giveStart = document.getElementById('trade-give-start').value;
+  const giveEnd = document.getElementById('trade-give-end').value;
+  const getStart = document.getElementById('trade-get-start').value;
+  const getEnd = document.getElementById('trade-get-end').value;
+  const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const changes = [];
+  datesBetweenKeys(giveStart, giveEnd).forEach(date => changes.push({ date, owner:other, direction:'give' }));
+  datesBetweenKeys(getStart, getEnd).forEach(date => changes.push({ date, owner:currentUser, direction:'receive' }));
+  return { giveStart, giveEnd, getStart, getEnd, changes };
+}
+
+function updateSummerTradePreview(){
+  const preview = document.getElementById('trade-preview');
+  if (!preview || !currentUser) return;
+  const data = summerTradeChangesFromInputs();
+  const yr = summerTradeYearFromDate(data.giveStart || data.getStart);
+  const before = summerOwnerCounts(yr, []);
+  const after = summerOwnerCounts(yr, data.changes);
+  const giveDays = datesBetweenKeys(data.giveStart, data.giveEnd).length;
+  const getDays = datesBetweenKeys(data.getStart, data.getEnd).length;
+  const jPct = after.total ? Math.max(0, Math.min(100, (after.justin / after.total) * 100)) : 50;
+  const bPct = after.total ? Math.max(0, Math.min(100, (after.brittany / after.total) * 100)) : 50;
+  const balanced = Math.abs(after.diff) <= 2;
+  const warning = giveDays !== getDays
+    ? `<div class="trade-impact" style="color:#92400e">This trades ${giveDays} day${giveDays===1?'':'s'} for ${getDays} day${getDays===1?'':'s'}.</div>`
+    : '';
+  preview.innerHTML = `<div class="trade-balance">
+    <div class="trade-section-title">Fairness calculation</div>
+    <div class="trade-balance-row">
+      <div class="trade-balance-card">
+        <div class="trade-balance-label">Current split</div>
+        <div class="trade-balance-main">Justin ${before.justin} · Brittany ${before.brittany}</div>
+        <div class="trade-impact">${formatSummerDiff(before.diff)}</div>
+      </div>
+      <div class="trade-balance-card">
+        <div class="trade-balance-label">After adjustment</div>
+        <div class="trade-balance-main">Justin ${after.justin} · Brittany ${after.brittany}</div>
+        <div class="trade-impact">${formatSummerDiff(after.diff)}</div>
+      </div>
+    </div>
+    <div class="trade-split-bar">
+      <div class="trade-split-seg j" style="width:${jPct}%"></div>
+      <div class="trade-split-seg b" style="width:${bPct}%"></div>
+    </div>
+    <div class="trade-impact">${balanced ? 'This keeps summer close to balanced.' : 'This changes the summer balance noticeably.'}</div>
+    ${warning}
+  </div>`;
+}
+
+function sendSummerTrade(){
+  if (!currentUser) return;
+  const data = summerTradeChangesFromInputs();
+  if (!data.giveStart || !data.giveEnd || !data.getStart || !data.getEnd) {
+    alert('Pick the dates to switch and the replacement dates.');
+    return;
+  }
+  if (data.giveEnd < data.giveStart || data.getEnd < data.getStart) {
+    alert('End dates must be on or after start dates.');
+    return;
+  }
+  const yr = summerTradeYearFromDate(data.giveStart);
+  const reason = document.getElementById('trade-reason').value.trim();
+  const before = summerOwnerCounts(yr, []);
+  const after = summerOwnerCounts(yr, data.changes);
+  const swapId = makeSwapId();
+  pendingSwaps[swapId] = {
+    date: data.giveStart,
+    by: currentUser,
+    changeType: 'summer-trade',
+    createdAt: new Date().toISOString(),
+    trade: {
+      year: yr,
+      giveStart: data.giveStart,
+      giveEnd: data.giveEnd,
+      getStart: data.getStart,
+      getEnd: data.getEnd,
+      reason,
+      before,
+      after,
+      changes: data.changes
+    }
+  };
+  const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  logAction(currentUser, 'summer-trade', `Sent summer adjustment: ${fmtDate(data.giveStart)}-${fmtDate(data.giveEnd)} for ${fmtDate(data.getStart)}-${fmtDate(data.getEnd)}. After: Justin ${after.justin}, Brittany ${after.brittany} (${formatSummerDiff(after.diff)})${reason ? ` · ${reason}` : ''}`);
+  closeSummerTrade();
+  render();
+  scheduleSave();
+  triggerPushNotification(other, `${currentUser} sent a summer adjustment`, `Open the calendar to look it over.`, window.location.origin);
+  showToast('☀️ Summer adjustment sent');
+}
+
+function applySummerTrade(swap){
+  const trade = swap.trade;
+  (trade.changes || []).forEach(change => {
+    const d = _v13DateFromKey(change.date);
+    const info = _v13InfoForDate(d);
+    overrides[change.date] = {
+      owner: change.owner,
+      event: info.event || '☀️ Summer adjustment',
+      note: trade.reason ? `Summer adjustment: ${trade.reason}` : 'Summer adjustment',
+      timeMode: 'all',
+      timeFrom: '',
+      timeTo: '',
+      _manual: true,
+      _summerTrade: true,
+      approvedBy: currentUser,
+      approvedAt: new Date().toISOString(),
+      proposedBy: swap.by
+    };
+  });
+}
+
+const _v18ApproveSwap = approveSwap;
+approveSwap = function(swapId){
+  const swap = pendingSwaps[swapId];
+  if (swap && swap.changeType === 'summer-trade') {
+    if (swap.by === currentUser) return cancelSwap(swapId);
+    applySummerTrade(swap);
+    const t = swap.trade;
+    logAction(currentUser, 'summer-trade-accepted', `Accepted ${swap.by}'s summer adjustment. After: Justin ${t.after.justin}, Brittany ${t.after.brittany} (${formatSummerDiff(t.after.diff)})`);
+    delete pendingSwaps[swapId];
+    render();
+    renderInboxBody();
+    scheduleSave();
+    showToast('✓ Summer adjustment accepted');
+    return;
+  }
+  return _v18ApproveSwap(swapId);
+};
+
+const _v18DeclineSwap = declineSwap;
+declineSwap = function(swapId){
+  const swap = pendingSwaps[swapId];
+  if (swap && swap.changeType === 'summer-trade') {
+    if (swap.by === currentUser) return cancelSwap(swapId);
+    const t = swap.trade;
+    if (!confirm(`Pass on ${swap.by}'s summer adjustment?`)) return;
+    logAction(currentUser, 'summer-trade-passed', `Passed on ${swap.by}'s summer adjustment for ${fmtDate(t.giveStart)}-${fmtDate(t.giveEnd)}`);
+    delete pendingSwaps[swapId];
+    render();
+    renderInboxBody();
+    scheduleSave();
+    showToast('Summer adjustment passed');
+    return;
+  }
+  return _v18DeclineSwap(swapId);
+};
+
+const _v18ShowBlockingSwap = showBlockingSwap;
+showBlockingSwap = function(queue, idx){
+  while (queue[idx] && queue[idx][1] && queue[idx][1].changeType === 'summer-trade') {
+    _swapBlockShownFor.add(queue[idx][0]);
+    idx++;
+  }
+  return _v18ShowBlockingSwap(queue, idx);
+};
+
+const _v18RenderInboxItem = renderInboxItem;
+renderInboxItem = function(item){
+  if (item.type === 'swap' && item.data.swap && item.data.swap.changeType === 'summer-trade') {
+    const s = item.data.swap;
+    const id = item.data.swapId;
+    const t = s.trade;
+    const unreadCls = item.unread ? ' unread' : '';
+    return `<div class="inbox-item summer${unreadCls}">
+      <div class="inbox-item-hdr">
+        <span class="inbox-item-icon">☀️</span>
+        <div class="inbox-item-meta">
+          <div class="inbox-item-t">${s.by} sent a summer adjustment</div>
+          <div class="inbox-item-when">${formatLogTime(s.createdAt)}</div>
+        </div>
+      </div>
+      <div class="inbox-item-body">
+        <b>Switch:</b> ${fmtDate(t.giveStart)}${t.giveEnd !== t.giveStart ? ' - ' + fmtDate(t.giveEnd) : ''}<br>
+        <b>Replacement:</b> ${fmtDate(t.getStart)}${t.getEnd !== t.getStart ? ' - ' + fmtDate(t.getEnd) : ''}<br>
+        <b>After:</b> Justin ${t.after.justin}, Brittany ${t.after.brittany} (${formatSummerDiff(t.after.diff)})
+        ${t.reason ? `<br><b>Reason:</b> ${_v13EscapeHtml(t.reason)}` : ''}
+      </div>
+      <div class="inbox-item-actions">
+        <button class="ix-btn ix-decline" onclick="declineSwap('${id}');setTimeout(renderInboxBody,80)">Pass</button>
+        <button class="ix-btn ix-approve" onclick="approveSwap('${id}');setTimeout(renderInboxBody,80)">✓ Accept</button>
+      </div>
+    </div>`;
+  }
+  return _v18RenderInboxItem(item);
+};
+
+document.getElementById('trade-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeSummerTrade();
+});
+
+setTimeout(() => {
+  const ftr = document.querySelector('#sum-overlay .sum-modal-ftr');
+  if (ftr && !document.getElementById('summer-trade-open-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'summer-trade-open-btn';
+    btn.className = 'btn';
+    btn.style.cssText = 'background:rgba(245,158,11,.16);color:#92400e;border:1px solid rgba(245,158,11,.35)';
+    btn.textContent = '☀️ Adjust Summer Days';
+    btn.onclick = function(){ closeSummer(); openSummerTrade(); };
+    ftr.insertBefore(btn, ftr.firstChild);
+  }
+}, 700);
 
 // Init
 render();
