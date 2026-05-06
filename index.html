@@ -796,6 +796,7 @@ body.drawer-open{overflow:hidden}
 .inbox-item.unread{border-left:3px solid var(--j);box-shadow:var(--shadow-md)}
 .inbox-item.unread.swap{border-left-color:var(--gold)}
 .inbox-item.unread.travel{border-left-color:#10b981}
+.inbox-item.unread.expense{border-left-color:#0d9488}
 .inbox-item.unread.school{border-left-color:#a78bfa}
 .inbox-item-hdr{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
 .inbox-item-icon{font-size:1.5em;flex-shrink:0;line-height:1.1}
@@ -981,6 +982,46 @@ body.drawer-open{overflow:hidden}
 .travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
 .travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
 .travel-summary-sub{font-size:.78em;color:var(--muted);line-height:1.35;margin-top:3px}
+.expense-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:560px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+.expense-hdr{background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;padding:18px 20px 14px;flex-shrink:0}
+.expense-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.16em}
+.expense-sub{font-size:.82em;opacity:.9;margin-top:2px;line-height:1.35}
+.expense-body{padding:14px 16px;overflow-y:auto}
+.expense-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.expense-summary-card{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:10px}
+.expense-summary-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.expense-summary-value{font-family:'Nunito',sans-serif;font-size:1.03em;font-weight:900;color:var(--text);margin-top:4px}
+.expense-summary-value.j{color:var(--j)}.expense-summary-value.b{color:var(--b)}.expense-summary-value.good{color:var(--emerald)}
+.expense-form-panel{background:var(--bg-2);border:1px solid var(--border);border-radius:13px;padding:12px;margin-bottom:12px}
+.expense-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.expense-form-grid .inp,.expense-form-grid .sel{margin-bottom:10px}
+.expense-split-preview{background:linear-gradient(135deg,rgba(16,185,129,.12),var(--card));border:1px solid rgba(16,185,129,.28);border-radius:11px;padding:10px 11px;font-size:.82em;color:var(--text);font-weight:700;line-height:1.45;margin:0 0 10px}
+.expense-list-title{font-family:'Nunito',sans-serif;font-size:.74em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:2px 0 8px}
+.expense-item{background:var(--card);border:1px solid var(--border);border-left:4px solid #0d9488;border-radius:12px;padding:11px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+.expense-item.open{border-left-color:var(--gold)}.expense-item.paid{border-left-color:var(--emerald);opacity:.88}
+.expense-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.expense-item-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.92em;line-height:1.2}
+.expense-item-meta{font-size:.76em;color:var(--muted);line-height:1.35;margin-top:2px}
+.expense-amount{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.02em;color:var(--text);white-space:nowrap}
+.expense-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 8px;font-size:.72em;font-family:'Nunito',sans-serif;font-weight:900;background:var(--bg-2);color:var(--muted);border:1px solid var(--border);margin-top:5px}
+.expense-pill.open{background:var(--gold-soft);border-color:rgba(245,158,11,.38);color:#92400e}
+.expense-pill.paid{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#047857}
+.expense-actions{display:flex;gap:6px;margin-top:9px}
+.expense-action-btn{flex:1;border:1px solid var(--border);background:var(--bg-2);color:var(--text);border-radius:9px;padding:8px;font-family:'Nunito',sans-serif;font-weight:900;font-size:.78em;cursor:pointer}
+.expense-action-btn.primary{background:#10b981;border-color:#10b981;color:#fff}
+.expense-action-btn.danger{color:#dc2626;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
+.expense-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:.76em;color:var(--muted);line-height:1.4;margin:0 0 10px}
+.dash-card.expense{border-color:rgba(13,148,136,.35)}
+.dash-card.expense.open{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.inbox-history-row.expense{border-left-color:#0d9488}
+.record-row.expense{border-left-color:#0d9488}
+:root[data-theme="dark"] .expense-summary-card,:root[data-theme="dark"] .expense-form-panel{background:var(--bg-2)}
+:root[data-theme="dark"] .expense-split-preview{background:linear-gradient(135deg,rgba(16,185,129,.16),var(--card))}
+:root[data-theme="dark"] .expense-note{background:var(--bg-2)}
+@media(max-width:520px){
+  .expense-summary-grid,.expense-form-grid{grid-template-columns:1fr}
+  .expense-actions{flex-direction:column}
+}
 .ipg-confidence{background:linear-gradient(135deg,var(--j-soft),var(--card));border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 12px;margin:10px 0 13px;box-shadow:var(--shadow-sm)}
 .ipg-confidence-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
 .ipg-confidence-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
@@ -1198,6 +1239,7 @@ body.drawer-open{overflow:hidden}
       <div class="dash-actions">
         <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
         <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
+        <button class="dash-action" onclick="openExpenses()">💳<br>Expenses</button>
         <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
         <button class="dash-action" onclick="_v13ShowSearch()">🔎<br>Find</button>
       </div>
@@ -1268,6 +1310,13 @@ body.drawer-open{overflow:hidden}
     <div class="menu-text">
       <div class="menu-label">Travel</div>
       <div class="menu-hint">Add or manage trips</div>
+    </div>
+  </button>
+  <button class="menu-item" onclick="closeMenu();openExpenses()">
+    <span class="menu-icon">💳</span>
+    <div class="menu-text">
+      <div class="menu-label">Expenses</div>
+      <div class="menu-hint">Track shared costs and reimbursements</div>
     </div>
   </button>
   <button class="menu-item" onclick="closeMenu();openHistory(event)">
@@ -1490,6 +1539,76 @@ body.drawer-open{overflow:hidden}
         <button class="btn btn-cancel" onclick="closeTravel()">Cancel</button>
         <button class="btn btn-save" id="tr-save-btn" onclick="saveTravel()">✈️ Add & Notify</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SHARED EXPENSES MODAL ═══════════════════════ -->
+<div class="overlay" id="expense-overlay">
+  <div class="expense-modal">
+    <div class="expense-hdr">
+      <div class="expense-title">💳 Shared Expenses</div>
+      <div class="expense-sub">Track child-related costs, split them clearly, and keep the record clean.</div>
+    </div>
+    <div class="expense-body">
+      <div class="expense-summary-grid" id="expense-summary"></div>
+      <div class="expense-note">
+        Phase 1 keeps the money record simple and secure: no bank details, no card numbers, and no receipt uploads yet. Venmo/Zelle can be recorded manually after payment.
+      </div>
+      <div class="expense-form-panel">
+        <div class="expense-list-title" id="expense-form-title">Add Expense</div>
+        <div class="expense-form-grid">
+          <div>
+            <div class="field-lbl">Date</div>
+            <input type="date" class="inp" id="xp-date" onchange="updateExpensePreview()">
+          </div>
+          <div>
+            <div class="field-lbl">Category</div>
+            <select class="sel" id="xp-category" onchange="updateExpensePreview()">
+              <option value="Medical">Medical</option>
+              <option value="School">School</option>
+              <option value="Activities">Activities</option>
+              <option value="Clothing">Clothing</option>
+              <option value="Childcare">Childcare</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-lbl">Amount</div>
+            <input type="number" class="inp" id="xp-amount" min="0" step="0.01" placeholder="0.00" oninput="updateExpensePreview()">
+          </div>
+          <div>
+            <div class="field-lbl">Paid By</div>
+            <select class="sel" id="xp-paid-by" onchange="updateExpensePreview()">
+              <option value="Justin">Justin</option>
+              <option value="Brittany">Brittany</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-lbl">Description</div>
+        <input class="inp" id="xp-desc" placeholder="e.g. Soccer cleats, orthodontist copay..." oninput="updateExpensePreview()">
+
+        <div class="field-lbl">Split</div>
+        <select class="sel" id="xp-split" onchange="updateExpensePreview()">
+          <option value="50">50 / 50</option>
+          <option value="justin">Justin covers all</option>
+          <option value="brittany">Brittany covers all</option>
+        </select>
+
+        <div class="field-lbl">Notes</div>
+        <textarea class="ta" id="xp-notes" placeholder="Optional context. Keep payment details out of here." oninput="updateExpensePreview()"></textarea>
+        <div id="expense-preview" class="expense-split-preview"></div>
+        <div class="btn-row">
+          <button class="btn btn-cancel" onclick="clearExpenseForm()">Clear</button>
+          <button class="btn btn-save" onclick="saveExpense()">Save Expense</button>
+        </div>
+      </div>
+      <div class="expense-list-title">Expense Register</div>
+      <div id="expense-list"></div>
+    </div>
+    <div style="display:flex;gap:7px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)">
+      <button class="btn btn-cancel" onclick="closeExpenses()">Close</button>
+      <button class="btn btn-save" style="flex:1" onclick="clearExpenseForm()">+ New Expense</button>
     </div>
   </div>
 </div>
@@ -5971,6 +6090,7 @@ function _v13EscapeHtml(value){
 
 function _v13HistoryKind(type){
   type = String(type || '').toLowerCase();
+  if (type.includes('expense')) return 'expense';
   if (type.includes('travel')) return 'travel';
   if (type.includes('summer')) return 'summer';
   if (type.includes('school')) return 'school';
@@ -5984,6 +6104,7 @@ function _v13HistoryLabel(kind){
     schedule:'Schedule',
     note:'Note',
     travel:'Travel',
+    expense:'Expense',
     summer:'Summer',
     school:'School',
     system:'System'
@@ -5995,6 +6116,7 @@ function _v13HistoryIcon(kind){
     schedule:'🔄',
     note:'📝',
     travel:'✈️',
+    expense:'💳',
     summer:'☀️',
     school:'🏫',
     system:'•'
@@ -6118,7 +6240,7 @@ function _v19BuildPrintableRecordHtml(autoPrint){
     `${trips.length} travel item${trips.length===1?'':'s'}`,
     `${travelDays} travel day${travelDays===1?'':'s'}`
   ].join(' · ');
-  const chipHtml = ['schedule','note','travel','summer','school','system']
+  const chipHtml = ['schedule','note','travel','expense','summer','school','system']
     .filter(k => counts[k])
     .map(k => `<span class="chip">${_v13HistoryIcon(k)} ${_v13HistoryLabel(k)} ${counts[k]}</span>`)
     .join('');
@@ -6163,7 +6285,7 @@ function _v19BuildPrintableRecordHtml(autoPrint){
     .summary-row:last-child{border-bottom:none}
     .summary-row span,.summary-row em{font-size:13px;color:#475569}
     .record-row{border:1px solid #dbe3ef;border-left:5px solid #94a3b8;border-radius:12px;padding:11px 12px;margin-bottom:9px;break-inside:avoid}
-    .record-row.schedule{border-left-color:#f59e0b}.record-row.note{border-left-color:#8b5cf6}.record-row.travel{border-left-color:#10b981}.record-row.summer{border-left-color:#f59e0b}.record-row.school{border-left-color:#a78bfa}
+    .record-row.schedule{border-left-color:#f59e0b}.record-row.note{border-left-color:#8b5cf6}.record-row.travel{border-left-color:#10b981}.record-row.expense{border-left-color:#0d9488}.record-row.summer{border-left-color:#f59e0b}.record-row.school{border-left-color:#a78bfa}
     .row-top{display:flex;justify-content:space-between;gap:10px;color:#64748b;font-size:12px;margin-bottom:5px}
     .kind{font-weight:900;text-transform:uppercase;letter-spacing:.06em}
     .who{font-weight:900;margin-bottom:3px}
@@ -6458,6 +6580,7 @@ function _v13BuildTimeline(){
     getInboxItems().slice(0, 2).forEach(i => {
       const label = i.type === 'swap' ? 'Calendar change'
         : i.type === 'travel' ? 'Travel acknowledgement'
+        : i.type === 'expense' ? 'Expense reimbursement'
         : i.type === 'school' ? 'School calendar reminder'
         : i.type && i.type.includes('summer') ? 'Summer planning'
         : 'Inbox item';
@@ -6526,6 +6649,7 @@ function renderDashboard(){
   const highlight = _v13FindUpcomingHighlight();
   const myDays = _v13CountMyDays(14);
   const nextMyDay = _v13FindNextMyDay();
+  const expenseSummary = typeof getExpenseSummary === 'function' ? getExpenseSummary() : { openCount:0, owedToJustin:0, owedToBrittany:0 };
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
   const travelAction = travel ? `_v17OpenTravelFromDashboard('${travel.id || ''}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
@@ -6566,6 +6690,11 @@ function renderDashboard(){
       <div class="dash-card-title">Travel</div>
       <div class="dash-card-main">${travelText}</div>
       <div class="dash-card-sub">${travelSub}</div>
+    </div>
+    <div class="dash-card tap expense ${expenseSummary.openCount ? 'open' : ''}" onclick="openExpenses()" role="button" tabindex="0">
+      <div class="dash-card-title">Expenses</div>
+      <div class="dash-card-main">${expenseSummary.openCount ? `${expenseSummary.openCount} open` : 'All settled'}</div>
+      <div class="dash-card-sub">${expenseSummary.openCount ? `Justin ${formatMoney(expenseSummary.owedToJustin)} · Brittany ${formatMoney(expenseSummary.owedToBrittany)}` : 'Shared costs are balanced right now.'}</div>
     </div>
     <div class="dash-card tap" onclick="${myDaysAction}" role="button" tabindex="0">
       <div class="dash-card-title">Days With Xander</div>
@@ -6621,6 +6750,7 @@ renderInboxBody = function(){
     ['schedule','Schedule'],
     ['note','Notes'],
     ['travel','Travel'],
+    ['expense','Expenses'],
     ['summer','Summer'],
     ['school','School']
   ];
@@ -6630,7 +6760,7 @@ renderInboxBody = function(){
   }).join('')}</div>`;
   const searchHtml = `<div class="history-search-panel">
     <input id="history-search-input" class="history-search-input" value="${_v13EscapeHtml(historyQuery)}"
-      placeholder="Search record, travel, notes, events, or dates..."
+      placeholder="Search record, travel, expenses, notes, events, or dates..."
       oninput="setHistoryQuery(this.value, event)" onclick="event.stopPropagation()">
     <div class="history-date-row">
       <input class="history-date-input" type="month" value="${historyMonth}" onchange="setHistoryMonth(this.value, event)" onclick="event.stopPropagation()" aria-label="Filter by month">
@@ -7056,6 +7186,7 @@ function _v16BuildSavePayload(){
     summerProposal:    summerProposal || null,
     pushSubscriptions: window._currentNotifSubs || {},
     travelEntries:     travelEntries  || [],
+    expenseEntries:    expenseEntries || [],
     schoolCalendar:    schoolCalendar || {},
     inboxState:        inboxState     || {},
     summerSubmitted:   summerSubmitted || {},
@@ -7094,6 +7225,7 @@ function _v16ApplyPayload(data){
   if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
   if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
   if (data.travelEntries)     travelEntries     = data.travelEntries;
+  if (data.expenseEntries)    expenseEntries    = data.expenseEntries;
   if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
@@ -7538,6 +7670,307 @@ renderInboxItem = function(item){
 
 document.getElementById('trade-overlay').addEventListener('click', function(e){
   if (e.target === this) closeSummerTrade();
+});
+
+// ═══════════════════════════════════════════════════════
+//  V20: Shared expenses, reimbursement tracking, and record
+// ═══════════════════════════════════════════════════════
+
+let expenseEntries = [];
+let editingExpenseId = null;
+
+function formatMoney(value){
+  const n = Number(value) || 0;
+  return '$' + n.toFixed(2);
+}
+
+function expenseOtherParent(name){
+  return name === 'Justin' ? 'Brittany' : 'Justin';
+}
+
+function expenseTodayKey(){
+  return new Date().toISOString().slice(0,10);
+}
+
+function calcExpenseShares(amount, split){
+  amount = Math.max(0, Number(amount) || 0);
+  if (split === 'justin') return { Justin: amount, Brittany: 0 };
+  if (split === 'brittany') return { Justin: 0, Brittany: amount };
+  const half = Math.round((amount / 2) * 100) / 100;
+  return { Justin: half, Brittany: Math.round((amount - half) * 100) / 100 };
+}
+
+function expenseComputed(exp){
+  const shares = calcExpenseShares(exp.amount, exp.split || '50');
+  const paidBy = exp.paidBy || 'Justin';
+  const owedBy = expenseOtherParent(paidBy);
+  const owedAmount = paidBy === 'Justin' ? shares.Brittany : shares.Justin;
+  const settled = Number(owedAmount || 0) <= 0 || exp.status === 'paid' || exp.status === 'settled';
+  return {
+    shares,
+    owedBy,
+    owedTo: paidBy,
+    owedAmount: Math.round((Number(owedAmount) || 0) * 100) / 100,
+    settled
+  };
+}
+
+function getExpenseSummary(){
+  const open = (expenseEntries || []).filter(e => e && !expenseComputed(e).settled);
+  let owedToJustin = 0;
+  let owedToBrittany = 0;
+  open.forEach(e => {
+    const c = expenseComputed(e);
+    if (c.owedTo === 'Justin') owedToJustin += c.owedAmount;
+    else owedToBrittany += c.owedAmount;
+  });
+  return {
+    openCount: open.length,
+    owedToJustin: Math.round(owedToJustin * 100) / 100,
+    owedToBrittany: Math.round(owedToBrittany * 100) / 100,
+    settledCount: (expenseEntries || []).filter(e => e && expenseComputed(e).settled).length
+  };
+}
+
+function expenseStatusLabel(exp){
+  const c = expenseComputed(exp);
+  if (c.settled) return exp.status === 'paid' ? 'Paid' : 'Settled';
+  return `${c.owedBy} owes ${formatMoney(c.owedAmount)}`;
+}
+
+function openExpenses(){
+  clearExpenseForm(false);
+  renderExpenses();
+  document.getElementById('expense-overlay').classList.add('open');
+}
+
+function closeExpenses(){
+  document.getElementById('expense-overlay').classList.remove('open');
+}
+
+function clearExpenseForm(renderNow = true){
+  editingExpenseId = null;
+  const todayKey = expenseTodayKey();
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
+  set('xp-date', todayKey);
+  set('xp-category', 'Medical');
+  set('xp-amount', '');
+  set('xp-paid-by', currentUser === 'Brittany' ? 'Brittany' : 'Justin');
+  set('xp-desc', '');
+  set('xp-split', '50');
+  set('xp-notes', '');
+  const title = document.getElementById('expense-form-title');
+  if (title) title.textContent = 'Add Expense';
+  updateExpensePreview();
+  if (renderNow) renderExpenses();
+}
+
+function updateExpensePreview(){
+  const amount = Number(document.getElementById('xp-amount')?.value || 0);
+  const paidBy = document.getElementById('xp-paid-by')?.value || 'Justin';
+  const split = document.getElementById('xp-split')?.value || '50';
+  const shares = calcExpenseShares(amount, split);
+  const owedBy = expenseOtherParent(paidBy);
+  const owedAmount = paidBy === 'Justin' ? shares.Brittany : shares.Justin;
+  const preview = document.getElementById('expense-preview');
+  if (!preview) return;
+  preview.innerHTML = `
+    <b>Split:</b> Justin ${formatMoney(shares.Justin)} · Brittany ${formatMoney(shares.Brittany)}<br>
+    <b>Reimbursement:</b> ${owedAmount > 0 ? `${owedBy} owes ${paidBy} ${formatMoney(owedAmount)}` : 'No reimbursement needed'}
+  `;
+}
+
+function renderExpenses(){
+  const summaryEl = document.getElementById('expense-summary');
+  const listEl = document.getElementById('expense-list');
+  if (!summaryEl || !listEl) return;
+  const summary = getExpenseSummary();
+  summaryEl.innerHTML = `
+    <div class="expense-summary-card">
+      <div class="expense-summary-label">Open</div>
+      <div class="expense-summary-value">${summary.openCount}</div>
+    </div>
+    <div class="expense-summary-card">
+      <div class="expense-summary-label">Owed to Justin</div>
+      <div class="expense-summary-value j">${formatMoney(summary.owedToJustin)}</div>
+    </div>
+    <div class="expense-summary-card">
+      <div class="expense-summary-label">Owed to Brittany</div>
+      <div class="expense-summary-value b">${formatMoney(summary.owedToBrittany)}</div>
+    </div>
+  `;
+
+  const sorted = [...(expenseEntries || [])].sort((a,b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+  if (sorted.length === 0){
+    listEl.innerHTML = '<div class="inbox-empty" style="padding:18px 10px">No expenses yet.<br><span style="font-size:.86em">Add the first one when a shared cost comes up.</span></div>';
+    return;
+  }
+  listEl.innerHTML = sorted.map(exp => {
+    const c = expenseComputed(exp);
+    const cls = c.settled ? 'paid' : 'open';
+    const title = _v13EscapeHtml(exp.description || exp.category || 'Expense');
+    const note = exp.notes ? `<div class="expense-item-meta"><b>Note:</b> ${_v13EscapeHtml(exp.notes)}</div>` : '';
+    return `<div class="expense-item ${cls}">
+      <div class="expense-item-top">
+        <div>
+          <div class="expense-item-title">${title}</div>
+          <div class="expense-item-meta">${fmtDate(exp.date)} · ${_v13EscapeHtml(exp.category || 'Other')} · paid by ${_v13EscapeHtml(exp.paidBy || 'Parent')}</div>
+        </div>
+        <div class="expense-amount">${formatMoney(exp.amount)}</div>
+      </div>
+      <div class="expense-item-meta">Justin ${formatMoney(c.shares.Justin)} · Brittany ${formatMoney(c.shares.Brittany)}</div>
+      ${note}
+      <div class="expense-pill ${cls}">${expenseStatusLabel(exp)}</div>
+      <div class="expense-actions">
+        <button class="expense-action-btn" onclick="editExpense('${exp.id}')">Edit</button>
+        ${c.settled ? '' : `<button class="expense-action-btn primary" onclick="markExpensePaid('${exp.id}')">Mark Paid</button>`}
+        <button class="expense-action-btn danger" onclick="deleteExpense('${exp.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveExpense(){
+  const date = document.getElementById('xp-date')?.value;
+  const amount = Number(document.getElementById('xp-amount')?.value || 0);
+  const description = (document.getElementById('xp-desc')?.value || '').trim();
+  const category = document.getElementById('xp-category')?.value || 'Other';
+  const paidBy = document.getElementById('xp-paid-by')?.value || (currentUser || 'Justin');
+  const split = document.getElementById('xp-split')?.value || '50';
+  const notes = (document.getElementById('xp-notes')?.value || '').trim();
+  if (!date) { alert('Pick the expense date.'); return; }
+  if (!amount || amount <= 0) { alert('Enter an expense amount.'); return; }
+  if (!description) { alert('Add a short description so the record is clear.'); return; }
+
+  const existing = editingExpenseId ? expenseEntries.find(e => e.id === editingExpenseId) : null;
+  const entry = Object.assign({}, existing || {}, {
+    id: existing?.id || ('xp_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+    date,
+    category,
+    description,
+    amount: Math.round(amount * 100) / 100,
+    paidBy,
+    split,
+    notes,
+    createdBy: existing?.createdBy || currentUser || paidBy,
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedBy: currentUser || paidBy,
+    updatedAt: new Date().toISOString()
+  });
+  const c = expenseComputed(entry);
+  if (!existing || existing.status !== 'paid') {
+    entry.status = c.owedAmount > 0 ? 'sent' : 'settled';
+  }
+  if (existing) {
+    expenseEntries = expenseEntries.map(e => e.id === entry.id ? entry : e);
+  } else {
+    expenseEntries.push(entry);
+  }
+
+  logAction(currentUser || paidBy, 'expense', `${existing ? 'Updated' : 'Added'} expense: ${description} (${formatMoney(entry.amount)}). ${expenseStatusLabel(entry)}.`);
+  clearExpenseForm(false);
+  renderExpenses();
+  render();
+  scheduleSave();
+  showToast(existing ? 'Expense updated' : 'Expense saved');
+}
+
+function editExpense(id){
+  const exp = (expenseEntries || []).find(e => e.id === id);
+  if (!exp) return;
+  editingExpenseId = id;
+  const set = (field, value) => { const el = document.getElementById(field); if (el) el.value = value || ''; };
+  set('xp-date', exp.date);
+  set('xp-category', exp.category || 'Other');
+  set('xp-amount', exp.amount || '');
+  set('xp-paid-by', exp.paidBy || 'Justin');
+  set('xp-desc', exp.description || '');
+  set('xp-split', exp.split || '50');
+  set('xp-notes', exp.notes || '');
+  const title = document.getElementById('expense-form-title');
+  if (title) title.textContent = 'Edit Expense';
+  updateExpensePreview();
+  document.getElementById('expense-overlay')?.querySelector('.expense-body')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function markExpensePaid(id){
+  const exp = (expenseEntries || []).find(e => e.id === id);
+  if (!exp) return;
+  exp.status = 'paid';
+  exp.paidAt = new Date().toISOString();
+  exp.paidMarkedBy = currentUser || 'unknown';
+  exp.updatedAt = new Date().toISOString();
+  logAction(currentUser || 'unknown', 'expense', `Marked expense paid: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
+  renderExpenses();
+  render();
+  scheduleSave();
+  showToast('Expense marked paid');
+}
+
+function deleteExpense(id){
+  const exp = (expenseEntries || []).find(e => e.id === id);
+  if (!exp) return;
+  if (!confirm('Delete this expense from the shared record?')) return;
+  expenseEntries = expenseEntries.filter(e => e.id !== id);
+  logAction(currentUser || 'unknown', 'expense', `Deleted expense: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
+  renderExpenses();
+  render();
+  scheduleSave();
+  showToast('Expense deleted');
+}
+
+const _v20OrigGetInboxItems = getInboxItems;
+getInboxItems = function(){
+  const items = _v20OrigGetInboxItems();
+  if (!currentUser) return items;
+  const myState = inboxState[currentUser] || { read:{}, dismissed:{} };
+  (expenseEntries || []).forEach(exp => {
+    if (!exp || !exp.id) return;
+    const c = expenseComputed(exp);
+    const key = 'expense-' + exp.id;
+    if (c.settled || c.owedBy !== currentUser || myState.dismissed[key]) return;
+    items.push({
+      id: key,
+      type: 'expense',
+      ts: exp.updatedAt || exp.createdAt || exp.date,
+      unread: !myState.read[key],
+      data: { expenseId: exp.id, expense: exp }
+    });
+  });
+  items.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  return items;
+};
+
+const _v20OrigRenderInboxItem = renderInboxItem;
+renderInboxItem = function(item){
+  if (item.type === 'expense') {
+    const exp = item.data.expense;
+    const c = expenseComputed(exp);
+    const unreadCls = item.unread ? ' unread' : '';
+    return `<div class="inbox-item expense${unreadCls}">
+      <div class="inbox-item-hdr">
+        <span class="inbox-item-icon">💳</span>
+        <div class="inbox-item-meta">
+          <div class="inbox-item-t">${c.owedTo} added an expense</div>
+          <div class="inbox-item-when">${formatLogTime(exp.updatedAt || exp.createdAt || exp.date)}</div>
+        </div>
+      </div>
+      <div class="inbox-item-body">
+        <b>${_v13EscapeHtml(exp.description || exp.category)}</b><br>
+        ${fmtDate(exp.date)} · ${_v13EscapeHtml(exp.category || 'Other')} · total ${formatMoney(exp.amount)}<br>
+        ${currentUser} owes ${c.owedTo} ${formatMoney(c.owedAmount)}
+      </div>
+      <div class="inbox-item-actions">
+        <button class="ix-btn ix-dismiss" onclick="closeInbox();openExpenses()">Open Expenses</button>
+        <button class="ix-btn ix-approve" onclick="markExpensePaid('${exp.id}');setTimeout(renderInboxBody,80)">Mark Paid</button>
+      </div>
+    </div>`;
+  }
+  return _v20OrigRenderInboxItem(item);
+};
+
+document.getElementById('expense-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeExpenses();
 });
 
 setTimeout(() => {
