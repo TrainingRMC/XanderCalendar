@@ -5754,9 +5754,14 @@ function findSummerDrift(){
             window.location.origin
           );
         }
+        try {
+          await _v24SaveSharedNow('summer plan');
+        } catch(err) {
+          alert('Summer plan did not save: ' + err.message);
+          return;
+        }
         closeSummer();
         render();
-        scheduleSave();
         showToast(`☀️ Saved ${n} summer day${n===1?'':'s'} for ${activeSummerYear}`);
       } else {
         showToast('No date ranges to save for ' + activeSummerYear);
@@ -7668,6 +7673,45 @@ async function _v23WriteSharedDataViaRest(payload){
   return res.json();
 }
 
+async function _v24EnsureSharedLoaded(){
+  if (_v16SharedDataLoaded) return true;
+  try {
+    _setSyncStatus('connecting', 'Loading shared calendar before saving...');
+    const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data) _v16ApplyPayload(data);
+    else _v16LastSharedPayload = null;
+    _v16SharedDataLoaded = true;
+    render();
+    return true;
+  } catch(err) {
+    console.error('Could not load shared calendar before save', err);
+    _setSyncStatus('error', 'Could not load shared calendar before saving');
+    return false;
+  }
+}
+
+async function _v24SaveSharedNow(label){
+  const loaded = await _v24EnsureSharedLoaded();
+  if (!loaded) throw new Error('Shared calendar did not load');
+  const payload = _v16BuildSavePayload();
+  _v16StoreBackup(payload, 'pending');
+  if (_v16LooksLikeDataLoss(payload)){
+    _v16StoreBackup(payload, 'blocked');
+    _setSyncStatus('error', 'Save blocked - it looked like shared data would be erased');
+    throw new Error('Save blocked to protect shared data');
+  }
+  _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
+  await _v23WriteSharedDataViaRest(payload);
+  _v16RetryCount = 0;
+  _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
+  _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
+  _v16StoreBackup(payload, 'synced');
+  _setSyncStatus('saved', '✓ Saved to shared calendar');
+  return payload;
+}
+
 // ═══════════════════════════════════════════════════════
 //  V17: Lightweight date notes
 // ═══════════════════════════════════════════════════════
@@ -7899,11 +7943,18 @@ async function sendSummerTrade(){
   };
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   logAction(currentUser, 'summer-trade', `Sent summer adjustment: ${fmtDate(data.giveStart)}-${fmtDate(data.giveEnd)} for ${fmtDate(data.getStart)}-${fmtDate(data.getEnd)}. After: Justin ${after.justin}, Brittany ${after.brittany} (${formatSummerDiff(after.diff)})${reason ? ` · ${reason}` : ''}`);
+  try {
+    await _v24SaveSharedNow('summer adjustment');
+  } catch(err) {
+    delete pendingSwaps[swapId];
+    if (activityLog && activityLog[0] && activityLog[0].type === 'summer-trade') activityLog.shift();
+    alert('Summer adjustment did not save: ' + err.message);
+    return;
+  }
   closeSummerTrade();
   render();
-  scheduleSave();
   triggerPushNotification(other, `${currentUser} sent a summer adjustment`, `Open the calendar to look it over.`, window.location.origin);
-  showToast('☀️ Summer adjustment sent');
+  showToast('☀️ Summer adjustment saved and sent');
 }
 
 function applySummerTrade(swap){
