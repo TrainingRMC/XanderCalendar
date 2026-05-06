@@ -8393,6 +8393,68 @@ setTimeout(() => {
   }
 }, 700);
 
+// Final inbox guard: a badge count should never open to a blank drawer.
+// If an older saved item type cannot be rendered by a feature layer, show a
+// simple review card so it can be dismissed instead of leaving an invisible item.
+function _v21SafeInboxHtml(item){
+  try {
+    const html = renderInboxItem(item);
+    if (html && html.trim()) return html;
+  } catch(err) {
+    console.warn('Inbox item failed to render', item, err);
+  }
+  const unreadCls = item && item.unread ? ' unread' : '';
+  const type = item && item.type ? item.type : 'update';
+  const id = item && item.id ? item.id : ('unknown-' + Date.now());
+  return `<div class="inbox-item${unreadCls}">
+    <div class="inbox-item-hdr">
+      <span class="inbox-item-icon">📌</span>
+      <div class="inbox-item-meta">
+        <div class="inbox-item-t">Shared calendar update</div>
+        <div class="inbox-item-when">${type}</div>
+      </div>
+    </div>
+    <div class="inbox-item-body">This saved update needs your attention, but it came from an older app view. You can dismiss it here, and the permanent record will stay intact.</div>
+    <div class="inbox-item-actions">
+      <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${id}')">Got it</button>
+      <button class="ix-btn ix-approve" onclick="openHistory(event)">View Record</button>
+    </div>
+  </div>`;
+}
+
+function _v21VisibleInboxItems(){
+  return (getInboxItems() || []).map(item => ({
+    item,
+    html: _v21SafeInboxHtml(item)
+  })).filter(row => row.html && row.html.trim());
+}
+
+getInboxUnreadCount = function(){
+  return (getInboxItems() || []).filter(i => i && i.unread).length;
+};
+
+const _v21RenderInboxBody = renderInboxBody;
+renderInboxBody = function(){
+  if (typeof inboxViewMode !== 'undefined' && inboxViewMode === 'history') {
+    _v21RenderInboxBody();
+    return;
+  }
+  const body = document.getElementById('inbox-body');
+  if (!body) return;
+  const title = document.querySelector('.inbox-title');
+  if (title) title.textContent = '📥 Inbox';
+  const rows = _v21VisibleInboxItems();
+  const actionHtml = rows.length
+    ? rows.map(r => r.html).join('')
+    : '<div class="inbox-empty">✨ You’re all caught up<br><span style="font-size:.86em">Shared updates, travel notices, expenses, and reminders will show up here.</span></div>';
+  body.innerHTML = `
+    <div class="inbox-section-head">
+      <div class="inbox-history-title" style="margin:0">Action Items</div>
+      <div class="inbox-section-count">${rows.length} open</div>
+    </div>
+    ${actionHtml}`;
+};
+
 // Init
 render();
 showWhoPickerIfNeeded();
