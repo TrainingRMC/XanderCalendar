@@ -964,6 +964,10 @@ body.drawer-open{overflow:hidden}
 .history-filter.active{background:var(--text);border-color:var(--text);color:var(--card)}
 .history-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
 .history-sort{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:6px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif}
+.history-export-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
+.history-export-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 8px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow-sm)}
+.history-export-btn.primary{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff}
+.history-export-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
 .history-search-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px;margin:0 0 9px;display:grid;gap:7px}
 .history-search-input{width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:10px;padding:9px 11px;font-family:'DM Sans',sans-serif;font-size:.86em;font-weight:600}
 .history-search-input:focus,.history-date-input:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
@@ -1118,6 +1122,7 @@ body.drawer-open{overflow:hidden}
   .inbox-view-tabs{gap:5px}
   .inbox-view-tab{padding:9px 5px;font-size:.74em}
   .history-search-panel{padding:8px}
+  .history-export-actions{grid-template-columns:1fr}
   .history-date-row{grid-template-columns:1fr}
   .travel-item{align-items:flex-start}
   .travel-item-actions{flex-direction:column;gap:6px}
@@ -6070,6 +6075,148 @@ function _v13BuildTravelSummary(){
   </div>`;
 }
 
+function _v19FilteredHistory(){
+  return (activityLog || [])
+    .filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter)
+    .filter(_v13HistoryMatchesSearch)
+    .sort((a,b) => historySort === 'oldest'
+      ? (a.ts || '').localeCompare(b.ts || '')
+      : (b.ts || '').localeCompare(a.ts || ''));
+}
+
+function _v19FilteredTravel(){
+  return (travelEntries || [])
+    .filter(_v13TravelMatchesSearch)
+    .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
+}
+
+function _v19RecordTitle(){
+  const pieces = [];
+  if (historyDate) pieces.push(fmtDate(historyDate));
+  else if (historyMonth) {
+    const [y, m] = historyMonth.split('-').map(Number);
+    pieces.push(new Date(y, m - 1, 1).toLocaleDateString('en-US', { month:'long', year:'numeric' }));
+  }
+  if (historyFilter !== 'all') pieces.push(_v13HistoryLabel(historyFilter));
+  if (historyQuery.trim()) pieces.push(`Search: "${historyQuery.trim()}"`);
+  return pieces.length ? pieces.join(' · ') : 'Full Permanent Record';
+}
+
+function _v19BuildPrintableRecordHtml(autoPrint){
+  const history = _v19FilteredHistory();
+  const trips = _v19FilteredTravel();
+  const generated = new Date().toLocaleString('en-US', { month:'long', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+  const title = _v19RecordTitle();
+  const counts = history.reduce((acc, e) => {
+    const kind = _v13HistoryKind(e.type);
+    acc[kind] = (acc[kind] || 0) + 1;
+    return acc;
+  }, {});
+  const travelDays = trips.reduce((sum, t) => sum + _v13TravelCountDays(t), 0);
+  const countLine = [
+    `${history.length} record item${history.length===1?'':'s'}`,
+    `${trips.length} travel item${trips.length===1?'':'s'}`,
+    `${travelDays} travel day${travelDays===1?'':'s'}`
+  ].join(' · ');
+  const chipHtml = ['schedule','note','travel','summer','school','system']
+    .filter(k => counts[k])
+    .map(k => `<span class="chip">${_v13HistoryIcon(k)} ${_v13HistoryLabel(k)} ${counts[k]}</span>`)
+    .join('');
+  const travelHtml = trips.length ? `
+    <section>
+      <h2>Travel Summary</h2>
+      <div class="summary">${trips.map(t => `
+        <div class="summary-row">
+          <b>${_v13EscapeHtml(t.label || 'Travel')}</b>
+          <span>${fmtDate(t.start)}${t.end !== t.start ? ' - ' + fmtDate(t.end) : ''} · ${_v13TravelCountDays(t)} day${_v13TravelCountDays(t)===1?'':'s'} · ${_v13EscapeHtml(t.by || 'Parent')}</span>
+          ${t.notes ? `<em>${_v13EscapeHtml(t.notes)}</em>` : ''}
+        </div>
+      `).join('')}</div>
+    </section>` : '';
+  const historyHtml = history.length ? history.map(e => {
+    const kind = _v13HistoryKind(e.type);
+    const who = e.by || 'System';
+    return `<div class="record-row ${kind}">
+      <div class="row-top">
+        <span class="kind">${_v13HistoryIcon(kind)} ${_v13HistoryLabel(kind)}</span>
+        <span>${formatLogTime(e.ts)}</span>
+      </div>
+      <div class="who">${_v13EscapeHtml(who)}</div>
+      <div class="msg">${_v13EscapeHtml(e.msg)}</div>
+    </div>`;
+  }).join('') : '<div class="empty">No matching record items.</div>';
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Xander Calendar Record - ${_v13EscapeHtml(title)}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;margin:32px;line-height:1.4}
+    header{border-bottom:3px solid #1d4ed8;padding-bottom:18px;margin-bottom:18px}
+    h1{font-size:28px;margin:0 0 5px;font-weight:900}
+    h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:22px 0 8px}
+    .sub{color:#64748b;font-size:13px}
+    .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+    .chip{border:1px solid #dbe3ef;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800;background:#f8fafc}
+    .summary{border:1px solid #dbe3ef;border-radius:12px;overflow:hidden}
+    .summary-row{padding:10px 12px;border-bottom:1px solid #e5edf7;display:grid;gap:2px}
+    .summary-row:last-child{border-bottom:none}
+    .summary-row span,.summary-row em{font-size:13px;color:#475569}
+    .record-row{border:1px solid #dbe3ef;border-left:5px solid #94a3b8;border-radius:12px;padding:11px 12px;margin-bottom:9px;break-inside:avoid}
+    .record-row.schedule{border-left-color:#f59e0b}.record-row.note{border-left-color:#8b5cf6}.record-row.travel{border-left-color:#10b981}.record-row.summer{border-left-color:#f59e0b}.record-row.school{border-left-color:#a78bfa}
+    .row-top{display:flex;justify-content:space-between;gap:10px;color:#64748b;font-size:12px;margin-bottom:5px}
+    .kind{font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+    .who{font-weight:900;margin-bottom:3px}
+    .msg{font-size:14px}
+    .empty{padding:20px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;text-align:center}
+    footer{margin-top:22px;border-top:1px solid #e2e8f0;padding-top:12px;color:#64748b;font-size:12px}
+    @media print{body{margin:18mm}.no-print{display:none}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Xander's Parenting Calendar Record</h1>
+    <div class="sub">${_v13EscapeHtml(title)}</div>
+    <div class="sub">Generated ${_v13EscapeHtml(generated)} · ${_v13EscapeHtml(countLine)}</div>
+    <div class="chips">${chipHtml || '<span class="chip">No category filters</span>'}</div>
+  </header>
+  ${travelHtml}
+  <section>
+    <h2>Permanent Record</h2>
+    ${historyHtml}
+  </section>
+  <footer>Shared family calendar record. IPG logic and custodial/noncustodial roles remain active in the calendar data.</footer>
+  ${autoPrint ? '<script>setTimeout(() => window.print(), 350);<\\/script>' : ''}
+</body>
+</html>`;
+}
+
+function exportRecordPdf(){
+  const html = _v19BuildPrintableRecordHtml(true);
+  const w = window.open('', '_blank');
+  if (!w) {
+    alert('Pop-up blocked. Allow pop-ups for this page, then try Export PDF again.');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function downloadRecordHtml(){
+  const html = _v19BuildPrintableRecordHtml(false);
+  const blob = new Blob([html], { type:'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `xander-calendar-record-${stamp}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function _v13CalendarRecordMatches(){
   if (!historyQuery.trim() && !historyMonth && !historyDate) return '';
   const q = historyQuery.trim().toLowerCase();
@@ -6467,12 +6614,7 @@ renderInboxBody = function(){
     : '<div class="inbox-empty">✨ No action needed<br><span style="font-size:.86em">Calendar changes, travel acknowledgements, summer planning, and school reminders will show up here.</span></div>';
 
   const allHistory = (activityLog || []);
-  const filteredHistory = allHistory
-    .filter(e => historyFilter === 'all' || _v13HistoryKind(e.type) === historyFilter)
-    .filter(_v13HistoryMatchesSearch)
-    .sort((a,b) => historySort === 'oldest'
-      ? (a.ts || '').localeCompare(b.ts || '')
-      : (b.ts || '').localeCompare(a.ts || ''));
+  const filteredHistory = _v19FilteredHistory();
   const history = filteredHistory.slice(0, 500);
   const filterDefs = [
     ['all','All'],
@@ -6503,6 +6645,10 @@ renderInboxBody = function(){
       <option value="oldest" ${historySort==='oldest'?'selected':''}>Oldest first</option>
     </select>
   </div>`;
+  const exportHtml = `<div class="history-export-actions">
+    <button class="history-export-btn primary" onclick="exportRecordPdf()">Print / Save PDF</button>
+    <button class="history-export-btn" onclick="downloadRecordHtml()">Download Record</button>
+  </div>`;
   const travelSummaryHtml = (historyFilter === 'all' || historyFilter === 'travel' || historyQuery || historyMonth || historyDate)
     ? _v13BuildTravelSummary()
     : '';
@@ -6513,7 +6659,7 @@ renderInboxBody = function(){
     ? `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
-      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
+      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${exportHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
         const kind = _v13HistoryKind(e.type);
         const emoji = e.by === 'Justin' ? '👨' : (e.by === 'Brittany' ? '👩' : '•');
@@ -6527,7 +6673,7 @@ renderInboxBody = function(){
     : `<div class="inbox-section-head" style="margin-top:${historyTop}">
         <div class="inbox-history-title" style="margin:0">Permanent Record</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
-      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
+      </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${exportHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
   const actionSection = `
     <div class="inbox-section-head">
