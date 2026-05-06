@@ -1723,12 +1723,7 @@ if(cY < 2026) cY=2026;
 
 // State - Firebase will overwrite these on load
 let overrides   = {};
-let summerPlan  = [
-  {start:"2026-05-22",end:"2026-06-04",owner:"Justin",   label:"Justin Summer Time"},
-  {start:"2026-06-05",end:"2026-06-18",owner:"Brittany", label:"Brittany Summer Time"},
-  {start:"2026-06-19",end:"2026-07-02",owner:"Justin",   label:"Justin Summer Time"},
-  {start:"2026-07-03",end:"2026-08-02",owner:"Brittany", label:"Brittany Summer Time"},
-];
+let summerPlan  = [];
 
 let editKey   = null;
 let timeMode  = 'all';
@@ -5762,7 +5757,10 @@ function findSummerDrift(){
     };
     // Insert before the existing proposal-flow button
     const saveBtn = ftr.querySelector('.btn-save');
-    if (saveBtn) ftr.insertBefore(btn, saveBtn);
+    if (saveBtn) {
+      ftr.insertBefore(btn, saveBtn);
+      saveBtn.style.display = 'none';
+    }
     else ftr.appendChild(btn);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
@@ -5774,36 +5772,9 @@ function findSummerDrift(){
 // Only runs once per session.
 let _v122_recoveryRan = false;
 function maybeRunSummerRecovery(){
-  if (_v122_recoveryRan) return;
-  if (!Array.isArray(summerPlan) || summerPlan.length === 0) return;
-  const drift = findSummerDrift();
-  const driftedYears = Object.keys(drift).map(Number);
-  if (driftedYears.length === 0){ _v122_recoveryRan = true; return; }
-
-  // Only auto-restore for the current/upcoming summer year — be conservative
-  const cur = today.getFullYear();
-  const targetYr = today.getMonth() < 7 ? cur : cur + 1;
-  if (!driftedYears.includes(targetYr)){ _v122_recoveryRan = true; return; }
-
-  // Only auto-apply if there's no existing _summer override at all for this year
-  // (this avoids overwriting partial manual work)
-  const hasAnySummerOverride = Object.keys(overrides).some(k =>
-    k.startsWith(String(targetYr)+'-') && overrides[k] && overrides[k]._summer
-  );
-  if (hasAnySummerOverride){ _v122_recoveryRan = true; return; }
-
-  const n = applySummerDirect(targetYr);
-  if (n > 0){
-    _v122_recoveryRan = true;
-    if (typeof logAction === 'function' && currentUser){
-      logAction('system', 'summer-restore', `Auto-restored ${n} ${targetYr} summer days from picks`);
-    }
-    render();
-    if (typeof scheduleSave === 'function') scheduleSave();
-    if (typeof showToast === 'function'){
-      showToast(`☀️ Restored ${n} summer ${targetYr} day${n===1?'':'s'} from your picks`);
-    }
-  }
+  _v122_recoveryRan = true;
+  // Summer dates should never rewrite the shared calendar automatically.
+  // The visible "Save Summer Plan" button is the only intentional write path.
 }
 
 // Hook into initFirebase so recovery runs after data loads
@@ -7350,7 +7321,7 @@ setTimeout(() => {
     directBtn.title = 'Save these summer date ranges to the calendar and record the update';
   }
   const proposalBtn = document.querySelector('#sum-overlay .sum-modal-ftr .btn-save:not(#sum-apply-direct-btn)');
-  if (proposalBtn) proposalBtn.textContent = 'Share Plan';
+  if (proposalBtn) proposalBtn.style.display = 'none';
   if (document.getElementById('sum-stats')) renderSummerStats();
 }, 700);
 
