@@ -1380,15 +1380,15 @@ body.drawer-open{overflow:hidden}
       <div class="trade-section">
         <div class="trade-section-title">Days I need to switch</div>
         <div class="trade-date-grid">
-          <input type="date" class="inp" id="trade-give-start" onchange="updateSummerTradePreview()">
-          <input type="date" class="inp" id="trade-give-end" onchange="updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-give-start" onchange="syncDateRange('trade-give-start','trade-give-end','start');updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-give-end" onchange="syncDateRange('trade-give-start','trade-give-end','end');updateSummerTradePreview()">
         </div>
       </div>
       <div class="trade-section">
         <div class="trade-section-title">Replacement days</div>
         <div class="trade-date-grid">
-          <input type="date" class="inp" id="trade-get-start" onchange="updateSummerTradePreview()">
-          <input type="date" class="inp" id="trade-get-end" onchange="updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-get-start" onchange="syncDateRange('trade-get-start','trade-get-end','start');updateSummerTradePreview()">
+          <input type="date" class="inp" id="trade-get-end" onchange="syncDateRange('trade-get-start','trade-get-end','end');updateSummerTradePreview()">
         </div>
       </div>
       <div class="field-lbl">Reason</div>
@@ -1470,10 +1470,10 @@ body.drawer-open{overflow:hidden}
       </div>
 
       <div class="field-lbl">Start Date</div>
-      <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31">
+      <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','start')">
 
       <div class="field-lbl">End Date</div>
-      <input type="date" class="inp" id="tr-end" min="2026-03-01" max="2028-12-31">
+      <input type="date" class="inp" id="tr-end" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','end')">
 
       <div class="field-lbl">Trip Label (optional)</div>
       <input class="inp" id="tr-label" placeholder="e.g. Chicago Conference, Customer Visit…">
@@ -1537,6 +1537,15 @@ function getInfo(y,m,d){
   const ov=overrides[dk(y,m,d)];
   if(!base&&!ov) return null;
   return Object.assign({},base||{},ov||{});
+}
+function syncDateRange(startId, endId, changed){
+  const startEl = document.getElementById(startId);
+  const endEl = document.getElementById(endId);
+  if (!startEl || !endEl) return;
+  const start = startEl.value;
+  const end = endEl.value;
+  if (changed === 'start' && start && (!end || end < start)) endEl.value = start;
+  if (changed === 'end' && end && (!start || start > end)) startEl.value = end;
 }
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)+1}
 function addDays(s,n){const d=new Date(s);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
@@ -6688,7 +6697,7 @@ function summarizeSummerPlan(yr){
 function setSummerStart(i, value){
   if (!summerPlan[i]) return;
   summerPlan[i].start = value;
-  if (!summerPlan[i].end || summerPlan[i].end < value) summerPlan[i].end = addDays(value, 13);
+  if (!summerPlan[i].end || summerPlan[i].end < value) summerPlan[i].end = value;
   const maxD = summerRangeForYear(activeSummerYear).max;
   if (summerPlan[i].end > maxD) summerPlan[i].end = maxD;
   renderSummerBody();
@@ -6697,6 +6706,7 @@ function setSummerStart(i, value){
 function setSummerEnd(i, value){
   if (!summerPlan[i]) return;
   summerPlan[i].end = value;
+  if (value && (!summerPlan[i].start || summerPlan[i].start > value)) summerPlan[i].start = value;
   renderSummerBody();
 }
 
