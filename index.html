@@ -1611,7 +1611,7 @@ body.drawer-open{overflow:hidden}
     </div>
     <div style="display:flex;gap:7px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)">
       <button class="btn btn-cancel" onclick="closeExpenses()">Close</button>
-      <button class="btn btn-save" style="flex:1" onclick="clearExpenseForm()">+ New Expense</button>
+      <button class="btn btn-save" style="flex:1" id="expense-footer-save" onclick="saveExpense()">Save Expense</button>
     </div>
   </div>
 </div>
@@ -7774,6 +7774,8 @@ function clearExpenseForm(renderNow = true){
   set('xp-notes', '');
   const title = document.getElementById('expense-form-title');
   if (title) title.textContent = 'Add Expense';
+  const footer = document.getElementById('expense-footer-save');
+  if (footer) footer.textContent = 'Save Expense';
   updateExpensePreview();
   if (renderNow) renderExpenses();
 }
@@ -7906,6 +7908,8 @@ function editExpense(id){
   set('xp-notes', exp.notes || '');
   const title = document.getElementById('expense-form-title');
   if (title) title.textContent = 'Edit Expense';
+  const footer = document.getElementById('expense-footer-save');
+  if (footer) footer.textContent = 'Save Changes';
   updateExpensePreview();
   document.getElementById('expense-overlay')?.querySelector('.expense-body')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
