@@ -341,6 +341,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .quick-blocks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
 .quick-block-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 9px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
 .quick-block-btn:hover{border-color:var(--j);background:var(--j-soft);color:var(--j)}
+.quick-blocks.single{grid-template-columns:1fr}
+.summer-email-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:540px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
+.summer-email-hdr{background:linear-gradient(135deg,#78350f,#d97706);color:#fff;padding:17px 20px 13px;flex-shrink:0}
+.summer-email-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.12em}
+.summer-email-sub{font-size:.82em;opacity:.9;margin-top:2px}
+.summer-email-body{padding:14px 16px;overflow-y:auto}
+.summer-email-ta{width:100%;min-height:280px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:12px;padding:12px;font-family:'DM Sans',sans-serif;font-size:.86em;line-height:1.45;resize:vertical}
+.summer-email-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)}
+.summer-email-actions .btn:first-child{grid-column:1/-1}
 .sum-stats{display:flex;gap:7px;flex-wrap:wrap;padding:9px 18px;background:#fffbeb;border-top:1px solid #fde68a;flex-shrink:0}
 .sum-stat{font-size:.74em;display:flex;align-items:center;gap:4px}
 .sum-stat-dot{width:7px;height:7px;border-radius:50%}
@@ -1351,7 +1360,7 @@ body.drawer-open{overflow:hidden}
     <span class="menu-icon">☀️</span>
     <div class="menu-text">
       <div class="menu-label">Summer Planner</div>
-      <div class="menu-hint">Plan & apply 2-week vacation blocks</div>
+      <div class="menu-hint">Plan summer dates and share the April 1 summary</div>
     </div>
   </button>
   <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
@@ -1439,7 +1448,7 @@ body.drawer-open{overflow:hidden}
     <div class="sum-stats" id="sum-stats"></div>
     <div class="sum-modal-ftr">
       <button class="btn btn-cancel" onclick="closeSummer()">Cancel</button>
-      <button class="btn btn-save" style="flex:1" onclick="applySummer()">✓ Apply to Calendar</button>
+      <button class="btn btn-save" style="flex:1" onclick="applySummer()">✓ Save Summer Plan</button>
     </div>
   </div>
 </div>
@@ -1473,6 +1482,24 @@ body.drawer-open{overflow:hidden}
     <div class="trade-actions">
       <button class="btn btn-save" onclick="sendSummerTrade()">Send Summer Adjustment</button>
       <button class="btn btn-cancel" onclick="closeSummerTrade()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Summer Email Summary Modal -->
+<div class="overlay" id="summer-email-overlay">
+  <div class="summer-email-modal">
+    <div class="summer-email-hdr">
+      <div class="summer-email-title">☀️ Summer Email Summary</div>
+      <div class="summer-email-sub">Quick April 1 notice view for Brittany</div>
+    </div>
+    <div class="summer-email-body">
+      <textarea class="summer-email-ta" id="summer-email-text" readonly></textarea>
+    </div>
+    <div class="summer-email-actions">
+      <button class="btn btn-save" onclick="copySummerEmailSummary()">Copy Summary</button>
+      <button class="btn btn-cancel" onclick="closeSummerEmailSummary()">Close</button>
+      <button class="btn btn-save" onclick="openSummerEmailDraft()">Open Email Draft</button>
     </div>
   </div>
 </div>
@@ -2039,7 +2066,7 @@ function renderSummerBody(){
   });
   const addBtn=document.createElement('button');
   addBtn.className='add-week-btn';
-  addBtn.textContent='+ Add Another Block';
+  addBtn.textContent='+ Add Date Range';
   addBtn.onclick=addBlock;
   body.appendChild(addBtn);
   renderSummerStats();
@@ -2056,7 +2083,7 @@ function addBlock(){
     const last=yearBlocks[yearBlocks.length-1];
     if(last.end) start=addDays(last.end,1);
   }
-  const end=addDays(start,13);
+  const end=start;
   summerPlan.push({start,end:end>maxD?maxD:end,owner:'Justin',label:''});
   renderSummerBody();
 }
@@ -2500,7 +2527,7 @@ window.applySummer = function() {
   // For summer plan, we apply directly but log the action
   // (treating summer planner as a high-level config that needs collaboration anyway)
   _origApplySummerDirect();
-  logAction(currentUser, 'summer', `Applied Summer ${activeSummerYear} plan with ${summerPlan.filter(b=>b.start&&b.start.startsWith(String(activeSummerYear))).length} blocks`);
+  logAction(currentUser, 'summer', `Saved Summer ${activeSummerYear} plan with ${summerPlan.filter(b=>b.start&&b.start.startsWith(String(activeSummerYear))).length} date ranges`);
   scheduleSave();
 };
 
@@ -5579,7 +5606,7 @@ renderInboxItem = function(item){
 
 // Direct-apply: take summerPlan blocks for a given year and write them
 // to overrides[], bypassing the proposal workflow entirely. Used by the
-// "Apply Picks to Calendar" button and the load-time recovery.
+// direct save button and the load-time recovery.
 function applySummerDirect(yr){
   if (!Array.isArray(summerPlan)) return 0;
   const yearBlocks = summerPlan.filter(b => b && b.start && b.start.startsWith(String(yr)));
@@ -5625,13 +5652,13 @@ function applySummerPicksNow(){
   years.forEach(yr => { total += applySummerDirect(yr); });
   if (total > 0){
     if (typeof logAction === 'function' && currentUser){
-      logAction(currentUser, 'summer-apply', `Applied summer picks to calendar (${total} days across ${years.size} year${years.size===1?'':'s'})`);
+      logAction(currentUser, 'summer-save', `Saved summer date ranges to calendar (${total} days across ${years.size} year${years.size===1?'':'s'})`);
     }
     render();
     if (typeof scheduleSave === 'function') scheduleSave();
-    if (typeof showToast === 'function') showToast(`☀️ Applied ${total} summer day${total===1?'':'s'}`);
+    if (typeof showToast === 'function') showToast(`☀️ Saved ${total} summer day${total===1?'':'s'}`);
   } else {
-    if (typeof showToast === 'function') showToast('No summer blocks to apply');
+    if (typeof showToast === 'function') showToast('No summer date ranges to save');
   }
 }
 
@@ -5676,7 +5703,7 @@ function findSummerDrift(){
       <span class="menu-icon">☀️</span>
       <div class="menu-text">
         <div class="menu-label">Summer Planner</div>
-        <div class="menu-hint" id="menu-summer-hint">Plan & apply vacation weeks</div>
+        <div class="menu-hint" id="menu-summer-hint">Plan summer dates and share the April 1 summary</div>
       </div>
     `;
     // Insert just before the School Calendar item if present, else append
@@ -5688,7 +5715,7 @@ function findSummerDrift(){
   else go();
 })();
 
-// Add "Apply Picks Now" button to the Summer Planner modal footer
+// Add direct save button to the Summer Planner modal footer
 (function _v122_extendSummerModal(){
   function go(){
     const overlay = document.getElementById('sum-overlay');
@@ -5699,28 +5726,28 @@ function findSummerDrift(){
     btn.id = 'sum-apply-direct-btn';
     btn.className = 'btn';
     btn.style.cssText = 'background:#10b981;color:#fff;font-weight:700';
-    btn.title = 'Apply current blocks directly to the calendar';
-    btn.textContent = '⚡ Apply Picks to Calendar Now';
+    btn.title = 'Save current date ranges to the shared calendar';
+    btn.textContent = '✓ Save Summer Plan';
     btn.onclick = function(){
       const summary = summarizeSummerPlan(activeSummerYear);
       if (summary.warnings.length) {
         summerGapPanelOpen = true;
         renderSummerBody();
-        showToast('Fix summer warnings before applying');
+        showToast('Fix summer warnings before saving');
         return;
       }
       const n = applySummerDirect(activeSummerYear);
       if (n > 0){
         if (typeof logAction === 'function' && currentUser){
-          logAction(currentUser, 'summer-apply',
-            `Applied Summer ${activeSummerYear} plan: ${n} days, ${summary.blocks.length} blocks, Justin ${summary.justin} days, Brittany ${summary.brittany} days`
+          logAction(currentUser, 'summer-save',
+            `Saved Summer ${activeSummerYear} plan: ${n} days, ${summary.blocks.length} date ranges, Justin ${summary.justin} days, Brittany ${summary.brittany} days`
           );
         }
         if (typeof triggerPushNotification === 'function' && currentUser){
           const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
           triggerPushNotification(
             other,
-            `${currentUser} applied Summer ${activeSummerYear} plan`,
+            `${currentUser} saved Summer ${activeSummerYear} plan`,
             `${n} days updated · Justin ${summary.justin}, Brittany ${summary.brittany}`,
             window.location.origin
           );
@@ -5728,12 +5755,12 @@ function findSummerDrift(){
         closeSummer();
         render();
         scheduleSave();
-        showToast(`☀️ Applied ${n} summer day${n===1?'':'s'} for ${activeSummerYear}`);
+        showToast(`☀️ Saved ${n} summer day${n===1?'':'s'} for ${activeSummerYear}`);
       } else {
-        showToast('No blocks to apply for ' + activeSummerYear);
+        showToast('No date ranges to save for ' + activeSummerYear);
       }
     };
-    // Insert before the existing "Apply to Calendar" (proposal-flow) button
+    // Insert before the existing proposal-flow button
     const saveBtn = ftr.querySelector('.btn-save');
     if (saveBtn) ftr.insertBefore(btn, saveBtn);
     else ftr.appendChild(btn);
@@ -5793,7 +5820,7 @@ initFirebase = function(){
 //  What changed:
 //   1. Reminder now starts 30 days before April 1 (i.e. March 2)
 //      and runs through summer end. It only dismisses when Justin
-//      explicitly submits — either via Apply Picks Now or via the
+//      explicitly submits — either via Save Summer Plan or via the
 //      proposal workflow. summerPlan having default blocks is no
 //      longer enough to silence the reminder.
 //   2. summerSubmitted[yr] flag tracks formal submission per year.
@@ -6027,15 +6054,6 @@ if (typeof openSummer === 'function'){
   const _v123_origOpenSummer = openSummer;
   openSummer = function(yr){
     const targetYr = yr || (today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1);
-    // If summerPlan has nothing for this year, seed the typical 2-week pattern
-    const yearBlocks = (summerPlan || []).filter(b => b && b.start && b.start.startsWith(String(targetYr)));
-    if (yearBlocks.length === 0){
-      const seeded = _seedSummerBlocksForYear(targetYr);
-      summerPlan = (summerPlan || []).concat(seeded);
-      if (typeof showToast === 'function'){
-        setTimeout(() => showToast(`☀️ Seeded ${targetYr} with typical 2-week blocks`), 250);
-      }
-    }
     return _v123_origOpenSummer(targetYr);
   };
 }
@@ -7086,6 +7104,96 @@ function addTwoWeekBlock(owner){
   renderSummerBody();
 }
 
+function nextSummerOpenDate(summary){
+  for (let d = new Date(summary.range.min + 'T12:00:00'); d <= new Date(summary.range.max + 'T12:00:00'); d.setDate(d.getDate()+1)) {
+    const key = _v13KeyFromDate(d);
+    if (!summary.dayMap[key]) return key;
+  }
+  if (summary.blocks.length) {
+    const last = summary.blocks[summary.blocks.length - 1];
+    if (last.end && last.end < summary.range.max) return addDays(last.end, 1);
+  }
+  return summary.range.min;
+}
+
+function addSummerDateRange(){
+  const summary = summarizeSummerPlan(activeSummerYear);
+  const start = nextSummerOpenDate(summary);
+  if (start > summary.range.max) {
+    showToast('Summer is already covered');
+    return;
+  }
+  summerPlan.push({
+    start,
+    end: start,
+    owner: currentUser === 'Brittany' ? 'Brittany' : 'Justin',
+    label: ''
+  });
+  renderSummerBody();
+  showToast('Date range added');
+}
+
+function buildSummerEmailSummary(yr){
+  const summary = summarizeSummerPlan(yr);
+  const blocks = summary.blocks
+    .slice()
+    .sort((a,b) => (a.start || '').localeCompare(b.start || ''));
+  const lines = [];
+  lines.push(`Summer ${yr} parenting time proposal`);
+  lines.push(`Notice date: ${new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}`);
+  lines.push(`IPG deadline: April 1, ${yr}`);
+  lines.push('');
+  lines.push(`Summer window: ${fmtDate(summary.range.min)} - ${fmtDate(summary.range.max)}`);
+  lines.push(`Current split: Justin ${summary.justin} days · Brittany ${summary.brittany} days`);
+  if (summary.warnings.length) {
+    lines.push(`Items to check: ${summary.warnings.join(' ')}`);
+  }
+  lines.push('');
+  lines.push('Proposed dates:');
+  if (!blocks.length) {
+    lines.push('- No dates entered yet.');
+  } else {
+    blocks.forEach(block => {
+      const days = block.start && block.end ? daysBetween(block.start, block.end) : 0;
+      const label = block.label ? ` · ${block.label}` : '';
+      lines.push(`- ${block.owner || 'Parent'}: ${fmtDate(block.start)} - ${fmtDate(block.end)} (${days} day${days===1?'':'s'})${label}`);
+    });
+  }
+  lines.push('');
+  lines.push('Please review when you get a chance. I know schedules can change, so we can stay flexible and adjust together as needed.');
+  return lines.join('\n');
+}
+
+function openSummerEmailSummary(){
+  const ta = document.getElementById('summer-email-text');
+  if (ta) ta.value = buildSummerEmailSummary(activeSummerYear);
+  document.getElementById('summer-email-overlay').classList.add('open');
+}
+
+function closeSummerEmailSummary(){
+  document.getElementById('summer-email-overlay').classList.remove('open');
+}
+
+function copySummerEmailSummary(){
+  const text = document.getElementById('summer-email-text')?.value || buildSummerEmailSummary(activeSummerYear);
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Summer summary copied');
+  }).catch(() => {
+    const ta = document.getElementById('summer-email-text');
+    if (ta) {
+      ta.focus();
+      ta.select();
+    }
+    showToast('Select and copy the summary');
+  });
+}
+
+function openSummerEmailDraft(){
+  const text = document.getElementById('summer-email-text')?.value || buildSummerEmailSummary(activeSummerYear);
+  const subject = `Summer ${activeSummerYear} parenting time proposal`;
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+}
+
 function toggleSummerGapPanel(){
   summerGapPanelOpen = !summerGapPanelOpen;
   renderSummerBody();
@@ -7119,16 +7227,16 @@ function renderSummerGapPanel(summary){
 }
 
 function renderSummerApplyPanel(summary){
-  const blockWord = summary.blocks.length === 1 ? 'block' : 'blocks';
+  const blockWord = summary.blocks.length === 1 ? 'date range' : 'date ranges';
   if (summary.warnings.length) {
     return `<div class="summer-apply-panel warn">
-      <div class="summer-apply-title">Check before applying</div>
-      <div class="summer-apply-sub">Fix the warning${summary.warnings.length===1?'':'s'} above first. Once everything is assigned cleanly, applying will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} on the shared calendar.</div>
+      <div class="summer-apply-title">Check before saving</div>
+      <div class="summer-apply-sub">Fix the warning${summary.warnings.length===1?'':'s'} above first. Once everything is assigned cleanly, saving will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} on the shared calendar.</div>
     </div>`;
   }
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   return `<div class="summer-apply-panel">
-    <div class="summer-apply-title">Ready to apply</div>
+    <div class="summer-apply-title">Ready to save</div>
     <div class="summer-apply-sub">This will update ${fmtDate(summary.range.min)} through ${fmtDate(summary.range.max)} with ${summary.blocks.length} ${blockWord}: Justin ${summary.justin} days, Brittany ${summary.brittany} days. ${currentUser ? `${other} will see the updated summer plan.` : 'Both parents will see the updated summer plan.'}</div>
   </div>`;
 }
@@ -7147,7 +7255,7 @@ function renderSummerBody(){
         const isGap = w.includes('not assigned yet');
         return `<div class="summer-warning ${isGap?'actionable':''}" ${isGap?'onclick="toggleSummerGapPanel()"':''}>⚠️ ${w}${isGap?' <span style="text-decoration:underline">Open dates</span>':''}</div>`;
       }).join('')}</div>`
-    : `<div class="summer-warnings"><div class="summer-warning ok">✓ Blocks look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
+    : `<div class="summer-warnings"><div class="summer-warning ok">✓ Date ranges look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
   const gapPanelHtml = renderSummerGapPanel(summary);
   const applyPanelHtml = renderSummerApplyPanel(summary);
 
@@ -7170,8 +7278,8 @@ function renderSummerBody(){
     ${gapPanelHtml}
     ${applyPanelHtml}
     <div class="quick-blocks">
-      <button class="quick-block-btn" onclick="addTwoWeekBlock('Justin')">+ Justin 2-week block</button>
-      <button class="quick-block-btn" onclick="addTwoWeekBlock('Brittany')">+ Brittany 2-week block</button>
+      <button class="quick-block-btn" onclick="addSummerDateRange()">+ Add Date Range</button>
+      <button class="quick-block-btn" onclick="openSummerEmailSummary()">Email Summary</button>
     </div>
   `;
 
@@ -7183,7 +7291,7 @@ function renderSummerBody(){
     card.className = `week-card ${blk.owner === 'Justin' ? 'j' : 'b'} ${hasProblem ? 'problem' : ''}`;
     card.innerHTML = `
       <div class="week-card-hdr">
-        <span class="week-num">Block ${order+1}</span>
+        <span class="week-num">Date Range ${order+1}</span>
         <span class="summer-block-chip ${blk.owner==='Justin'?'j':'b'}">${blk.owner || 'Justin'}</span>
         <button class="rm-btn" onclick="removeBlock(${i})">✕</button>
       </div>
@@ -7224,27 +7332,31 @@ function renderSummerStats(){
     directBtn.style.opacity = blocked ? '.55' : '1';
     directBtn.style.cursor = blocked ? 'not-allowed' : 'pointer';
     directBtn.title = blocked
-      ? 'Fix summer warnings before applying the plan'
-      : `Apply ${summary.blocks.length} blocks to the shared calendar`;
+      ? 'Fix summer warnings before saving the plan'
+      : `Save ${summary.blocks.length} date ranges to the shared calendar`;
   }
   document.getElementById('sum-stats').innerHTML = `
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--j)"></div><b style="color:var(--j)">${summary.justin}</b> Justin</div>
     <div class="sum-stat"><div class="sum-stat-dot" style="background:var(--b)"></div><b style="color:var(--b)">${summary.brittany}</b> Brittany</div>
     <div class="sum-stat"><div class="sum-stat-dot" style="background:#94a3b8"></div><b>${summary.planned}</b> of ${summary.total} planned</div>
-    ${summary.warnings.length ? `<div class="sum-stat" style="color:#92400e">⚠️ ${summary.warnings.length} item${summary.warnings.length===1?'':'s'} to check</div>` : '<div class="sum-stat">✓ Ready to apply</div>'}
+    ${summary.warnings.length ? `<div class="sum-stat" style="color:#92400e">⚠️ ${summary.warnings.length} item${summary.warnings.length===1?'':'s'} to check</div>` : '<div class="sum-stat">✓ Ready to save</div>'}
   `;
 }
 
 setTimeout(() => {
   const directBtn = document.getElementById('sum-apply-direct-btn');
   if (directBtn) {
-    directBtn.textContent = '✓ Apply Summer Plan';
-    directBtn.title = 'Apply these summer blocks to the calendar and record the update';
+    directBtn.textContent = '✓ Save Summer Plan';
+    directBtn.title = 'Save these summer date ranges to the calendar and record the update';
   }
   const proposalBtn = document.querySelector('#sum-overlay .sum-modal-ftr .btn-save:not(#sum-apply-direct-btn)');
   if (proposalBtn) proposalBtn.textContent = 'Share Plan';
   if (document.getElementById('sum-stats')) renderSummerStats();
 }, 700);
+
+document.getElementById('summer-email-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeSummerEmailSummary();
+});
 
 // ═══════════════════════════════════════════════════════
 //  V16: Save confidence, retry, and local safety backup
