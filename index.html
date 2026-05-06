@@ -1697,10 +1697,10 @@ if(cY < 2026) cY=2026;
 // State - Firebase will overwrite these on load
 let overrides   = {};
 let summerPlan  = [
-  {start:"2026-05-22",end:"2026-06-04",owner:"Justin",   label:"Justin's Vacation Wk 1-2"},
-  {start:"2026-06-05",end:"2026-06-18",owner:"Brittany", label:"Brittany's Time"},
-  {start:"2026-06-19",end:"2026-07-02",owner:"Justin",   label:"Justin's Vacation Wk 3-4"},
-  {start:"2026-07-03",end:"2026-08-02",owner:"Brittany", label:"Brittany's Time"},
+  {start:"2026-05-22",end:"2026-06-04",owner:"Justin",   label:"Justin Summer Time"},
+  {start:"2026-06-05",end:"2026-06-18",owner:"Brittany", label:"Brittany Summer Time"},
+  {start:"2026-06-19",end:"2026-07-02",owner:"Justin",   label:"Justin Summer Time"},
+  {start:"2026-07-03",end:"2026-08-02",owner:"Brittany", label:"Brittany Summer Time"},
 ];
 
 let editKey   = null;
@@ -2001,6 +2001,7 @@ function renderSummerBody(){
   summerPlan.forEach((blk,i)=>{
     // Only show blocks for this year
     if(!blk.start||!blk.start.startsWith(String(activeSummerYear))) return;
+    blk.label = normalizeSummerLabel(blk.label, blk.owner);
     const days=blk.start&&blk.end?daysBetween(blk.start,blk.end):0;
     const card=document.createElement('div');
     card.className='week-card';
@@ -5975,7 +5976,7 @@ function _seedSummerBlocksForYear(yr){
       start,
       end:   cappedEnd,
       owner,
-      label: owner === 'Justin' ? `Justin's Vacation Wk ${i*2+1}-${i*2+2}` : `Brittany's Time`
+      label: owner === 'Justin' ? `Justin Summer Time` : `Brittany Summer Time`
     });
     cursor = addDays(cappedEnd, 1);
   });
@@ -5985,10 +5986,25 @@ function _seedSummerBlocksForYear(yr){
       start: cursor,
       end:   maxD,
       owner: 'Brittany',
-      label: `Brittany's Time`
+      label: `Brittany Summer Time`
     });
   }
   return blocks;
+}
+
+function normalizeSummerLabel(label, owner){
+  const raw = String(label || '').trim();
+  if (!raw) return '';
+  if (/justin'?s?\s+(vacation|2-week block|summer time)/i.test(raw)) return 'Justin Summer Time';
+  if (/brittany'?s?\s+(time|2-week block|summer time)/i.test(raw)) return 'Brittany Summer Time';
+  return raw;
+}
+
+function normalizeSummerPlanLabels(){
+  if (!Array.isArray(summerPlan)) return;
+  summerPlan.forEach(block => {
+    if (block) block.label = normalizeSummerLabel(block.label, block.owner);
+  });
 }
 
 // Wrap openSummer so we seed when needed
@@ -7050,7 +7066,7 @@ function addTwoWeekBlock(owner){
     start,
     end,
     owner,
-    label: owner === 'Justin' ? "Justin's 2-week block" : "Brittany's 2-week block"
+    label: owner === 'Justin' ? "Justin Summer Time" : "Brittany Summer Time"
   });
   renderSummerBody();
 }
@@ -7065,7 +7081,7 @@ function assignSummerGap(start, end, owner){
     start,
     end,
     owner,
-    label: owner === 'Justin' ? "Justin summer time" : "Brittany summer time"
+    label: owner === 'Justin' ? "Justin Summer Time" : "Brittany Summer Time"
   });
   summerGapPanelOpen = true;
   renderSummerBody();
@@ -7267,7 +7283,10 @@ function _v16PayloadTime(payload){
 function _v16ApplyPayload(data){
   if (!data) return;
   if (data.overrides)         overrides         = data.overrides;
-  if (data.summerPlan)        summerPlan        = data.summerPlan;
+  if (data.summerPlan) {
+    summerPlan = data.summerPlan;
+    if (typeof normalizeSummerPlanLabels === 'function') normalizeSummerPlanLabels();
+  }
   if (data.pendingSwaps)      pendingSwaps      = data.pendingSwaps;
   if (data.activityLog)       activityLog       = data.activityLog;
   if (data.summerProposal !== undefined) summerProposal = data.summerProposal;
@@ -8037,11 +8056,13 @@ function saveExpense(){
     expenseEntries.push(entry);
   }
 
-  logAction(currentUser || paidBy, 'expense', `${existing ? 'Updated' : 'Added'} expense: ${description} (${formatMoney(entry.amount)}). ${expenseStatusLabel(entry)}.`);
+  const receiptText = entry.receipt ? ' Receipt attached.' : '';
+  logAction(currentUser || paidBy, 'expense', `${existing ? 'Updated' : 'Added'} expense: ${description} (${formatMoney(entry.amount)}). ${expenseStatusLabel(entry)}.${receiptText}`);
   clearExpenseForm(false);
   renderExpenses();
   render();
   scheduleSave();
+  closeExpenses();
   showToast(existing ? 'Expense updated' : 'Expense saved');
 }
 
