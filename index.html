@@ -1715,7 +1715,9 @@ function getInfo(y,m,d){
   const base=(DEFAULT[dataKey(y,m)]||{})[String(d)]||null;
   const ov=overrides[dk(y,m,d)];
   if(!base&&!ov) return null;
-  return Object.assign({},base||{},ov||{});
+  const info = Object.assign({},base||{},ov||{});
+  if (info._summer) info.event = normalizeSummerEvent(info.event, info.owner);
+  return info;
 }
 function syncDateRange(startId, endId, changed){
   const startEl = document.getElementById(startId);
@@ -2092,7 +2094,7 @@ function applySummer(){
       const base=(DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`]||{})[String(d.getDate())]||{};
       overrides[key]={
         owner:blk.owner,
-        event:blk.label?`☀️ ${blk.label}`:(base.event||`☀️ ${blk.owner}'s Summer`),
+        event: normalizeSummerEvent(base.event, blk.owner),
         note:'', timeMode:'all', timeFrom:'', timeTo:'', _summer:true
       };
     }
@@ -3300,7 +3302,7 @@ function _applySummerToCalendar(yr, blocks) {
       const base = (DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`]||{})[String(d.getDate())]||{};
       overrides[key] = {
         owner: blk.owner,
-        event: blk.label ? `☀️ ${blk.label}` : (base.event || `☀️ ${blk.owner}'s Summer`),
+        event: normalizeSummerEvent(base.event, blk.owner),
         note:'', timeMode:'all', timeFrom:'', timeTo:'', _summer:true
       };
     }
@@ -5600,7 +5602,7 @@ function applySummerDirect(yr){
       const base = (DEFAULT[`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`] || {})[String(d.getDate())] || {};
       overrides[key] = {
         owner:    blk.owner,
-        event:    blk.label ? `☀️ ${blk.label}` : (base.event || `☀️ ${blk.owner}'s Summer`),
+        event:    normalizeSummerEvent(base.event, blk.owner),
         note:     '',
         timeMode: 'all',
         timeFrom: '',
@@ -6000,10 +6002,23 @@ function normalizeSummerLabel(label, owner){
   return raw;
 }
 
+function normalizeSummerEvent(event, owner){
+  const raw = String(event || '').trim();
+  if (/birthday/i.test(raw)) return raw;
+  return '☀️ Summer Time';
+}
+
 function normalizeSummerPlanLabels(){
   if (!Array.isArray(summerPlan)) return;
   summerPlan.forEach(block => {
     if (block) block.label = normalizeSummerLabel(block.label, block.owner);
+  });
+}
+
+function normalizeSummerOverrides(){
+  Object.keys(overrides || {}).forEach(key => {
+    const ov = overrides[key];
+    if (ov && ov._summer) ov.event = normalizeSummerEvent(ov.event, ov.owner);
   });
 }
 
@@ -7241,6 +7256,7 @@ let _v16RetryTimer = null;
 let _v16LastRemoteAt = null;
 
 function _v16BuildSavePayload(){
+  if (typeof normalizeSummerOverrides === 'function') normalizeSummerOverrides();
   return {
     overrides:         overrides,
     summerPlan:        summerPlan,
@@ -7283,6 +7299,7 @@ function _v16PayloadTime(payload){
 function _v16ApplyPayload(data){
   if (!data) return;
   if (data.overrides)         overrides         = data.overrides;
+  if (typeof normalizeSummerOverrides === 'function') normalizeSummerOverrides();
   if (data.summerPlan) {
     summerPlan = data.summerPlan;
     if (typeof normalizeSummerPlanLabels === 'function') normalizeSummerPlanLabels();
