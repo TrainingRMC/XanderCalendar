@@ -5723,7 +5723,14 @@ function findSummerDrift(){
     btn.style.cssText = 'background:#10b981;color:#fff;font-weight:700';
     btn.title = 'Save current date ranges to the shared calendar';
     btn.textContent = '✓ Save Summer Plan';
-    btn.onclick = function(){
+    btn.onclick = async function(){
+      if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) {
+        await _v23LoadSharedDataViaRest();
+        if (!_v16SharedDataLoaded) {
+          alert('The shared calendar is still connecting. Please wait for the sync bar to show connected before saving summer dates.');
+          return;
+        }
+      }
       const summary = summarizeSummerPlan(activeSummerYear);
       if (summary.warnings.length) {
         summerGapPanelOpen = true;
@@ -7340,6 +7347,9 @@ let _v16RetryTimer = null;
 let _v16LastRemoteAt = null;
 let _v16SharedDataLoaded = false;
 let _v16LastSharedPayload = null;
+let _v23RestLoadStarted = false;
+let _v23RestSaveInFlight = false;
+const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
   if (typeof normalizeSummerOverrides === 'function') normalizeSummerOverrides();
@@ -7489,6 +7499,24 @@ window.addEventListener('fbSaveSuccess', (e) => {
 window.addEventListener('fbSaveError', (e) => {
   const payload = e.detail && e.detail.payload ? e.detail.payload : _v16BuildSavePayload();
   _v16StoreBackup(payload, 'error');
+  if (!_v23RestSaveInFlight) {
+    _v23RestSaveInFlight = true;
+    _setSyncStatus('saving', 'Primary save failed - trying backup sync...');
+    _v23WriteSharedDataViaRest(payload).then(() => {
+      _v23RestSaveInFlight = false;
+      _v16RetryCount = 0;
+      clearTimeout(_v16RetryTimer);
+      _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
+      _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
+      _v16StoreBackup(payload, 'synced');
+      _setSyncStatus('saved', '✓ Saved to shared calendar');
+      renderInboxBadge();
+      if (inboxViewMode === 'history') renderInboxBody();
+    }).catch(err => {
+      _v23RestSaveInFlight = false;
+      console.error('Backup sync after primary save failed', err);
+    });
+  }
   if (_v16RetryCount < 3){
     _v16RetryCount++;
     const delay = 2500 * _v16RetryCount;
@@ -7536,14 +7564,28 @@ scheduleSave = function(){
       window._fbDirectWrite(payload);
       setTimeout(() => { _ignoreNext = false; }, 2500);
     } else {
-      _v16StoreBackup(payload, 'error');
-      _setSyncStatus('error', 'Offline - local backup kept on this phone');
+      _setSyncStatus('saving', 'Saving with backup sync...');
+      _v23WriteSharedDataViaRest(payload).then(() => {
+        _v16RetryCount = 0;
+        _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
+        _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
+        _v16StoreBackup(payload, 'synced');
+        _setSyncStatus('saved', '✓ Saved to shared calendar');
+        renderInboxBadge();
+      }).catch(err => {
+        console.error('Backup sync save failed', err);
+        _v16StoreBackup(payload, 'error');
+        _setSyncStatus('error', 'Offline - local backup kept on this phone');
+      });
     }
   }, 800);
 };
 
 initFirebase = function(){
   _setSyncStatus('connecting');
+  setTimeout(() => {
+    if (!_v16SharedDataLoaded) _v23LoadSharedDataViaRest();
+  }, 3500);
   window._fbListen(function(data){
     if (_ignoreNext) return;
     const backup = _v16ReadBackup();
@@ -7585,6 +7627,46 @@ initFirebase = function(){
     }
   });
 };
+
+async function _v23LoadSharedDataViaRest(){
+  if (_v16SharedDataLoaded || _v23RestLoadStarted) return;
+  _v23RestLoadStarted = true;
+  try {
+    _setSyncStatus('connecting', 'Connecting with backup sync...');
+    const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data){
+      _v16SharedDataLoaded = true;
+      _v16LastSharedPayload = null;
+      _setSyncStatus('synced', '✓ Connected - no shared data yet');
+      render();
+      return;
+    }
+    _v16ApplyPayload(data);
+    _v16SharedDataLoaded = true;
+    render();
+    if (typeof renderLogBody === 'function') renderLogBody();
+    const ts = data.updatedAt
+      ? new Date(data.updatedAt).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
+      : '';
+    _setSyncStatus('remote', ts ? `📲 Last updated ${ts}` : '✓ Connected with backup sync');
+  } catch(err) {
+    console.error('Backup sync load failed', err);
+    _v23RestLoadStarted = false;
+    _setSyncStatus('error', 'Could not connect to shared calendar. Reload or use GitHub Pages.');
+  }
+}
+
+async function _v23WriteSharedDataViaRest(payload){
+  const res = await fetch(FIREBASE_REST_URL, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
 
 // ═══════════════════════════════════════════════════════
 //  V17: Lightweight date notes
@@ -7775,8 +7857,15 @@ function updateSummerTradePreview(){
   </div>`;
 }
 
-function sendSummerTrade(){
+async function sendSummerTrade(){
   if (!currentUser) return;
+  if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) {
+    await _v23LoadSharedDataViaRest();
+    if (!_v16SharedDataLoaded) {
+      alert('The shared calendar is still connecting. Please wait for the sync bar to show connected before sending a summer adjustment.');
+      return;
+    }
+  }
   const data = summerTradeChangesFromInputs();
   if (!data.giveStart || !data.giveEnd || !data.getStart || !data.getEnd) {
     alert('Pick the dates to switch and the replacement dates.');
