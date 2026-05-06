@@ -1011,6 +1011,24 @@ body.drawer-open{overflow:hidden}
 .expense-action-btn.primary{background:#10b981;border-color:#10b981;color:#fff}
 .expense-action-btn.danger{color:#dc2626;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
 .expense-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:.76em;color:var(--muted);line-height:1.4;margin:0 0 10px}
+.receipt-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;margin:0 0 10px}
+.receipt-row{display:flex;align-items:center;gap:9px;justify-content:space-between}
+.receipt-name{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.86em;line-height:1.2}
+.receipt-meta{font-size:.74em;color:var(--muted);margin-top:2px;line-height:1.3}
+.receipt-thumb{width:46px;height:46px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:1.4em}
+.receipt-thumb img{width:100%;height:100%;object-fit:cover}
+.receipt-actions{display:flex;gap:6px;margin-top:9px}
+.receipt-btn{flex:1;border:1px solid var(--border);background:var(--bg-2);color:var(--text);border-radius:9px;padding:8px;font-family:'Nunito',sans-serif;font-weight:900;font-size:.78em;cursor:pointer;text-align:center}
+.receipt-btn.primary{background:#0d9488;border-color:#0d9488;color:#fff}
+.receipt-btn.danger{color:#dc2626;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
+.receipt-input{display:none}
+.receipt-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(13,148,136,.35);background:rgba(13,148,136,.1);color:#0f766e;border-radius:999px;padding:3px 8px;font-size:.72em;font-family:'Nunito',sans-serif;font-weight:900;margin:5px 0 0 5px;cursor:pointer}
+.receipt-view-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:560px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
+.receipt-view-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.receipt-view-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text)}
+.receipt-view-body{padding:12px;overflow:auto;background:var(--bg-2);display:flex;align-items:center;justify-content:center;min-height:280px}
+.receipt-view-body img{max-width:100%;border-radius:12px;box-shadow:var(--shadow-md)}
+.receipt-view-body iframe{width:100%;height:70vh;border:1px solid var(--border);border-radius:12px;background:#fff}
 .paid-date-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:90%;max-width:380px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);padding:20px}
 .paid-date-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.12em;color:var(--text);margin-bottom:3px}
 .paid-date-sub{font-size:.82em;color:var(--muted);line-height:1.4;margin-bottom:14px}
@@ -1556,7 +1574,7 @@ body.drawer-open{overflow:hidden}
     <div class="expense-body">
       <div class="expense-summary-grid" id="expense-summary"></div>
       <div class="expense-note">
-        Phase 1 keeps the money record simple and secure: no bank details, no card numbers, and no receipt uploads yet. Venmo/Zelle can be recorded manually after payment.
+        Receipts are stored with the shared expense record. Crop or cover card numbers, account details, and unrelated personal info before attaching.
       </div>
       <div class="expense-form-panel">
         <div class="expense-list-title" id="expense-form-title">Add Expense</div>
@@ -1600,6 +1618,15 @@ body.drawer-open{overflow:hidden}
 
         <div class="field-lbl">Notes</div>
         <textarea class="ta" id="xp-notes" placeholder="Optional context. Keep payment details out of here." oninput="updateExpensePreview()"></textarea>
+        <div class="field-lbl">Receipt</div>
+        <div class="receipt-panel">
+          <div id="receipt-preview"></div>
+          <input class="receipt-input" type="file" id="xp-receipt" accept="image/*,application/pdf" onchange="handleReceiptFile(this.files && this.files[0])">
+          <div class="receipt-actions">
+            <button class="receipt-btn primary" onclick="document.getElementById('xp-receipt').click()">Attach / Replace</button>
+            <button class="receipt-btn danger" onclick="removeReceiptDraft()">Remove</button>
+          </div>
+        </div>
         <div id="expense-preview" class="expense-split-preview"></div>
         <div class="btn-row">
           <button class="btn btn-cancel" onclick="clearExpenseForm()">Clear</button>
@@ -1613,6 +1640,17 @@ body.drawer-open{overflow:hidden}
       <button class="btn btn-cancel" onclick="closeExpenses()">Close</button>
       <button class="btn btn-save" style="flex:1" id="expense-footer-save" onclick="saveExpense()">Save Expense</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ RECEIPT VIEWER MODAL ═══════════════════════ -->
+<div class="overlay" id="receipt-view-overlay">
+  <div class="receipt-view-modal">
+    <div class="receipt-view-hdr">
+      <div class="receipt-view-title" id="receipt-view-title">Receipt</div>
+      <button class="btn btn-cancel" onclick="closeReceiptViewer()" style="padding:7px 12px">Close</button>
+    </div>
+    <div class="receipt-view-body" id="receipt-view-body"></div>
   </div>
 </div>
 
@@ -7691,6 +7729,7 @@ let expenseEntries = [];
 let expenseNotices = [];
 let editingExpenseId = null;
 let pendingPaidExpenseId = null;
+let expenseReceiptDraft = null;
 
 function formatMoney(value){
   const n = Number(value) || 0;
@@ -7703,6 +7742,109 @@ function expenseOtherParent(name){
 
 function expenseTodayKey(){
   return new Date().toISOString().slice(0,10);
+}
+
+function receiptSizeLabel(bytes){
+  bytes = Number(bytes) || 0;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function renderReceiptDraft(){
+  const el = document.getElementById('receipt-preview');
+  if (!el) return;
+  const r = expenseReceiptDraft;
+  if (!r) {
+    el.innerHTML = `<div class="receipt-row">
+      <div class="receipt-thumb">🧾</div>
+      <div style="flex:1">
+        <div class="receipt-name">No receipt attached</div>
+        <div class="receipt-meta">Attach a clear image or PDF. Crop out card and account details first.</div>
+      </div>
+    </div>`;
+    return;
+  }
+  const thumb = r.type && r.type.startsWith('image/')
+    ? `<img src="${r.dataUrl}" alt="">`
+    : 'PDF';
+  el.innerHTML = `<div class="receipt-row">
+    <div class="receipt-thumb">${thumb}</div>
+    <div style="flex:1;min-width:0">
+      <div class="receipt-name">${_v13EscapeHtml(r.name || 'Receipt')}</div>
+      <div class="receipt-meta">${_v13EscapeHtml(r.type || 'file')} · ${receiptSizeLabel(r.size)} · ready to save</div>
+    </div>
+  </div>`;
+}
+
+function removeReceiptDraft(){
+  expenseReceiptDraft = null;
+  const input = document.getElementById('xp-receipt');
+  if (input) input.value = '';
+  renderReceiptDraft();
+}
+
+function readFileAsDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not load image'));
+    img.src = src;
+  });
+}
+
+async function compressReceiptImage(file){
+  const raw = await readFileAsDataUrl(file);
+  const img = await loadImage(raw);
+  const maxDim = 1200;
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+  return {
+    name: file.name.replace(/\.[^.]+$/, '') + '.jpg',
+    type: 'image/jpeg',
+    size: Math.round((dataUrl.length * 3) / 4),
+    dataUrl
+  };
+}
+
+async function handleReceiptFile(file){
+  if (!file) return;
+  try {
+    const isImage = file.type && file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isImage && !isPdf) {
+      alert('Attach an image or PDF receipt.');
+      return;
+    }
+    if (isPdf && file.size > 1200000) {
+      alert('That PDF is too large for this first receipt version. Please use a smaller PDF or image under about 1 MB.');
+      return;
+    }
+    expenseReceiptDraft = isImage
+      ? await compressReceiptImage(file)
+      : { name:file.name, type:'application/pdf', size:file.size, dataUrl:await readFileAsDataUrl(file) };
+    expenseReceiptDraft.addedBy = currentUser || 'unknown';
+    expenseReceiptDraft.addedAt = new Date().toISOString();
+    renderReceiptDraft();
+    showToast('Receipt attached');
+  } catch(err) {
+    console.error(err);
+    alert('Could not attach that receipt. Try a clear photo or smaller file.');
+  }
 }
 
 function calcExpenseShares(amount, split){
@@ -7772,6 +7914,10 @@ function clearExpenseForm(renderNow = true){
   set('xp-desc', '');
   set('xp-split', '50');
   set('xp-notes', '');
+  expenseReceiptDraft = null;
+  const receiptInput = document.getElementById('xp-receipt');
+  if (receiptInput) receiptInput.value = '';
+  renderReceiptDraft();
   const title = document.getElementById('expense-form-title');
   if (title) title.textContent = 'Add Expense';
   const footer = document.getElementById('expense-footer-save');
@@ -7825,6 +7971,9 @@ function renderExpenses(){
     const cls = c.settled ? 'paid' : 'open';
     const title = _v13EscapeHtml(exp.description || exp.category || 'Expense');
     const note = exp.notes ? `<div class="expense-item-meta"><b>Note:</b> ${_v13EscapeHtml(exp.notes)}</div>` : '';
+    const receiptChip = exp.receipt
+      ? `<button class="receipt-chip" onclick="viewExpenseReceipt('${exp.id}')">🧾 Receipt attached</button>`
+      : '';
     const paidLine = c.settled && exp.paidDate
       ? `<div class="expense-item-meta"><b>Paid:</b> ${fmtDate(exp.paidDate)}${exp.paidMarkedBy ? ` · marked by ${_v13EscapeHtml(exp.paidMarkedBy)}` : ''}</div>`
       : '';
@@ -7840,6 +7989,7 @@ function renderExpenses(){
       ${note}
       ${paidLine}
       <div class="expense-pill ${cls}">${expenseStatusLabel(exp)}</div>
+      ${receiptChip}
       <div class="expense-actions">
         <button class="expense-action-btn" onclick="editExpense('${exp.id}')">Edit</button>
         ${c.settled ? '' : `<button class="expense-action-btn primary" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>`}
@@ -7871,6 +8021,7 @@ function saveExpense(){
     paidBy,
     split,
     notes,
+    receipt: expenseReceiptDraft ? Object.assign({}, expenseReceiptDraft) : null,
     createdBy: existing?.createdBy || currentUser || paidBy,
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedBy: currentUser || paidBy,
@@ -7906,6 +8057,10 @@ function editExpense(id){
   set('xp-desc', exp.description || '');
   set('xp-split', exp.split || '50');
   set('xp-notes', exp.notes || '');
+  expenseReceiptDraft = exp.receipt ? Object.assign({}, exp.receipt) : null;
+  const receiptInput = document.getElementById('xp-receipt');
+  if (receiptInput) receiptInput.value = '';
+  renderReceiptDraft();
   const title = document.getElementById('expense-form-title');
   if (title) title.textContent = 'Edit Expense';
   const footer = document.getElementById('expense-footer-save');
@@ -7952,6 +8107,28 @@ function markExpensePaid(id, paidDate){
   showToast('Expense marked paid');
 }
 
+function viewExpenseReceipt(id){
+  const exp = (expenseEntries || []).find(e => e.id === id);
+  if (!exp || !exp.receipt) return;
+  const r = exp.receipt;
+  const title = document.getElementById('receipt-view-title');
+  const body = document.getElementById('receipt-view-body');
+  if (title) title.textContent = r.name || 'Receipt';
+  if (!body) return;
+  if (r.type && r.type.startsWith('image/')) {
+    body.innerHTML = `<img src="${r.dataUrl}" alt="Receipt">`;
+  } else if (r.type === 'application/pdf') {
+    body.innerHTML = `<iframe src="${r.dataUrl}" title="Receipt PDF"></iframe>`;
+  } else {
+    body.innerHTML = `<div class="inbox-empty">Receipt preview unavailable.</div>`;
+  }
+  document.getElementById('receipt-view-overlay').classList.add('open');
+}
+
+function closeReceiptViewer(){
+  document.getElementById('receipt-view-overlay').classList.remove('open');
+}
+
 function deleteExpense(id){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp) return;
@@ -7970,7 +8147,8 @@ function deleteExpense(id){
         category: exp.category,
         description: exp.description,
         amount: exp.amount,
-        paidBy: exp.paidBy
+        paidBy: exp.paidBy,
+        receiptName: exp.receipt ? exp.receipt.name : ''
       }
     });
   }
@@ -8034,10 +8212,12 @@ renderInboxItem = function(item){
       <div class="inbox-item-body">
         <b>${_v13EscapeHtml(exp.description || exp.category)}</b><br>
         ${fmtDate(exp.date)} · ${_v13EscapeHtml(exp.category || 'Other')} · total ${formatMoney(exp.amount)}<br>
+        ${exp.receipt ? `Receipt attached · ` : ''}
         ${currentUser} owes ${c.owedTo} ${formatMoney(c.owedAmount)}
       </div>
       <div class="inbox-item-actions">
         <button class="ix-btn ix-dismiss" onclick="closeInbox();openExpenses()">Open Expenses</button>
+        ${exp.receipt ? `<button class="ix-btn ix-dismiss" onclick="viewExpenseReceipt('${exp.id}')">View Receipt</button>` : ''}
         <button class="ix-btn ix-approve" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>
       </div>
     </div>`;
@@ -8073,6 +8253,10 @@ document.getElementById('expense-overlay').addEventListener('click', function(e)
 
 document.getElementById('expense-paid-overlay').addEventListener('click', function(e){
   if (e.target === this) closeExpensePaidDate();
+});
+
+document.getElementById('receipt-view-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeReceiptViewer();
 });
 
 setTimeout(() => {
