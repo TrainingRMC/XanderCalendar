@@ -6597,7 +6597,7 @@ function _v13BuildTimeline(){
     getInboxItems().slice(0, 2).forEach(i => {
       const label = i.type === 'swap' ? 'Calendar change'
         : i.type === 'travel' ? 'Travel acknowledgement'
-        : i.type === 'expense' ? 'Expense reimbursement'
+        : i.type === 'expense' || i.type === 'expense-notice' ? 'Expense update'
         : i.type === 'school' ? 'School calendar reminder'
         : i.type && i.type.includes('summer') ? 'Summer planning'
         : 'Inbox item';
@@ -6664,13 +6664,10 @@ function renderDashboard(){
   const handoff = _v13FindNextHandoff();
   const travel = _v13FindUpcomingTravel();
   const highlight = _v13FindUpcomingHighlight();
-  const myDays = _v13CountMyDays(14);
-  const nextMyDay = _v13FindNextMyDay();
   const expenseSummary = typeof getExpenseSummary === 'function' ? getExpenseSummary() : { openCount:0, owedToJustin:0, owedToBrittany:0 };
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
   const travelAction = travel ? `_v17OpenTravelFromDashboard('${travel.id || ''}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
-  const myDaysAction = 'openMyDaysSummary()';
   const hasAttention = inboxCount > 0;
   const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
 
@@ -6712,11 +6709,6 @@ function renderDashboard(){
       <div class="dash-card-title">Expenses</div>
       <div class="dash-card-main">${expenseSummary.openCount ? `${expenseSummary.openCount} open` : 'All settled'}</div>
       <div class="dash-card-sub">${expenseSummary.openCount ? `Justin ${formatMoney(expenseSummary.owedToJustin)} · Brittany ${formatMoney(expenseSummary.owedToBrittany)}` : 'Shared costs are balanced right now.'}</div>
-    </div>
-    <div class="dash-card tap" onclick="${myDaysAction}" role="button" tabindex="0">
-      <div class="dash-card-title">Days With Xander</div>
-      <div class="dash-card-main ${currentUser === 'Justin' ? 'j' : 'b'}">${currentUser ? myDays : '-'}</div>
-      <div class="dash-card-sub">${currentUser ? `${myDays} of the next 14 days · next: ${nextMyDay ? _v13ShortDate(nextMyDay.date) : 'none soon'}` : 'Unlock with your PIN to personalize this.'}</div>
     </div>
     <div class="dash-card tap" onclick="${highlightAction}" role="button" tabindex="0" style="grid-column:1/-1">
       <div class="dash-card-title">Coming Up</div>
@@ -7204,6 +7196,7 @@ function _v16BuildSavePayload(){
     pushSubscriptions: window._currentNotifSubs || {},
     travelEntries:     travelEntries  || [],
     expenseEntries:    expenseEntries || [],
+    expenseNotices:    expenseNotices || [],
     schoolCalendar:    schoolCalendar || {},
     inboxState:        inboxState     || {},
     summerSubmitted:   summerSubmitted || {},
@@ -7243,6 +7236,7 @@ function _v16ApplyPayload(data){
   if (data.pushSubscriptions) window._currentNotifSubs = data.pushSubscriptions;
   if (data.travelEntries)     travelEntries     = data.travelEntries;
   if (data.expenseEntries)    expenseEntries    = data.expenseEntries;
+  if (data.expenseNotices)    expenseNotices    = data.expenseNotices;
   if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
@@ -7694,6 +7688,7 @@ document.getElementById('trade-overlay').addEventListener('click', function(e){
 // ═══════════════════════════════════════════════════════
 
 let expenseEntries = [];
+let expenseNotices = [];
 let editingExpenseId = null;
 let pendingPaidExpenseId = null;
 
@@ -7957,12 +7952,31 @@ function deleteExpense(id){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp) return;
   if (!confirm('Delete this expense from the shared record?')) return;
+  const by = currentUser || 'unknown';
+  const other = by === 'Justin' ? 'Brittany' : 'Justin';
+  if (by === 'Justin' || by === 'Brittany') {
+    expenseNotices.push({
+      id: 'xpn_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      type: 'deleted',
+      to: other,
+      by,
+      createdAt: new Date().toISOString(),
+      expense: {
+        date: exp.date,
+        category: exp.category,
+        description: exp.description,
+        amount: exp.amount,
+        paidBy: exp.paidBy
+      }
+    });
+  }
   expenseEntries = expenseEntries.filter(e => e.id !== id);
-  logAction(currentUser || 'unknown', 'expense', `Deleted expense: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
+  const notifiedText = (by === 'Justin' || by === 'Brittany') ? ` ${other} was notified.` : '';
+  logAction(by, 'expense', `Deleted expense: ${exp.description || exp.category} (${formatMoney(exp.amount)}).${notifiedText}`);
   renderExpenses();
   render();
   scheduleSave();
-  showToast('Expense deleted');
+  showToast('Expense deleted' + (by === 'Justin' || by === 'Brittany' ? ' & notice sent' : ''));
 }
 
 const _v20OrigGetInboxItems = getInboxItems;
@@ -7981,6 +7995,18 @@ getInboxItems = function(){
       ts: exp.updatedAt || exp.createdAt || exp.date,
       unread: !myState.read[key],
       data: { expenseId: exp.id, expense: exp }
+    });
+  });
+  (expenseNotices || []).forEach(notice => {
+    if (!notice || !notice.id || notice.to !== currentUser) return;
+    const key = 'expenseNotice-' + notice.id;
+    if (myState.dismissed[key]) return;
+    items.push({
+      id: key,
+      type: 'expense-notice',
+      ts: notice.createdAt || new Date().toISOString(),
+      unread: !myState.read[key],
+      data: { notice }
     });
   });
   items.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
@@ -8009,6 +8035,28 @@ renderInboxItem = function(item){
       <div class="inbox-item-actions">
         <button class="ix-btn ix-dismiss" onclick="closeInbox();openExpenses()">Open Expenses</button>
         <button class="ix-btn ix-approve" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>
+      </div>
+    </div>`;
+  }
+  if (item.type === 'expense-notice') {
+    const notice = item.data.notice;
+    const exp = notice.expense || {};
+    const unreadCls = item.unread ? ' unread' : '';
+    return `<div class="inbox-item expense${unreadCls}">
+      <div class="inbox-item-hdr">
+        <span class="inbox-item-icon">💳</span>
+        <div class="inbox-item-meta">
+          <div class="inbox-item-t">${notice.by} deleted an expense</div>
+          <div class="inbox-item-when">${formatLogTime(notice.createdAt)}</div>
+        </div>
+      </div>
+      <div class="inbox-item-body">
+        <b>${_v13EscapeHtml(exp.description || exp.category || 'Expense')}</b><br>
+        ${exp.date ? fmtDate(exp.date) + ' · ' : ''}${_v13EscapeHtml(exp.category || 'Other')} · ${formatMoney(exp.amount || 0)}
+      </div>
+      <div class="inbox-item-actions">
+        <button class="ix-btn ix-dismiss" onclick="dismissInboxItem('${item.id}')">Got it</button>
+        <button class="ix-btn ix-approve" onclick="dismissInboxItem('${item.id}');openHistory(event)">View Record</button>
       </div>
     </div>`;
   }
