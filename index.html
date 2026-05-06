@@ -8512,6 +8512,19 @@ getInboxUnreadCount = function(){
 
 const _v21RenderInboxBody = renderInboxBody;
 renderInboxBody = function(){
+  if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) {
+    const body = document.getElementById('inbox-body');
+    if (!body) return;
+    const title = document.querySelector('.inbox-title');
+    if (title) title.textContent = '📥 Inbox';
+    body.innerHTML = `
+      <div class="inbox-section-head">
+        <div class="inbox-history-title" style="margin:0">Action Items</div>
+        <div class="inbox-section-count">Sync loading</div>
+      </div>
+      <div class="inbox-empty">Sync is still connecting<br><span style="font-size:.86em">Action items will appear after the shared calendar loads.</span></div>`;
+    return;
+  }
   if (typeof inboxViewMode !== 'undefined' && inboxViewMode === 'history') {
     _v21RenderInboxBody();
     return;
@@ -8531,6 +8544,30 @@ renderInboxBody = function(){
     </div>
     ${actionHtml}`;
 };
+
+const _v22GetInboxItems = getInboxItems;
+getInboxItems = function(){
+  if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) return [];
+  return _v22GetInboxItems();
+};
+
+getInboxUnreadCount = function(){
+  if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) return 0;
+  return (getInboxItems() || []).filter(i => i && i.unread).length;
+};
+
+function _v22SyncWatchdog(){
+  if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+  const isLocalPreview = window.location.protocol === 'file:';
+  const detail = isLocalPreview
+    ? 'Local preview is not connected. Use the GitHub Pages app for shared saving.'
+    : 'Still connecting - check internet, then reload.';
+  _setSyncStatus('error', detail);
+  renderInboxBadge();
+  if (typeof renderDashboard === 'function') renderDashboard();
+  if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
+}
+setTimeout(_v22SyncWatchdog, 8000);
 
 // Init
 render();
