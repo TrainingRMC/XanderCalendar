@@ -7334,9 +7334,12 @@ document.getElementById('summer-email-overlay').addEventListener('click', functi
 // ═══════════════════════════════════════════════════════
 
 const SAVE_BACKUP_KEY = 'xander_cal_save_backup_v1';
+const SAVE_BACKUP_HISTORY_KEY = 'xander_cal_save_backup_history_v1';
 let _v16RetryCount = 0;
 let _v16RetryTimer = null;
 let _v16LastRemoteAt = null;
+let _v16SharedDataLoaded = false;
+let _v16LastSharedPayload = null;
 
 function _v16BuildSavePayload(){
   if (typeof normalizeSummerOverrides === 'function') normalizeSummerOverrides();
@@ -7358,6 +7361,36 @@ function _v16BuildSavePayload(){
   };
 }
 
+function _v16HasMeaningfulSharedState(payload){
+  if (!payload) return false;
+  return !!(
+    (payload.overrides && Object.keys(payload.overrides).length) ||
+    (Array.isArray(payload.summerPlan) && payload.summerPlan.length) ||
+    (payload.pendingSwaps && Object.keys(payload.pendingSwaps).length) ||
+    (Array.isArray(payload.activityLog) && payload.activityLog.length) ||
+    (Array.isArray(payload.travelEntries) && payload.travelEntries.length) ||
+    (Array.isArray(payload.expenseEntries) && payload.expenseEntries.length) ||
+    (payload.schoolCalendar && Object.keys(payload.schoolCalendar).length)
+  );
+}
+
+function _v16LooksLikeDataLoss(nextPayload){
+  if (!_v16LastSharedPayload || !_v16HasMeaningfulSharedState(_v16LastSharedPayload)) return false;
+  const listKeys = ['activityLog','travelEntries','expenseEntries','expenseNotices','summerPlan'];
+  const objectKeys = ['overrides','pendingSwaps','schoolCalendar','inboxState'];
+  const lostList = listKeys.some(key =>
+    Array.isArray(_v16LastSharedPayload[key]) &&
+    _v16LastSharedPayload[key].length > 0 &&
+    (!Array.isArray(nextPayload[key]) || nextPayload[key].length === 0)
+  );
+  const lostObject = objectKeys.some(key =>
+    _v16LastSharedPayload[key] &&
+    Object.keys(_v16LastSharedPayload[key]).length > 0 &&
+    (!nextPayload[key] || Object.keys(nextPayload[key]).length === 0)
+  );
+  return lostList || lostObject;
+}
+
 function _v16StoreBackup(payload, status){
   try {
     localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
@@ -7365,6 +7398,13 @@ function _v16StoreBackup(payload, status){
       savedAt: new Date().toISOString(),
       payload
     }));
+    const history = JSON.parse(localStorage.getItem(SAVE_BACKUP_HISTORY_KEY) || '[]');
+    history.unshift({
+      status,
+      savedAt: new Date().toISOString(),
+      payload
+    });
+    localStorage.setItem(SAVE_BACKUP_HISTORY_KEY, JSON.stringify(history.slice(0, 30)));
   } catch(e) {
     console.warn('Could not store local save backup', e);
   }
@@ -7374,6 +7414,24 @@ function _v16ReadBackup(){
   try { return JSON.parse(localStorage.getItem(SAVE_BACKUP_KEY) || 'null'); }
   catch(e) { return null; }
 }
+
+window.exportXanderLocalBackups = function(){
+  try {
+    const backup = {
+      latest: JSON.parse(localStorage.getItem(SAVE_BACKUP_KEY) || 'null'),
+      history: JSON.parse(localStorage.getItem(SAVE_BACKUP_HISTORY_KEY) || '[]'),
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'xander-calendar-local-backups.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch(e) {
+    alert('Could not export local backups from this device.');
+  }
+};
 
 function _v16PayloadTime(payload){
   return payload && payload.updatedAt ? new Date(payload.updatedAt).getTime() : 0;
@@ -7397,14 +7455,17 @@ function _v16ApplyPayload(data){
   if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
+  _v16LastSharedPayload = JSON.parse(JSON.stringify(data));
 }
 
 function _v16SaveDetailHtml(){
   const backup = _v16ReadBackup();
   const saved = backup && backup.status === 'synced' ? backup.savedAt : _v16LastRemoteAt;
   const pending = backup && backup.status === 'pending';
-  const trouble = backup && backup.status === 'error';
+  const trouble = backup && (backup.status === 'error' || backup.status === 'blocked' || backup.status === 'held');
   const label = pending ? 'Local backup waiting to sync'
+    : backup && backup.status === 'held' ? 'Save held while shared calendar finishes loading'
+    : backup && backup.status === 'blocked' ? 'Save blocked to protect shared calendar data'
     : trouble ? 'Local backup protected after save trouble'
     : saved ? `Last shared save ${formatLogTime(saved)}`
     : 'Shared save status will appear here after the next update.';
@@ -7420,6 +7481,7 @@ window.addEventListener('fbSaveSuccess', (e) => {
   clearTimeout(_v16RetryTimer);
   const payload = e.detail && e.detail.payload ? e.detail.payload : _v16BuildSavePayload();
   _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
+  _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
   _v16StoreBackup(payload, 'synced');
   if (inboxViewMode === 'history') renderInboxBody();
 });
@@ -7456,6 +7518,18 @@ scheduleSave = function(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     const payload = _v16BuildSavePayload();
+    if (!_v16SharedDataLoaded){
+      _v16StoreBackup(payload, 'held');
+      _setSyncStatus('error', 'Still loading shared calendar - save held safely on this device');
+      showToast('Still loading shared calendar. Try again in a moment.');
+      return;
+    }
+    if (_v16LooksLikeDataLoss(payload)){
+      _v16StoreBackup(payload, 'blocked');
+      _setSyncStatus('error', 'Save blocked - it looked like shared data would be erased');
+      alert('Save paused: this update looked like it would erase existing shared calendar data. Please reload the app and try again.');
+      return;
+    }
     _v16StoreBackup(payload, 'pending');
     if (window._fbDirectWrite){
       _ignoreNext = true;
@@ -7475,7 +7549,7 @@ initFirebase = function(){
     const backup = _v16ReadBackup();
     let chosen = data;
     let restoredLocal = false;
-    if (backup && backup.payload && backup.status !== 'synced'){
+    if (backup && backup.payload && (backup.status === 'pending' || backup.status === 'error')){
       const remoteTime = _v16PayloadTime(data);
       const localTime = _v16PayloadTime(backup.payload);
       if (!data || localTime > remoteTime){
@@ -7484,11 +7558,14 @@ initFirebase = function(){
       }
     }
     if (!chosen){
+      _v16SharedDataLoaded = true;
+      _v16LastSharedPayload = null;
       _setSyncStatus('synced', '✓ Connected - no shared data yet');
       return;
     }
 
     _v16ApplyPayload(chosen);
+    _v16SharedDataLoaded = true;
     render();
     if (typeof renderLogBody === 'function') renderLogBody();
     setTimeout(() => { if (typeof checkBlockingSwaps === 'function') checkBlockingSwaps(); }, 400);
