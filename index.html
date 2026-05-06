@@ -1011,6 +1011,9 @@ body.drawer-open{overflow:hidden}
 .expense-action-btn.primary{background:#10b981;border-color:#10b981;color:#fff}
 .expense-action-btn.danger{color:#dc2626;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
 .expense-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:.76em;color:var(--muted);line-height:1.4;margin:0 0 10px}
+.paid-date-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:90%;max-width:380px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);padding:20px}
+.paid-date-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.12em;color:var(--text);margin-bottom:3px}
+.paid-date-sub{font-size:.82em;color:var(--muted);line-height:1.4;margin-bottom:14px}
 .dash-card.expense{border-color:rgba(13,148,136,.35)}
 .dash-card.expense.open{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
 .inbox-history-row.expense{border-left-color:#0d9488}
@@ -1609,6 +1612,20 @@ body.drawer-open{overflow:hidden}
     <div style="display:flex;gap:7px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)">
       <button class="btn btn-cancel" onclick="closeExpenses()">Close</button>
       <button class="btn btn-save" style="flex:1" onclick="clearExpenseForm()">+ New Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ EXPENSE PAID DATE MODAL ═══════════════════════ -->
+<div class="overlay" id="expense-paid-overlay">
+  <div class="paid-date-modal">
+    <div class="paid-date-title">Mark Expense Paid</div>
+    <div class="paid-date-sub" id="paid-date-sub">Choose the date the reimbursement was paid.</div>
+    <div class="field-lbl">Paid Date</div>
+    <input type="date" class="inp" id="paid-date-input">
+    <div class="btn-row">
+      <button class="btn btn-cancel" onclick="closeExpensePaidDate()">Cancel</button>
+      <button class="btn btn-save" onclick="confirmExpensePaidDate()">Save Paid Date</button>
     </div>
   </div>
 </div>
@@ -7678,6 +7695,7 @@ document.getElementById('trade-overlay').addEventListener('click', function(e){
 
 let expenseEntries = [];
 let editingExpenseId = null;
+let pendingPaidExpenseId = null;
 
 function formatMoney(value){
   const n = Number(value) || 0;
@@ -7810,6 +7828,9 @@ function renderExpenses(){
     const cls = c.settled ? 'paid' : 'open';
     const title = _v13EscapeHtml(exp.description || exp.category || 'Expense');
     const note = exp.notes ? `<div class="expense-item-meta"><b>Note:</b> ${_v13EscapeHtml(exp.notes)}</div>` : '';
+    const paidLine = c.settled && exp.paidDate
+      ? `<div class="expense-item-meta"><b>Paid:</b> ${fmtDate(exp.paidDate)}${exp.paidMarkedBy ? ` · marked by ${_v13EscapeHtml(exp.paidMarkedBy)}` : ''}</div>`
+      : '';
     return `<div class="expense-item ${cls}">
       <div class="expense-item-top">
         <div>
@@ -7820,10 +7841,11 @@ function renderExpenses(){
       </div>
       <div class="expense-item-meta">Justin ${formatMoney(c.shares.Justin)} · Brittany ${formatMoney(c.shares.Brittany)}</div>
       ${note}
+      ${paidLine}
       <div class="expense-pill ${cls}">${expenseStatusLabel(exp)}</div>
       <div class="expense-actions">
         <button class="expense-action-btn" onclick="editExpense('${exp.id}')">Edit</button>
-        ${c.settled ? '' : `<button class="expense-action-btn primary" onclick="markExpensePaid('${exp.id}')">Mark Paid</button>`}
+        ${c.settled ? '' : `<button class="expense-action-btn primary" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>`}
         <button class="expense-action-btn danger" onclick="deleteExpense('${exp.id}')">Delete</button>
       </div>
     </div>`;
@@ -7893,14 +7915,38 @@ function editExpense(id){
   document.getElementById('expense-overlay')?.querySelector('.expense-body')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function markExpensePaid(id){
+function openExpensePaidDate(id){
+  const exp = (expenseEntries || []).find(e => e.id === id);
+  if (!exp) return;
+  pendingPaidExpenseId = id;
+  const sub = document.getElementById('paid-date-sub');
+  if (sub) sub.textContent = `${exp.description || exp.category} · ${formatMoney(exp.amount)}`;
+  const input = document.getElementById('paid-date-input');
+  if (input) input.value = exp.paidDate || expenseTodayKey();
+  document.getElementById('expense-paid-overlay').classList.add('open');
+}
+
+function closeExpensePaidDate(){
+  pendingPaidExpenseId = null;
+  document.getElementById('expense-paid-overlay').classList.remove('open');
+}
+
+function confirmExpensePaidDate(){
+  const paidDate = document.getElementById('paid-date-input')?.value;
+  if (!paidDate) { alert('Pick the paid date.'); return; }
+  markExpensePaid(pendingPaidExpenseId, paidDate);
+  closeExpensePaidDate();
+}
+
+function markExpensePaid(id, paidDate){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp) return;
   exp.status = 'paid';
+  exp.paidDate = paidDate || expenseTodayKey();
   exp.paidAt = new Date().toISOString();
   exp.paidMarkedBy = currentUser || 'unknown';
   exp.updatedAt = new Date().toISOString();
-  logAction(currentUser || 'unknown', 'expense', `Marked expense paid: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
+  logAction(currentUser || 'unknown', 'expense', `Marked expense paid on ${fmtDate(exp.paidDate)}: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
   renderExpenses();
   render();
   scheduleSave();
@@ -7962,7 +8008,7 @@ renderInboxItem = function(item){
       </div>
       <div class="inbox-item-actions">
         <button class="ix-btn ix-dismiss" onclick="closeInbox();openExpenses()">Open Expenses</button>
-        <button class="ix-btn ix-approve" onclick="markExpensePaid('${exp.id}');setTimeout(renderInboxBody,80)">Mark Paid</button>
+        <button class="ix-btn ix-approve" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>
       </div>
     </div>`;
   }
@@ -7971,6 +8017,10 @@ renderInboxItem = function(item){
 
 document.getElementById('expense-overlay').addEventListener('click', function(e){
   if (e.target === this) closeExpenses();
+});
+
+document.getElementById('expense-paid-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeExpensePaidDate();
 });
 
 setTimeout(() => {
