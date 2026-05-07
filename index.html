@@ -1221,7 +1221,6 @@ body.drawer-open{overflow:hidden}
           </svg>
         </button>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
-        <div class="hdr-info"><b>Xander</b><br>Born May 27, 2012 · Age 13</div>
       </div>
       <div class="user-badge" id="user-badge" onclick="switchUser()" title="Click to switch user">
         <span id="user-badge-text">Loading…</span>
@@ -4571,6 +4570,23 @@ async function saveTravel() {
   if (end < start) { alert('End date must be on or after start date'); return; }
   if (!currentUser) { alert('Please pick who you are first'); return; }
 
+  const saveBtn = document.getElementById('tr-save-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = editingTravelId ? 'Saving Trip...' : 'Saving Travel...';
+  }
+
+  try {
+    await _v26EnsureSharedDataBeforeTravelSave();
+  } catch(err) {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      updateTravelEditMode();
+    }
+    alert('Travel did not save because the shared calendar could not be reached: ' + err.message);
+    return;
+  }
+
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   const beforeTravel = _v25Clone(travelEntries || []);
   const beforeActivity = _v25Clone(activityLog || []);
@@ -4626,6 +4642,10 @@ async function saveTravel() {
     travelEntries = beforeTravel;
     activityLog = beforeActivity;
     inboxState = beforeInbox;
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      updateTravelEditMode();
+    }
     alert('Travel did not save: ' + err.message);
     return;
   }
@@ -7370,6 +7390,7 @@ let _v16LastSharedPayload = null;
 let _v23RestLoadStarted = false;
 let _v23RestSaveInFlight = false;
 let _v25PatchSyncReady = false;
+let _v26SyncBootStarted = false;
 const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
@@ -7603,7 +7624,12 @@ scheduleSave = function(){
 };
 
 initFirebase = function(){
+  _v26SyncBootStarted = true;
   _setSyncStatus('connecting');
+  if (typeof window._fbListen !== 'function'){
+    _v23LoadSharedDataViaRest();
+    return;
+  }
   setTimeout(() => {
     if (!_v16SharedDataLoaded) _v23LoadSharedDataViaRest();
   }, 3500);
@@ -7677,6 +7703,21 @@ async function _v23LoadSharedDataViaRest(){
     _v23RestLoadStarted = false;
     _setSyncStatus('error', 'Could not connect to shared calendar. Reload or use GitHub Pages.');
   }
+}
+
+async function _v26EnsureSharedDataBeforeTravelSave(){
+  if (_v16SharedDataLoaded) return;
+  _setSyncStatus('connecting', 'Loading shared calendar before saving travel...');
+  const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data) {
+    _v16ApplyPayload(data);
+    _v16LastRemoteAt = data.updatedAt || new Date().toISOString();
+  } else {
+    _v16LastSharedPayload = null;
+  }
+  _v16SharedDataLoaded = true;
 }
 
 async function _v23WriteSharedDataViaRest(payload){
@@ -8763,6 +8804,12 @@ function _v22SyncWatchdog(){
   if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
 }
 setTimeout(_v22SyncWatchdog, 8000);
+
+// If the Firebase module never finishes booting, start the REST-backed sync
+// anyway. This is especially important for the installed app and local preview.
+setTimeout(() => {
+  if (!_v16SharedDataLoaded && !_v26SyncBootStarted && typeof initFirebase === 'function') initFirebase();
+}, 1200);
 
 // Init
 render();
