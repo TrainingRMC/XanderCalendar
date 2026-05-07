@@ -4561,7 +4561,7 @@ function renderTravelList() {
   updateTravelEditMode();
 }
 
-function saveTravel() {
+async function saveTravel() {
   const start = document.getElementById('tr-start').value;
   const end = document.getElementById('tr-end').value;
   const label = document.getElementById('tr-label').value.trim();
@@ -4572,6 +4572,11 @@ function saveTravel() {
   if (!currentUser) { alert('Please pick who you are first'); return; }
 
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
+  const beforeTravel = _v25Clone(travelEntries || []);
+  const beforeActivity = _v25Clone(activityLog || []);
+  const beforeInbox = _v25Clone(inboxState || {});
+  let pushTitle = '';
+  let pushBody = '';
   const existing = editingTravelId ? travelEntries.find(x => x.id === editingTravelId) : null;
   if (existing) {
     const oldSummary = `${fmtDate(existing.start)} → ${fmtDate(existing.end)}${existing.label ? ` (${existing.label})` : ''}`;
@@ -4591,12 +4596,8 @@ function saveTravel() {
     logAction(currentUser, 'travel',
       `Updated travel from ${oldSummary} to ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
     );
-    triggerPushNotification(
-      other,
-      `${currentUser} updated travel`,
-      `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
-      window.location.origin
-    );
+    pushTitle = `${currentUser} updated travel`;
+    pushBody = `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`;
     editingTravelId = null;
   } else {
     const entry = {
@@ -4615,31 +4616,45 @@ function saveTravel() {
       `Added travel ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
     );
 
-    // Notify the other parent (no approval needed)
-    triggerPushNotification(
-      other,
-      `${currentUser} added travel`,
-      `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`,
-      window.location.origin
-    );
+    pushTitle = `${currentUser} added travel`;
+    pushBody = `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`;
+  }
+
+  try {
+    await _v25PatchSharedNow(['travelEntries','activityLog','inboxState'], 'travel');
+  } catch(err) {
+    travelEntries = beforeTravel;
+    activityLog = beforeActivity;
+    inboxState = beforeInbox;
+    alert('Travel did not save: ' + err.message);
+    return;
   }
 
   closeTravel();
   render();
-  scheduleSave();
+  triggerPushNotification(other, pushTitle, pushBody, window.location.origin);
   showToast('✈️ Travel saved & ' + other + ' notified');
 }
 
-function removeTravel(id) {
+async function removeTravel(id) {
   if (!confirm('Delete this travel entry?')) return;
   const t = travelEntries.find(x => x.id === id);
   if (t) {
+    const beforeTravel = _v25Clone(travelEntries || []);
+    const beforeActivity = _v25Clone(activityLog || []);
     travelEntries = travelEntries.filter(x => x.id !== id);
     if (editingTravelId === id) editingTravelId = null;
     logAction(currentUser, 'travel', `Removed travel ${fmtDate(t.start)} → ${fmtDate(t.end)}`);
+    try {
+      await _v25PatchSharedNow(['travelEntries','activityLog'], 'travel');
+    } catch(err) {
+      travelEntries = beforeTravel;
+      activityLog = beforeActivity;
+      alert('Travel deletion did not save: ' + err.message);
+      return;
+    }
     render();
     renderTravelList();
-    scheduleSave();
     showToast('Travel removed');
   }
 }
@@ -5755,7 +5770,7 @@ function findSummerDrift(){
           );
         }
         try {
-          await _v24SaveSharedNow('summer plan');
+          await _v25PatchSharedNow(['overrides','summerPlan','summerSubmitted','activityLog'], 'summer plan');
         } catch(err) {
           alert('Summer plan did not save: ' + err.message);
           return;
@@ -7354,6 +7369,7 @@ let _v16SharedDataLoaded = false;
 let _v16LastSharedPayload = null;
 let _v23RestLoadStarted = false;
 let _v23RestSaveInFlight = false;
+let _v25PatchSyncReady = false;
 const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
@@ -7712,6 +7728,49 @@ async function _v24SaveSharedNow(label){
   return payload;
 }
 
+function _v25Clone(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function _v25PatchValueForKey(key){
+  const values = {
+    overrides,
+    summerPlan,
+    pendingSwaps: pendingSwaps || {},
+    activityLog: activityLog || [],
+    summerProposal: summerProposal || null,
+    pushSubscriptions: window._currentNotifSubs || {},
+    travelEntries: travelEntries || [],
+    expenseEntries: expenseEntries || [],
+    expenseNotices: expenseNotices || [],
+    schoolCalendar: schoolCalendar || {},
+    inboxState: inboxState || {},
+    summerSubmitted: summerSubmitted || {}
+  };
+  return _v25Clone(values[key]);
+}
+
+async function _v25PatchSharedNow(keys, label){
+  const patch = {};
+  keys.forEach(key => { patch[key] = _v25PatchValueForKey(key); });
+  patch.updatedAt = new Date().toISOString();
+  patch.updatedBy = currentUser || 'unknown';
+  _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
+  const res = await fetch(FIREBASE_REST_URL, {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(patch)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  await res.json();
+  _v25PatchSyncReady = true;
+  _v16LastRemoteAt = patch.updatedAt;
+  _v16LastSharedPayload = Object.assign({}, _v16LastSharedPayload || {}, _v25Clone(patch));
+  _v16StoreBackup(Object.assign(_v16BuildSavePayload(), patch), 'synced');
+  _setSyncStatus('saved', '✓ Saved to shared calendar');
+  return patch;
+}
+
 // ═══════════════════════════════════════════════════════
 //  V17: Lightweight date notes
 // ═══════════════════════════════════════════════════════
@@ -7903,13 +7962,6 @@ function updateSummerTradePreview(){
 
 async function sendSummerTrade(){
   if (!currentUser) return;
-  if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) {
-    await _v23LoadSharedDataViaRest();
-    if (!_v16SharedDataLoaded) {
-      alert('The shared calendar is still connecting. Please wait for the sync bar to show connected before sending a summer adjustment.');
-      return;
-    }
-  }
   const data = summerTradeChangesFromInputs();
   if (!data.giveStart || !data.giveEnd || !data.getStart || !data.getEnd) {
     alert('Pick the dates to switch and the replacement dates.');
@@ -7924,6 +7976,8 @@ async function sendSummerTrade(){
   const before = summerOwnerCounts(yr, []);
   const after = summerOwnerCounts(yr, data.changes);
   const swapId = makeSwapId();
+  const beforePending = _v25Clone(pendingSwaps || {});
+  const beforeActivity = _v25Clone(activityLog || []);
   pendingSwaps[swapId] = {
     date: data.giveStart,
     by: currentUser,
@@ -7944,10 +7998,10 @@ async function sendSummerTrade(){
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   logAction(currentUser, 'summer-trade', `Sent summer adjustment: ${fmtDate(data.giveStart)}-${fmtDate(data.giveEnd)} for ${fmtDate(data.getStart)}-${fmtDate(data.getEnd)}. After: Justin ${after.justin}, Brittany ${after.brittany} (${formatSummerDiff(after.diff)})${reason ? ` · ${reason}` : ''}`);
   try {
-    await _v24SaveSharedNow('summer adjustment');
+    await _v25PatchSharedNow(['pendingSwaps','activityLog'], 'summer adjustment');
   } catch(err) {
-    delete pendingSwaps[swapId];
-    if (activityLog && activityLog[0] && activityLog[0].type === 'summer-trade') activityLog.shift();
+    pendingSwaps = beforePending;
+    activityLog = beforeActivity;
     alert('Summer adjustment did not save: ' + err.message);
     return;
   }
@@ -8698,6 +8752,7 @@ getInboxUnreadCount = function(){
 
 function _v22SyncWatchdog(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+  if (typeof _v25PatchSyncReady !== 'undefined' && _v25PatchSyncReady) return;
   const isLocalPreview = window.location.protocol === 'file:';
   const detail = isLocalPreview
     ? 'Local preview is not connected. Use the GitHub Pages app for shared saving.'
