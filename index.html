@@ -987,6 +987,13 @@ body.drawer-open{overflow:hidden}
 .save-confidence{background:linear-gradient(135deg,rgba(16,185,129,.12),var(--card));border:1px solid rgba(16,185,129,.28);border-radius:12px;padding:9px 11px;margin:0 0 9px;font-size:.8em;color:var(--muted);line-height:1.35}
 .save-confidence.warn{background:linear-gradient(135deg,rgba(245,158,11,.16),var(--card));border-color:rgba(245,158,11,.38);color:#92400e}
 .save-confidence-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.save-confidence-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.save-confidence-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:7px 10px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.save-confidence-btn.primary{background:var(--emerald);border-color:var(--emerald);color:#fff}
+.save-recovery-wrap{display:none;padding:8px 18px;background:var(--bg-2);border-bottom:1px solid var(--border)}
+.save-recovery-wrap.show{display:block}
+.save-recovery-card{max-width:980px;margin:0 auto;background:linear-gradient(135deg,rgba(245,158,11,.16),var(--card));border:1px solid rgba(245,158,11,.42);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-sm);font-size:.82em;color:var(--muted);line-height:1.35}
+.save-recovery-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.06em;font-size:.76em;margin-bottom:3px}
 .travel-summary{background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card));border:1px solid rgba(16,185,129,.35);border-radius:12px;padding:10px 11px;margin:0 0 9px}
 .travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
 .travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
@@ -1252,6 +1259,7 @@ body.drawer-open{overflow:hidden}
   <span id="sync-msg" style="color:#92400e;font-weight:600">Connecting to sync…</span>
   <span id="sync-time" style="margin-left:auto;color:#4ade80;font-style:italic;font-size:.92em"></span>
 </div>
+<div id="save-recovery-bar" class="save-recovery-wrap"></div>
 
 <!-- IPHONE HOME DASHBOARD -->
 <section class="home-dash" id="home-dash">
@@ -1443,6 +1451,7 @@ body.drawer-open{overflow:hidden}
       <div class="sum-modal-title">☀️ Summer Vacation Planner</div>
       <div class="sum-modal-sub" id="sum-modal-sub">May 22 – Aug 2 · Justin selects by April 1</div>
     </div>
+    <div id="summer-save-status" class="save-confidence" style="display:none;margin:12px 18px 0"></div>
     <div class="sum-modal-body" id="sum-body"></div>
     <div class="sum-stats" id="sum-stats"></div>
     <div class="sum-modal-ftr">
@@ -1569,6 +1578,7 @@ body.drawer-open{overflow:hidden}
         <span id="travel-edit-text">Editing travel</span>
         <button class="travel-edit-cancel" onclick="cancelTravelEdit()">Cancel edit</button>
       </div>
+      <div id="travel-save-status" class="save-confidence" style="display:none"></div>
 
       <div class="field-lbl">Start Date</div>
       <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','start')">
@@ -4475,6 +4485,7 @@ function openTravel(prefillStart, prefillEnd) {
   document.getElementById('tr-end').value = prefillEnd || prefillStart || '';
   document.getElementById('tr-label').value = '';
   document.getElementById('tr-notes').value = '';
+  _v27RenderScopedSaveStatuses();
   updateTravelEditMode();
   renderTravelList();
   document.getElementById('travel-overlay').classList.add('show');
@@ -7260,6 +7271,7 @@ function renderSummerApplyPanel(summary){
 }
 
 function renderSummerBody(){
+  _v27RenderScopedSaveStatuses();
   const body = document.getElementById('sum-body');
   if (!body) return;
   const summary = summarizeSummerPlan(activeSummerYear);
@@ -7382,6 +7394,7 @@ document.getElementById('summer-email-overlay').addEventListener('click', functi
 
 const SAVE_BACKUP_KEY = 'xander_cal_save_backup_v1';
 const SAVE_BACKUP_HISTORY_KEY = 'xander_cal_save_backup_history_v1';
+const SAVE_CONFIRM_KEY = 'xander_cal_confirmed_saves_v1';
 let _v16RetryCount = 0;
 let _v16RetryTimer = null;
 let _v16LastRemoteAt = null;
@@ -7460,6 +7473,7 @@ function _v16StoreBackup(payload, status){
   } catch(e) {
     console.warn('Could not store local save backup', e);
   }
+  if (typeof _v27RenderRecoveryBar === 'function') _v27RenderRecoveryBar();
 }
 
 function _v16ReadBackup(){
@@ -7528,6 +7542,101 @@ function _v16SaveDetailHtml(){
   </div>`;
 }
 
+function _v27ReadConfirmedSaves(){
+  try { return JSON.parse(localStorage.getItem(SAVE_CONFIRM_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function _v27RecordConfirmedSave(area, at){
+  try {
+    area = /summer/i.test(area || '') ? 'summer'
+      : /travel/i.test(area || '') ? 'travel'
+      : area || 'shared';
+    const saves = _v27ReadConfirmedSaves();
+    saves[area] = {
+      at: at || new Date().toISOString(),
+      by: currentUser || 'unknown'
+    };
+    localStorage.setItem(SAVE_CONFIRM_KEY, JSON.stringify(saves));
+  } catch(e) {}
+  _v27RenderScopedSaveStatuses();
+  _v27RenderRecoveryBar();
+}
+
+function _v27SaveStatusHtml(area, emptyText){
+  const saves = _v27ReadConfirmedSaves();
+  const item = saves[area];
+  if (!item) return `<div class="save-confidence-title">Save Confirmation</div><div>${emptyText || 'No confirmed save on this device yet.'}</div>`;
+  return `<div class="save-confidence-title">Save Confirmation</div><div>✓ Last saved to the shared calendar ${formatLogTime(item.at)}${item.by ? ` by ${item.by}` : ''}.</div>`;
+}
+
+function _v27RenderScopedSaveStatuses(){
+  const travel = document.getElementById('travel-save-status');
+  if (travel) {
+    travel.style.display = 'block';
+    travel.innerHTML = _v27SaveStatusHtml('travel', 'Travel changes will show a confirmed save time here.');
+  }
+  const summer = document.getElementById('summer-save-status');
+  if (summer) {
+    summer.style.display = 'block';
+    summer.innerHTML = _v27SaveStatusHtml('summer', 'Summer changes will show a confirmed save time here.');
+  }
+}
+
+function _v27DismissRecoveryBanner(){
+  try { localStorage.setItem('xander_cal_recovery_dismissed_at', new Date().toISOString()); } catch(e) {}
+  _v27RenderRecoveryBar(true);
+}
+
+async function _v27RetryLocalBackupSave(){
+  const backup = _v16ReadBackup();
+  if (!backup || !backup.payload) return;
+  try {
+    _setSyncStatus('saving', 'Retrying local backup save...');
+    backup.payload.updatedAt = new Date().toISOString();
+    backup.payload.updatedBy = currentUser || backup.payload.updatedBy || 'unknown';
+    await _v23WriteSharedDataViaRest(backup.payload);
+    _v16LastRemoteAt = backup.payload.updatedAt;
+    _v16LastSharedPayload = JSON.parse(JSON.stringify(backup.payload));
+    _v16StoreBackup(backup.payload, 'synced');
+    _v27RecordConfirmedSave('recovery', backup.payload.updatedAt);
+    _setSyncStatus('saved', '✓ Local backup saved to shared calendar');
+    render();
+  } catch(err) {
+    _v16StoreBackup(backup.payload, 'error');
+    _setSyncStatus('error', 'Backup retry failed - export is still available');
+    alert('Backup retry did not save: ' + err.message);
+  }
+}
+
+function _v27RenderRecoveryBar(forceHide){
+  const bar = document.getElementById('save-recovery-bar');
+  if (!bar) return;
+  const backup = _v16ReadBackup();
+  const needsHelp = backup && ['pending','error','held','blocked'].includes(backup.status);
+  if (forceHide || !needsHelp) {
+    bar.classList.remove('show');
+    bar.innerHTML = '';
+    return;
+  }
+  const when = backup.savedAt ? formatLogTime(backup.savedAt) : 'recently';
+  const text = backup.status === 'blocked'
+    ? 'A save was paused because it looked like it could erase shared data.'
+    : backup.status === 'held'
+      ? 'A save was held while the shared calendar was still loading.'
+      : 'A local backup is waiting to be confirmed on the shared calendar.';
+  bar.classList.add('show');
+  bar.innerHTML = `<div class="save-recovery-card">
+    <div class="save-recovery-title">Unsaved Backup on This Device</div>
+    <div>${text} Last local backup: ${when}.</div>
+    <div class="save-confidence-actions">
+      <button class="save-confidence-btn primary" onclick="_v27RetryLocalBackupSave()">Retry Save</button>
+      <button class="save-confidence-btn" onclick="exportXanderLocalBackups()">Export Backup</button>
+      <button class="save-confidence-btn" onclick="_v27DismissRecoveryBanner()">Hide</button>
+    </div>
+  </div>`;
+}
+
 window.addEventListener('fbSaveSuccess', (e) => {
   _v16RetryCount = 0;
   clearTimeout(_v16RetryTimer);
@@ -7535,6 +7644,7 @@ window.addEventListener('fbSaveSuccess', (e) => {
   _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
   _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
   _v16StoreBackup(payload, 'synced');
+  _v27RecordConfirmedSave('shared', _v16LastRemoteAt);
   if (inboxViewMode === 'history') renderInboxBody();
 });
 
@@ -7551,6 +7661,7 @@ window.addEventListener('fbSaveError', (e) => {
       _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
       _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
       _v16StoreBackup(payload, 'synced');
+      _v27RecordConfirmedSave('shared', _v16LastRemoteAt);
       _setSyncStatus('saved', '✓ Saved to shared calendar');
       renderInboxBadge();
       if (inboxViewMode === 'history') renderInboxBody();
@@ -7612,6 +7723,7 @@ scheduleSave = function(){
         _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
         _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
         _v16StoreBackup(payload, 'synced');
+        _v27RecordConfirmedSave('shared', _v16LastRemoteAt);
         _setSyncStatus('saved', '✓ Saved to shared calendar');
         renderInboxBadge();
       }).catch(err => {
@@ -7765,6 +7877,7 @@ async function _v24SaveSharedNow(label){
   _v16LastRemoteAt = payload.updatedAt || new Date().toISOString();
   _v16LastSharedPayload = JSON.parse(JSON.stringify(payload));
   _v16StoreBackup(payload, 'synced');
+  _v27RecordConfirmedSave('shared', _v16LastRemoteAt);
   _setSyncStatus('saved', '✓ Saved to shared calendar');
   return payload;
 }
@@ -7808,6 +7921,7 @@ async function _v25PatchSharedNow(keys, label){
   _v16LastRemoteAt = patch.updatedAt;
   _v16LastSharedPayload = Object.assign({}, _v16LastSharedPayload || {}, _v25Clone(patch));
   _v16StoreBackup(Object.assign(_v16BuildSavePayload(), patch), 'synced');
+  _v27RecordConfirmedSave(label || 'shared', patch.updatedAt);
   _setSyncStatus('saved', '✓ Saved to shared calendar');
   return patch;
 }
@@ -8813,6 +8927,8 @@ setTimeout(() => {
 
 // Init
 render();
+_v27RenderRecoveryBar();
+_v27RenderScopedSaveStatuses();
 showWhoPickerIfNeeded();
 // If user already known from sessionStorage, run blocking + summer checks
 setTimeout(() => {
