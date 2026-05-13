@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedInParent() {
+      return request.auth != null
+        && (
+          request.auth.uid == "REPLACE_WITH_JUSTIN_FIREBASE_AUTH_UID" ||
+          request.auth.uid == "REPLACE_WITH_BRITTANY_FIREBASE_AUTH_UID"
+        );
+    }
+
+    match /receipts/{expenseId}/{fileName} {
+      allow read: if signedInParent();
+      allow create, update: if signedInParent()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+      allow delete: if signedInParent();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

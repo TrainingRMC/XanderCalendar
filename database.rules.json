@@ -1,0 +1,17 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "authorizedUsers": {
+      "$uid": {
+        ".read": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "xander_cal": {
+      ".read": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
+      ".validate": "newData.hasChildren(['updatedAt'])"
+    }
+  }
+}

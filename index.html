@@ -10,6 +10,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  PASTE YOUR FIREBASE CONFIG BELOW — replace each value      ║
@@ -26,7 +27,24 @@
 
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
+  const auth = getAuth(app);
   const CAL_REF = ref(db, "xander_cal");
+  window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") === "true";
+  window._fbAuthed = false;
+  window._fbUser = null;
+
+  window._fbAuthToken = async function() {
+    if (!auth.currentUser) throw new Error("Please sign in first.");
+    return auth.currentUser.getIdToken();
+  };
+
+  window._fbSignIn = function(email, password) {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  window._fbSignOut = function() {
+    return signOut(auth);
+  };
 
   window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog) {
     set(CAL_REF, {
@@ -63,8 +81,15 @@
             (err)  => { window._setSyncStatus("error"); console.error(err); });
   };
 
-  window._fbReady = true;
-  window.dispatchEvent(new CustomEvent("fbReady"));
+  onAuthStateChanged(auth, (user) => {
+    window._fbAuthed = !!user;
+    window._fbUser = user ? { uid: user.uid, email: user.email || "" } : null;
+    window.dispatchEvent(new CustomEvent("fbAuthChanged", { detail: { user: window._fbUser } }));
+    if ((!window._fbAuthRequired || user) && !window._fbReady) {
+      window._fbReady = true;
+      window.dispatchEvent(new CustomEvent("fbReady"));
+    }
+  });
 </script>
 
 <style>
@@ -399,6 +424,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .pin-person.active.j{background:var(--j-l);border-color:var(--j);color:var(--j-d)}
 .pin-person.active.b{background:var(--b-l);border-color:var(--b);color:var(--b-d)}
 .pin-profile-name{font-weight:900;color:var(--text);font-family:'Nunito',sans-serif;margin-bottom:8px}
+.auth-login{display:grid;gap:10px;text-align:left;margin-top:4px}
+.auth-note{font-size:.72em;color:#64748b;line-height:1.4;text-align:center;margin-top:8px}
+.auth-status{font-size:.74em;color:var(--muted);font-weight:800;text-align:center;margin-top:7px}
 
 /* ── CURRENT USER BADGE (in header) ── */
 .user-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:20px;font-size:.79em;font-weight:700;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
@@ -2221,6 +2249,7 @@ const USER_KEY = 'xander_cal_user';
 const PIN_KEY = 'xander_cal_parent_pins_v1';
 let setupPinParent = 'Justin';
 let currentUser = sessionStorage.getItem(USER_KEY) || null;
+let firebaseAuthUser = window._fbUser || null;
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
 
@@ -2237,6 +2266,19 @@ function setUser(name) {
 function switchUser() {
   sessionStorage.removeItem(USER_KEY);
   currentUser = null;
+  updateUserBadge();
+  showWhoPickerIfNeeded(true);
+}
+
+async function secureSignOut() {
+  sessionStorage.removeItem(USER_KEY);
+  currentUser = null;
+  firebaseAuthUser = null;
+  try {
+    if (window._fbSignOut) await window._fbSignOut();
+  } catch(e) {
+    console.warn('Firebase sign out failed', e);
+  }
   updateUserBadge();
   showWhoPickerIfNeeded(true);
 }
@@ -2291,8 +2333,19 @@ function renderPinGate() {
   const sub = document.getElementById('pin-sub');
   const setup = document.getElementById('pin-setup');
   const login = document.getElementById('pin-login');
-  if (!title || !sub || !setup || !login) return false;
+  const authLogin = document.getElementById('firebase-auth-login');
+  if (!title || !sub || !setup || !login || !authLogin) return false;
   hidePinError();
+  if (window._fbAuthRequired && !window._fbAuthed) {
+    title.textContent = 'Secure sign in';
+    sub.textContent = 'Sign in with your private Firebase account before opening the calendar.';
+    setup.style.display = 'none';
+    login.style.display = 'none';
+    authLogin.style.display = 'grid';
+    setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
+    return true;
+  }
+  authLogin.style.display = 'none';
   if (hasParentPins()) {
     const store = getPinStore();
     const profiles = ['Justin','Brittany'].filter(name => !!store[name]);
@@ -2317,6 +2370,34 @@ function renderPinGate() {
   return true;
 }
 
+async function signInFirebaseAccount() {
+  hidePinError();
+  const email = document.getElementById('auth-email')?.value.trim();
+  const password = document.getElementById('auth-password')?.value;
+  if (!email || !password) {
+    showPinError('Enter your Firebase email and password.');
+    return;
+  }
+  const btn = document.getElementById('auth-login-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+  }
+  try {
+    await window._fbSignIn(email, password);
+    document.getElementById('auth-password').value = '';
+    renderPinGate();
+    showToast('Secure sign-in complete');
+  } catch(err) {
+    showPinError('Sign-in failed: ' + (err.code || err.message));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+}
+
 function selectPinParent(name) {
   setupPinParent = name === 'Brittany' ? 'Brittany' : 'Justin';
   const j = document.getElementById('pin-person-justin');
@@ -2326,6 +2407,10 @@ function selectPinParent(name) {
 }
 
 function showWhoPickerIfNeeded(force) {
+  if (window._fbAuthRequired && !window._fbAuthed) {
+    sessionStorage.removeItem(USER_KEY);
+    currentUser = null;
+  }
   if (!hasParentPins()) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
@@ -2395,6 +2480,16 @@ function resetParentPins() {
   currentUser = null;
   renderPinGate();
 }
+
+window.addEventListener('fbAuthChanged', (e) => {
+  firebaseAuthUser = e.detail && e.detail.user ? e.detail.user : null;
+  if (!firebaseAuthUser) {
+    sessionStorage.removeItem(USER_KEY);
+    currentUser = null;
+  }
+  updateUserBadge();
+  showWhoPickerIfNeeded(true);
+});
 
 // ═══════════════════════════════════════════════════════
 //  SWAP REQUEST WORKFLOW
@@ -7792,7 +7887,7 @@ async function _v23LoadSharedDataViaRest(){
   _v23RestLoadStarted = true;
   try {
     _setSyncStatus('connecting', 'Connecting with backup sync...');
-    const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+    const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (!data){
@@ -7820,7 +7915,7 @@ async function _v23LoadSharedDataViaRest(){
 async function _v26EnsureSharedDataBeforeTravelSave(){
   if (_v16SharedDataLoaded) return;
   _setSyncStatus('connecting', 'Loading shared calendar before saving travel...');
-  const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   if (data) {
@@ -7832,8 +7927,16 @@ async function _v26EnsureSharedDataBeforeTravelSave(){
   _v16SharedDataLoaded = true;
 }
 
+async function _v28AuthedFirebaseUrl(url){
+  if (!window._fbAuthRequired) return url;
+  if (!window._fbAuthToken) throw new Error('Secure sign-in is still loading');
+  const token = await window._fbAuthToken();
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}auth=${encodeURIComponent(token)}`;
+}
+
 async function _v23WriteSharedDataViaRest(payload){
-  const res = await fetch(FIREBASE_REST_URL, {
+  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
     method:'PUT',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
@@ -7846,7 +7949,7 @@ async function _v24EnsureSharedLoaded(){
   if (_v16SharedDataLoaded) return true;
   try {
     _setSyncStatus('connecting', 'Loading shared calendar before saving...');
-    const res = await fetch(FIREBASE_REST_URL, { cache:'no-store' });
+    const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data) _v16ApplyPayload(data);
@@ -7910,7 +8013,7 @@ async function _v25PatchSharedNow(keys, label){
   patch.updatedAt = new Date().toISOString();
   patch.updatedBy = currentUser || 'unknown';
   _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
-  const res = await fetch(FIREBASE_REST_URL, {
+  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
     method:'PATCH',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(patch)
@@ -8970,6 +9073,21 @@ setTimeout(() => {
     <div class="who-title" id="pin-title">Enter your PIN</div>
     <div class="who-sub" id="pin-sub">Your PIN identifies who is using the calendar.</div>
     <div class="pin-error" id="pin-error"></div>
+
+    <div class="auth-login" id="firebase-auth-login" style="display:none">
+      <div class="pin-row">
+        <div class="pin-row-label">Email</div>
+        <input class="inp" id="auth-email" type="email" autocomplete="username" placeholder="you@example.com"
+          onkeydown="if(event.key==='Enter')document.getElementById('auth-password')?.focus()">
+      </div>
+      <div class="pin-row">
+        <div class="pin-row-label">Password</div>
+        <input class="pin-input" id="auth-password" type="password" autocomplete="current-password" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter')signInFirebaseAccount()">
+      </div>
+      <button class="btn btn-save" id="auth-login-btn" onclick="signInFirebaseAccount()" style="width:100%;margin-top:2px">Sign In</button>
+      <div class="auth-note">Use the Firebase account created for Justin or Brittany. Your phone PIN still keeps day-to-day access quick after secure sign-in.</div>
+    </div>
 
     <div class="pin-setup" id="pin-setup" style="display:none">
       <div class="pin-person-row">
