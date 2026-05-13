@@ -5,8 +5,8 @@ service firebase.storage {
     function signedInParent() {
       return request.auth != null
         && (
-          request.auth.uid == "REPLACE_WITH_JUSTIN_FIREBASE_AUTH_UID" ||
-          request.auth.uid == "REPLACE_WITH_BRITTANY_FIREBASE_AUTH_UID"
+          request.auth.uid == "AVTqawxYzSQh9xgqUL9aSRigTwk2" ||
+          request.auth.uid == "eBi4fVGfY7P8WvxXJXdjk6QkDV43"
         );
     }
 

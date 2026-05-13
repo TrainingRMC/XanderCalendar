@@ -10,33 +10,22 @@ This app now has Firebase Authentication support in the code, but secure mode is
 4. Create one user for Justin and one user for Brittany.
 5. Copy each user's Firebase Auth UID.
 
+Configured UIDs:
+
+- Justin: `AVTqawxYzSQh9xgqUL9aSRigTwk2`
+- Brittany: `eBi4fVGfY7P8WvxXJXdjk6QkDV43`
+
 ## Realtime Database rules
 
 Before deploying `database.rules.json`, add both UIDs under this Realtime Database path:
 
-```json
-{
-  "authorizedUsers": {
-    "JUSTIN_UID_HERE": {
-      "name": "Justin"
-    },
-    "BRITTANY_UID_HERE": {
-      "name": "Brittany"
-    }
-  }
-}
-```
+The current `database.rules.json` already includes Justin and Brittany's UIDs.
 
 The database rules allow only authenticated UIDs listed in `/authorizedUsers` to read or write `xander_cal`.
 
 ## Storage rules
 
-Before deploying `storage.rules`, replace:
-
-- `REPLACE_WITH_JUSTIN_FIREBASE_AUTH_UID`
-- `REPLACE_WITH_BRITTANY_FIREBASE_AUTH_UID`
-
-Receipt uploads are limited to images or PDFs under 5 MB.
+The current `storage.rules` already includes Justin and Brittany's UIDs. Receipt uploads are limited to images or PDFs under 5 MB.
 
 ## Turn secure mode on in the app
 

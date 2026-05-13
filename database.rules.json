@@ -3,8 +3,12 @@
     ".read": false,
     ".write": false,
     "authorizedUsers": {
-      "$uid": {
-        ".read": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
+      "AVTqawxYzSQh9xgqUL9aSRigTwk2": {
+        ".read": "auth != null && auth.uid == 'AVTqawxYzSQh9xgqUL9aSRigTwk2'",
+        ".write": false
+      },
+      "eBi4fVGfY7P8WvxXJXdjk6QkDV43": {
+        ".read": "auth != null && auth.uid == 'eBi4fVGfY7P8WvxXJXdjk6QkDV43'",
         ".write": false
       }
     },
