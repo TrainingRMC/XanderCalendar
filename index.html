@@ -2274,14 +2274,23 @@ function setUser(name) {
   sessionStorage.setItem(USER_KEY, name);
   const gate = document.getElementById('who-gate');
   if (gate) gate.classList.remove('show');
+  document.body.classList.remove('auth-locked');
+  document.body.classList.add('auth-unlocked');
+  document.body.style.overflow = '';
   updateUserBadge();
   const logToggle = document.getElementById('log-toggle');
   if (logToggle) logToggle.style.display = 'flex';
 }
 
 function switchUser() {
+  if (isFirebaseAuthRequired() && isFirebaseSignedIn()) {
+    secureSignOut();
+    return;
+  }
   sessionStorage.removeItem(USER_KEY);
   currentUser = null;
+  document.body.classList.remove('auth-unlocked');
+  document.body.classList.add('auth-locked');
   updateUserBadge();
   showWhoPickerIfNeeded(true);
 }
@@ -2295,6 +2304,8 @@ async function secureSignOut() {
   } catch(e) {
     console.warn('Firebase sign out failed', e);
   }
+  document.body.classList.remove('auth-unlocked');
+  document.body.classList.add('auth-locked');
   updateUserBadge();
   showWhoPickerIfNeeded(true);
 }
