@@ -402,8 +402,9 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 }
 
 /* ── PERSONAL PIN GATE ── */
-#who-gate{position:fixed;inset:0;z-index:99998;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:none;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
+#who-gate{position:fixed;inset:0;z-index:99998;background:linear-gradient(135deg,#0f2a50 0%,#1d4ed8 60%,#be185d 100%);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif}
 #who-gate.show{display:flex}
+body.auth-unlocked #who-gate{display:none}
 .who-card{background:#fff;border-radius:20px;padding:34px 30px 28px;width:90%;max-width:400px;box-shadow:0 28px 70px rgba(0,0,0,.35);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1)}
 .who-title{font-weight:900;font-size:1.4em;color:#0f172a;margin-bottom:5px}
 .who-sub{font-size:.85em;color:#64748b;margin-bottom:22px}
@@ -2474,10 +2475,12 @@ function showWhoPickerIfNeeded(force) {
     renderPinGate();
     gate.classList.add('show');
     document.body.classList.add('auth-locked');
+    document.body.classList.remove('auth-unlocked');
     document.body.style.overflow = 'hidden';
   } else {
     gate.classList.remove('show');
     document.body.classList.remove('auth-locked');
+    document.body.classList.add('auth-unlocked');
     document.body.style.overflow = '';
     updateUserBadge();
     const logToggle = document.getElementById('log-toggle');
@@ -9127,11 +9130,11 @@ setTimeout(() => {
 <div id="who-gate">
   <div class="who-card">
     <div style="font-size:2.4em;margin-bottom:6px">🔐</div>
-    <div class="who-title" id="pin-title">Enter your PIN</div>
-    <div class="who-sub" id="pin-sub">Your PIN identifies who is using the calendar.</div>
+    <div class="who-title" id="pin-title">Secure sign in</div>
+    <div class="who-sub" id="pin-sub">Sign in with your private Firebase account before opening the calendar.</div>
     <div class="pin-error" id="pin-error"></div>
 
-    <div class="auth-login" id="firebase-auth-login" style="display:none">
+    <div class="auth-login" id="firebase-auth-login" style="display:grid">
       <div class="pin-row">
         <div class="pin-row-label">Email</div>
         <input class="inp" id="auth-email" type="email" autocomplete="username" placeholder="you@example.com"
