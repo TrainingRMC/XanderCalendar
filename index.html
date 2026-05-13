@@ -160,6 +160,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;transition:background .3s ease,color .3s ease}
+body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 
 .hdr{background:var(--hdr-grad);padding:18px 22px 14px;color:#fff;position:relative;overflow:hidden}
 .hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(245,158,11,.18),transparent 50%);pointer-events:none}
@@ -2256,7 +2257,13 @@ const AUTH_PARENT_BY_UID = {
   eBi4fVGfY7P8WvxXJXdjk6QkDV43: 'Brittany'
 };
 let setupPinParent = 'Justin';
-let currentUser = sessionStorage.getItem(USER_KEY) || null;
+function isFirebaseAuthRequired() {
+  return window._fbAuthRequired !== false;
+}
+function isFirebaseSignedIn() {
+  return window._fbAuthed === true && !!window._fbUser;
+}
+let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
@@ -2344,7 +2351,7 @@ function renderPinGate() {
   const authLogin = document.getElementById('firebase-auth-login');
   if (!title || !sub || !setup || !login || !authLogin) return false;
   hidePinError();
-  if (window._fbAuthRequired && !window._fbAuthed) {
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
     title.textContent = 'Secure sign in';
     sub.textContent = 'Sign in with your private Firebase account before opening the calendar.';
     setup.style.display = 'none';
@@ -2354,7 +2361,7 @@ function renderPinGate() {
     return true;
   }
   authLogin.style.display = 'none';
-  if (window._fbAuthRequired && window._fbAuthed) {
+  if (isFirebaseAuthRequired() && isFirebaseSignedIn()) {
     const parent = firebaseAuthUser && AUTH_PARENT_BY_UID[firebaseAuthUser.uid];
     if (parent) {
       setUser(parent);
@@ -2451,10 +2458,10 @@ function selectPinParent(name) {
 }
 
 function showWhoPickerIfNeeded(force) {
-  if (window._fbAuthRequired && !window._fbAuthed) {
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
-  } else if (!window._fbAuthRequired && !hasParentPins()) {
+  } else if (!isFirebaseAuthRequired() && !hasParentPins()) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
   }
@@ -2466,9 +2473,11 @@ function showWhoPickerIfNeeded(force) {
   if (!currentUser || force) {
     renderPinGate();
     gate.classList.add('show');
+    document.body.classList.add('auth-locked');
     document.body.style.overflow = 'hidden';
   } else {
     gate.classList.remove('show');
+    document.body.classList.remove('auth-locked');
     document.body.style.overflow = '';
     updateUserBadge();
     const logToggle = document.getElementById('log-toggle');
@@ -2531,7 +2540,7 @@ window.addEventListener('fbAuthChanged', (e) => {
     render();
     return;
   }
-  if (!firebaseAuthUser || window._fbAuthRequired) {
+  if (!firebaseAuthUser || isFirebaseAuthRequired()) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
   }
@@ -7976,7 +7985,7 @@ async function _v26EnsureSharedDataBeforeTravelSave(){
 }
 
 async function _v28AuthedFirebaseUrl(url){
-  if (!window._fbAuthRequired) return url;
+  if (!isFirebaseAuthRequired()) return url;
   if (!window._fbAuthToken) throw new Error('Secure sign-in is still loading');
   const token = await window._fbAuthToken();
   const sep = url.includes('?') ? '&' : '?';
