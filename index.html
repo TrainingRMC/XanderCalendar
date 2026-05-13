@@ -29,7 +29,7 @@
   const db  = getDatabase(app);
   const auth = getAuth(app);
   const CAL_REF = ref(db, "xander_cal");
-  window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") === "true";
+  window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") !== "false";
   window._fbAuthed = false;
   window._fbUser = null;
 
