@@ -2365,7 +2365,7 @@ function renderPinGate() {
   hidePinError();
   if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
     title.textContent = 'Secure sign in';
-    sub.textContent = 'Sign in with your private Firebase account before opening the calendar.';
+    sub.textContent = '';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'grid';
@@ -9142,7 +9142,7 @@ setTimeout(() => {
   <div class="who-card">
     <div style="font-size:2.4em;margin-bottom:6px">🔐</div>
     <div class="who-title" id="pin-title">Secure sign in</div>
-    <div class="who-sub" id="pin-sub">Sign in with your private Firebase account before opening the calendar.</div>
+    <div class="who-sub" id="pin-sub"></div>
     <div class="pin-error" id="pin-error"></div>
 
     <div class="auth-login" id="firebase-auth-login" style="display:grid">
@@ -9159,7 +9159,6 @@ setTimeout(() => {
       <button class="btn btn-save" id="auth-login-btn" onclick="signInFirebaseAccount()" style="width:100%;margin-top:2px">Sign In</button>
       <button class="pin-secondary" onclick="sendFirebasePasswordReset()">Forgot Password?</button>
       <div class="auth-status" id="auth-status"></div>
-      <div class="auth-note">Use the Firebase account created for Justin or Brittany. The app will identify you automatically after sign-in.</div>
     </div>
 
     <div class="pin-setup" id="pin-setup" style="display:none">
