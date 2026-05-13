@@ -10,7 +10,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  PASTE YOUR FIREBASE CONFIG BELOW — replace each value      ║
@@ -40,6 +40,10 @@
 
   window._fbSignIn = function(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  window._fbResetPassword = function(email) {
+    return sendPasswordResetEmail(auth, email);
   };
 
   window._fbSignOut = function() {
@@ -2247,6 +2251,10 @@ function showToast(msg){
 
 const USER_KEY = 'xander_cal_user';
 const PIN_KEY = 'xander_cal_parent_pins_v1';
+const AUTH_PARENT_BY_UID = {
+  AVTqawxYzSQh9xgqUL9aSRigTwk2: 'Justin',
+  eBi4fVGfY7P8WvxXJXdjk6QkDV43: 'Brittany'
+};
 let setupPinParent = 'Justin';
 let currentUser = sessionStorage.getItem(USER_KEY) || null;
 let firebaseAuthUser = window._fbUser || null;
@@ -2346,6 +2354,19 @@ function renderPinGate() {
     return true;
   }
   authLogin.style.display = 'none';
+  if (window._fbAuthRequired && window._fbAuthed) {
+    const parent = firebaseAuthUser && AUTH_PARENT_BY_UID[firebaseAuthUser.uid];
+    if (parent) {
+      setUser(parent);
+      return true;
+    }
+    title.textContent = 'Account not authorized';
+    sub.textContent = 'This Firebase account is signed in, but it is not listed as Justin or Brittany.';
+    setup.style.display = 'none';
+    login.style.display = 'none';
+    authLogin.style.display = 'none';
+    return true;
+  }
   if (hasParentPins()) {
     const store = getPinStore();
     const profiles = ['Justin','Brittany'].filter(name => !!store[name]);
@@ -2384,10 +2405,16 @@ async function signInFirebaseAccount() {
     btn.textContent = 'Signing in...';
   }
   try {
-    await window._fbSignIn(email, password);
+    const cred = await window._fbSignIn(email, password);
+    const parent = cred && cred.user ? AUTH_PARENT_BY_UID[cred.user.uid] : null;
+    if (!parent) {
+      await secureSignOut();
+      showPinError('That account is not authorized for this calendar.');
+      return;
+    }
     document.getElementById('auth-password').value = '';
-    renderPinGate();
-    showToast('Secure sign-in complete');
+    setUser(parent);
+    showToast(`Signed in as ${parent}`);
   } catch(err) {
     showPinError('Sign-in failed: ' + (err.code || err.message));
   } finally {
@@ -2395,6 +2422,23 @@ async function signInFirebaseAccount() {
       btn.disabled = false;
       btn.textContent = 'Sign In';
     }
+  }
+}
+
+async function sendFirebasePasswordReset() {
+  hidePinError();
+  const email = document.getElementById('auth-email')?.value.trim();
+  if (!email) {
+    showPinError('Enter your email first, then tap Forgot Password.');
+    return;
+  }
+  try {
+    await window._fbResetPassword(email);
+    showToast('Password reset email sent');
+    const status = document.getElementById('auth-status');
+    if (status) status.textContent = 'Password reset email sent. Check your inbox.';
+  } catch(err) {
+    showPinError('Reset failed: ' + (err.code || err.message));
   }
 }
 
@@ -2410,8 +2454,7 @@ function showWhoPickerIfNeeded(force) {
   if (window._fbAuthRequired && !window._fbAuthed) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
-  }
-  if (!hasParentPins()) {
+  } else if (!window._fbAuthRequired && !hasParentPins()) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
   }
@@ -2483,7 +2526,12 @@ function resetParentPins() {
 
 window.addEventListener('fbAuthChanged', (e) => {
   firebaseAuthUser = e.detail && e.detail.user ? e.detail.user : null;
-  if (!firebaseAuthUser) {
+  if (firebaseAuthUser && AUTH_PARENT_BY_UID[firebaseAuthUser.uid]) {
+    setUser(AUTH_PARENT_BY_UID[firebaseAuthUser.uid]);
+    render();
+    return;
+  }
+  if (!firebaseAuthUser || window._fbAuthRequired) {
     sessionStorage.removeItem(USER_KEY);
     currentUser = null;
   }
@@ -9086,7 +9134,9 @@ setTimeout(() => {
           onkeydown="if(event.key==='Enter')signInFirebaseAccount()">
       </div>
       <button class="btn btn-save" id="auth-login-btn" onclick="signInFirebaseAccount()" style="width:100%;margin-top:2px">Sign In</button>
-      <div class="auth-note">Use the Firebase account created for Justin or Brittany. Your phone PIN still keeps day-to-day access quick after secure sign-in.</div>
+      <button class="pin-secondary" onclick="sendFirebasePasswordReset()">Forgot Password?</button>
+      <div class="auth-status" id="auth-status"></div>
+      <div class="auth-note">Use the Firebase account created for Justin or Brittany. The app will identify you automatically after sign-in.</div>
     </div>
 
     <div class="pin-setup" id="pin-setup" style="display:none">
