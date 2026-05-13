@@ -10,7 +10,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  PASTE YOUR FIREBASE CONFIG BELOW — replace each value      ║
@@ -49,6 +49,10 @@
   window._fbSignOut = function() {
     return signOut(auth);
   };
+
+  // Do not keep the calendar unlocked across app/browser restarts.
+  // A refresh or fresh open should require the secure sign-in screen again.
+  await setPersistence(auth, inMemoryPersistence);
 
   window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog) {
     set(CAL_REF, {
