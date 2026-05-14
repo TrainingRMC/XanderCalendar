@@ -376,7 +376,7 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 .summer-block-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 8px;font-size:.72em;font-weight:900;font-family:'Nunito',sans-serif;color:#fff}
 .summer-block-chip.j{background:var(--j)}
 .summer-block-chip.b{background:var(--b)}
-.quick-blocks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.quick-blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px;margin-bottom:10px}
 .quick-block-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 9px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
 .quick-block-btn:hover{border-color:var(--j);background:var(--j-soft);color:var(--j)}
 .quick-blocks.single{grid-template-columns:1fr}
@@ -7340,21 +7340,24 @@ function nextSummerOpenDate(summary){
   return summary.range.min;
 }
 
-function addSummerDateRange(){
+function addSummerDateRange(lengthDays, modeLabel){
   const summary = summarizeSummerPlan(activeSummerYear);
   const start = nextSummerOpenDate(summary);
   if (start > summary.range.max) {
     showToast('Summer is already covered');
     return;
   }
+  const days = Math.max(1, parseInt(lengthDays || 1, 10));
+  let end = addDays(start, days - 1);
+  if (end > summary.range.max) end = summary.range.max;
   summerPlan.push({
     start,
-    end: start,
+    end,
     owner: currentUser === 'Brittany' ? 'Brittany' : 'Justin',
     label: ''
   });
   renderSummerBody();
-  showToast('Date range added');
+  showToast(`${modeLabel || 'Date range'} added`);
 }
 
 function buildSummerEmailSummary(yr){
@@ -7503,7 +7506,10 @@ function renderSummerBody(){
     ${gapPanelHtml}
     ${applyPanelHtml}
     <div class="quick-blocks">
-      <button class="quick-block-btn" onclick="addSummerDateRange()">+ Add Date Range</button>
+      <button class="quick-block-btn" onclick="addSummerDateRange(1,'Single day')">+ Single Day</button>
+      <button class="quick-block-btn" onclick="addSummerDateRange(7,'One week')">+ One Week</button>
+      <button class="quick-block-btn" onclick="addSummerDateRange(14,'Two weeks')">+ Two Weeks</button>
+      <button class="quick-block-btn" onclick="addSummerDateRange(1,'Custom range')">+ Custom Range</button>
       <button class="quick-block-btn" onclick="openSummerEmailSummary()">Email Summary</button>
     </div>
   `;
