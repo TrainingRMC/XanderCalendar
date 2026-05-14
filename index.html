@@ -449,6 +449,10 @@ body.auth-unlocked #who-gate{display:none}
 .user-badge:hover{background:rgba(255,255,255,.2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .user-badge.b{background:rgba(236,72,153,.28);border-color:rgba(236,72,153,.5)}
 .user-badge .switch{font-size:.7em;opacity:.65;margin-left:4px;font-weight:600}
+.user-badge.account{cursor:default}
+.user-badge.account:hover{background:rgba(255,255,255,.12);transform:none;box-shadow:none}
+.logout-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:20px;padding:6px 13px;font-size:.76em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
+.logout-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
 
 /* ── ACTIVITY LOG DRAWER ── */
 #log-toggle{position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;border:none;border-radius:50px;padding:11px 18px;font-size:.85em;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:500;display:flex;align-items:center;gap:7px;transition:transform .14s}
@@ -1274,9 +1278,11 @@ body.drawer-open{overflow:hidden}
         </button>
         <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
       </div>
-      <div class="user-badge" id="user-badge" onclick="switchUser()" title="Click to switch user">
-        <span id="user-badge-text">Loading…</span>
-        <span class="switch">⇄ switch</span>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        <div class="user-badge account" id="user-badge" title="Signed-in account">
+          <span id="user-badge-text">Loading…</span>
+        </div>
+        <button class="logout-btn" id="logout-btn" onclick="secureSignOut()" style="display:none">Log Out</button>
       </div>
     </div>
   </div>
@@ -2326,14 +2332,17 @@ async function secureSignOut() {
 function updateUserBadge() {
   const badge = document.getElementById('user-badge');
   const text  = document.getElementById('user-badge-text');
+  const logout = document.getElementById('logout-btn');
   if (!badge || !text) return;
   if (!currentUser) {
     text.textContent = 'Locked';
     badge.classList.remove('b');
+    if (logout) logout.style.display = 'none';
     return;
   }
   text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
   badge.classList.toggle('b', currentUser === 'Brittany');
+  if (logout) logout.style.display = 'inline-flex';
 }
 
 async function pinHash(pin, name) {
