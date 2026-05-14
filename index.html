@@ -11,6 +11,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, setPersistence, inMemoryPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getStorage, ref as storageRef, uploadBytes, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  PASTE YOUR FIREBASE CONFIG BELOW — replace each value      ║
@@ -28,6 +29,7 @@
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
   const auth = getAuth(app);
+  const storage = getStorage(app);
   const CAL_REF = ref(db, "xander_cal");
   window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") !== "false";
   window._fbAuthed = false;
@@ -51,6 +53,18 @@
 
   window._fbSignOut = function() {
     return signOut(auth);
+  };
+
+  window._fbUploadReceipt = function(path, blob, metadata) {
+    return uploadBytes(storageRef(storage, path), blob, metadata || {});
+  };
+
+  window._fbGetReceiptBlob = function(path) {
+    return getBlob(storageRef(storage, path));
+  };
+
+  window._fbDeleteReceipt = function(path) {
+    return deleteObject(storageRef(storage, path));
   };
 
   await setPersistence(
@@ -8570,6 +8584,7 @@ let expenseNotices = [];
 let editingExpenseId = null;
 let pendingPaidExpenseId = null;
 let expenseReceiptDraft = null;
+let receiptViewObjectUrl = '';
 
 function formatMoney(value){
   const n = Number(value) || 0;
@@ -8591,6 +8606,23 @@ function receiptSizeLabel(bytes){
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
 
+function isStoredReceipt(receipt){
+  return !!(receipt && receipt.storagePath);
+}
+
+function safeReceiptFileName(name, type){
+  const fallback = type === 'application/pdf' ? 'receipt.pdf' : 'receipt.jpg';
+  return (name || fallback)
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80) || fallback;
+}
+
+function receiptPreviewSource(receipt){
+  if (!receipt) return '';
+  return receipt.previewUrl || receipt.dataUrl || '';
+}
+
 function renderReceiptDraft(){
   const el = document.getElementById('receipt-preview');
   if (!el) return;
@@ -8605,19 +8637,24 @@ function renderReceiptDraft(){
     </div>`;
     return;
   }
-  const thumb = r.type && r.type.startsWith('image/')
-    ? `<img src="${r.dataUrl}" alt="">`
+  const src = receiptPreviewSource(r);
+  const thumb = r.type && r.type.startsWith('image/') && src
+    ? `<img src="${src}" alt="">`
     : 'PDF';
+  const status = r._newFile ? 'ready to upload securely' : (isStoredReceipt(r) ? 'saved securely' : 'ready to save');
   el.innerHTML = `<div class="receipt-row">
     <div class="receipt-thumb">${thumb}</div>
     <div style="flex:1;min-width:0">
       <div class="receipt-name">${_v13EscapeHtml(r.name || 'Receipt')}</div>
-      <div class="receipt-meta">${_v13EscapeHtml(r.type || 'file')} · ${receiptSizeLabel(r.size)} · ready to save</div>
+      <div class="receipt-meta">${_v13EscapeHtml(r.type || 'file')} · ${receiptSizeLabel(r.size)} · ${status}</div>
     </div>
   </div>`;
 }
 
 function removeReceiptDraft(){
+  if (expenseReceiptDraft && expenseReceiptDraft.previewUrl) {
+    URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
+  }
   expenseReceiptDraft = null;
   const input = document.getElementById('xp-receipt');
   if (input) input.value = '';
@@ -8642,6 +8679,10 @@ function loadImage(src){
   });
 }
 
+function canvasToBlob(canvas, type, quality){
+  return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+}
+
 async function compressReceiptImage(file){
   const raw = await readFileAsDataUrl(file);
   const img = await loadImage(raw);
@@ -8652,12 +8693,15 @@ async function compressReceiptImage(file){
   canvas.height = Math.max(1, Math.round(img.height * scale));
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+  const blob = await canvasToBlob(canvas, 'image/jpeg', 0.72);
+  if (!blob) throw new Error('Could not compress image');
   return {
     name: file.name.replace(/\.[^.]+$/, '') + '.jpg',
     type: 'image/jpeg',
-    size: Math.round((dataUrl.length * 3) / 4),
-    dataUrl
+    size: blob.size,
+    blob,
+    previewUrl: URL.createObjectURL(blob),
+    _newFile: true
   };
 }
 
@@ -8670,13 +8714,20 @@ async function handleReceiptFile(file){
       alert('Attach an image or PDF receipt.');
       return;
     }
-    if (isPdf && file.size > 1200000) {
-      alert('That PDF is too large for this first receipt version. Please use a smaller PDF or image under about 1 MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('That receipt is too large. Please use an image or PDF under 5 MB.');
       return;
     }
+    if (expenseReceiptDraft && expenseReceiptDraft.previewUrl) URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
     expenseReceiptDraft = isImage
       ? await compressReceiptImage(file)
-      : { name:file.name, type:'application/pdf', size:file.size, dataUrl:await readFileAsDataUrl(file) };
+      : { name:file.name, type:'application/pdf', size:file.size, blob:file, previewUrl:'', _newFile:true };
+    if (expenseReceiptDraft.size > 5 * 1024 * 1024) {
+      if (expenseReceiptDraft.previewUrl) URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
+      expenseReceiptDraft = null;
+      alert('That receipt is still too large after processing. Please use a smaller image or PDF under 5 MB.');
+      return;
+    }
     expenseReceiptDraft.addedBy = currentUser || 'unknown';
     expenseReceiptDraft.addedAt = new Date().toISOString();
     renderReceiptDraft();
@@ -8745,6 +8796,9 @@ function closeExpenses(){
 
 function clearExpenseForm(renderNow = true){
   editingExpenseId = null;
+  if (expenseReceiptDraft && expenseReceiptDraft.previewUrl) {
+    URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
+  }
   const todayKey = expenseTodayKey();
   const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
   set('xp-date', todayKey);
@@ -8861,8 +8915,58 @@ async function saveExpense(){
   });
 
   const existing = editingExpenseId ? expenseEntries.find(e => e.id === editingExpenseId) : null;
+  const expenseId = existing?.id || ('xp_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+  const oldReceipt = existing?.receipt || null;
+  let uploadedReceiptPath = '';
+  let receiptForRecord = null;
+
+  if (expenseReceiptDraft && expenseReceiptDraft._newFile) {
+    if (!window._fbUploadReceipt) {
+      alert('Receipt upload is still loading. Try again in a moment.');
+      saveBtns.forEach(btn => {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.originalText || 'Save Expense';
+      });
+      return;
+    }
+    const fileName = `${Date.now()}-${safeReceiptFileName(expenseReceiptDraft.name, expenseReceiptDraft.type)}`;
+    const path = `receipts/${expenseId}/${fileName}`;
+    try {
+      _setSyncStatus('saving', 'Uploading receipt securely...');
+      await window._fbUploadReceipt(path, expenseReceiptDraft.blob, {
+        contentType: expenseReceiptDraft.type || 'application/octet-stream',
+        customMetadata: {
+          expenseId,
+          uploadedBy: currentUser || paidBy || 'unknown'
+        }
+      });
+      uploadedReceiptPath = path;
+      receiptForRecord = {
+        storagePath: path,
+        name: expenseReceiptDraft.name,
+        type: expenseReceiptDraft.type,
+        size: expenseReceiptDraft.size,
+        addedBy: currentUser || paidBy || 'unknown',
+        addedAt: new Date().toISOString()
+      };
+    } catch(err) {
+      console.error('Receipt upload failed', err);
+      alert('Receipt did not upload: ' + (err.code || err.message));
+      saveBtns.forEach(btn => {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.originalText || 'Save Expense';
+      });
+      return;
+    }
+  } else if (expenseReceiptDraft) {
+    receiptForRecord = Object.assign({}, expenseReceiptDraft);
+    delete receiptForRecord.previewUrl;
+    delete receiptForRecord.blob;
+    delete receiptForRecord._newFile;
+  }
+
   const entry = Object.assign({}, existing || {}, {
-    id: existing?.id || ('xp_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+    id: expenseId,
     date,
     category,
     description,
@@ -8870,7 +8974,7 @@ async function saveExpense(){
     paidBy,
     split,
     notes,
-    receipt: expenseReceiptDraft ? Object.assign({}, expenseReceiptDraft) : null,
+    receipt: receiptForRecord,
     createdBy: existing?.createdBy || currentUser || paidBy,
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedBy: currentUser || paidBy,
@@ -8893,6 +8997,9 @@ async function saveExpense(){
   } catch(err) {
     expenseEntries = beforeExpenses;
     activityLog = beforeActivity;
+    if (uploadedReceiptPath && window._fbDeleteReceipt) {
+      window._fbDeleteReceipt(uploadedReceiptPath).catch(e => console.warn('Could not clean up failed receipt upload', e));
+    }
     renderExpenses();
     render();
     alert('Expense did not save: ' + err.message);
@@ -8905,6 +9012,9 @@ async function saveExpense(){
   }
 
   clearExpenseForm(false);
+  if (oldReceipt && oldReceipt.storagePath && receiptForRecord?.storagePath !== oldReceipt.storagePath && window._fbDeleteReceipt) {
+    window._fbDeleteReceipt(oldReceipt.storagePath).catch(err => console.warn('Old receipt delete failed', err));
+  }
   renderExpenses();
   render();
   closeExpenses();
@@ -8924,6 +9034,11 @@ function editExpense(id){
   set('xp-split', exp.split || '50');
   set('xp-notes', exp.notes || '');
   expenseReceiptDraft = exp.receipt ? Object.assign({}, exp.receipt) : null;
+  if (expenseReceiptDraft) {
+    delete expenseReceiptDraft.previewUrl;
+    delete expenseReceiptDraft.blob;
+    delete expenseReceiptDraft._newFile;
+  }
   const receiptInput = document.getElementById('xp-receipt');
   if (receiptInput) receiptInput.value = '';
   renderReceiptDraft();
@@ -8984,7 +9099,7 @@ async function markExpensePaid(id, paidDate){
   showToast('Paid status saved to shared calendar');
 }
 
-function viewExpenseReceipt(id){
+async function viewExpenseReceipt(id){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp || !exp.receipt) return;
   const r = exp.receipt;
@@ -8992,18 +9107,39 @@ function viewExpenseReceipt(id){
   const body = document.getElementById('receipt-view-body');
   if (title) title.textContent = r.name || 'Receipt';
   if (!body) return;
-  if (r.type && r.type.startsWith('image/')) {
-    body.innerHTML = `<img src="${r.dataUrl}" alt="Receipt">`;
-  } else if (r.type === 'application/pdf') {
-    body.innerHTML = `<iframe src="${r.dataUrl}" title="Receipt PDF"></iframe>`;
-  } else {
-    body.innerHTML = `<div class="inbox-empty">Receipt preview unavailable.</div>`;
+  if (receiptViewObjectUrl) {
+    URL.revokeObjectURL(receiptViewObjectUrl);
+    receiptViewObjectUrl = '';
   }
   document.getElementById('receipt-view-overlay').classList.add('open');
+  body.innerHTML = `<div class="inbox-empty">Loading receipt securely...</div>`;
+  try {
+    let url = r.dataUrl || '';
+    if (r.storagePath) {
+      if (!window._fbGetReceiptBlob) throw new Error('Secure receipt viewer is still loading');
+      const blob = await window._fbGetReceiptBlob(r.storagePath);
+      url = URL.createObjectURL(blob);
+      receiptViewObjectUrl = url;
+    }
+    if (r.type && r.type.startsWith('image/')) {
+      body.innerHTML = `<img src="${url}" alt="Receipt">`;
+    } else if (r.type === 'application/pdf') {
+      body.innerHTML = `<iframe src="${url}" title="Receipt PDF"></iframe>`;
+    } else {
+      body.innerHTML = `<div class="inbox-empty">Receipt preview unavailable.</div>`;
+    }
+  } catch(err) {
+    console.error('Receipt load failed', err);
+    body.innerHTML = `<div class="inbox-empty">Could not load receipt.<br><span style="font-size:.86em">${_v13EscapeHtml(err.code || err.message || 'Try again in a moment.')}</span></div>`;
+  }
 }
 
 function closeReceiptViewer(){
   document.getElementById('receipt-view-overlay').classList.remove('open');
+  if (receiptViewObjectUrl) {
+    URL.revokeObjectURL(receiptViewObjectUrl);
+    receiptViewObjectUrl = '';
+  }
 }
 
 async function deleteExpense(id){
@@ -9045,6 +9181,9 @@ async function deleteExpense(id){
     renderExpenses();
     render();
     return;
+  }
+  if (exp.receipt && exp.receipt.storagePath && window._fbDeleteReceipt) {
+    window._fbDeleteReceipt(exp.receipt.storagePath).catch(err => console.warn('Receipt delete failed', err));
   }
   renderExpenses();
   render();
