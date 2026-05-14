@@ -1304,6 +1304,7 @@ body.drawer-open{overflow:hidden}
   <span id="sync-msg" style="color:#92400e;font-weight:600">Connecting to sync…</span>
   <span id="sync-time" style="margin-left:auto;color:#4ade80;font-style:italic;font-size:.92em"></span>
 </div>
+<div id="sync-detail-bar" class="save-recovery-wrap"></div>
 <div id="save-recovery-bar" class="save-recovery-wrap"></div>
 
 <!-- IPHONE HOME DASHBOARD -->
@@ -1657,6 +1658,7 @@ body.drawer-open{overflow:hidden}
       <div class="expense-note">
         Receipts are stored with the shared expense record. Crop or cover card numbers, account details, and unrelated personal info before attaching.
       </div>
+      <div id="expense-save-status" class="save-confidence" style="display:none"></div>
       <div class="expense-form-panel">
         <div class="expense-list-title" id="expense-form-title">Add Expense</div>
         <div class="expense-form-grid">
@@ -6957,8 +6959,10 @@ function renderDashboard(){
   const owner = todayInfo.owner || 'Brittany';
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   const ownerCls = owner === 'Justin' ? 'j' : 'b';
-  const inboxCount = typeof getInboxItems === 'function' ? getInboxItems().length : 0;
-  const unreadCount = typeof getInboxUnreadCount === 'function' ? getInboxUnreadCount() : 0;
+  const inboxRows = typeof _v21VisibleInboxItems === 'function' ? _v21VisibleInboxItems() : [];
+  const inboxItems = inboxRows.length ? inboxRows.map(r => r.item).filter(Boolean) : (typeof getInboxItems === 'function' ? getInboxItems() : []);
+  const inboxCount = inboxRows.length || inboxItems.length;
+  const unreadCount = inboxItems.filter(i => i && i.unread).length;
   const handoff = _v13FindNextHandoff();
   const travel = _v13FindUpcomingTravel();
   const highlight = _v13FindUpcomingHighlight();
@@ -7763,6 +7767,11 @@ function _v27RenderScopedSaveStatuses(){
     summer.style.display = 'block';
     summer.innerHTML = _v27SaveStatusHtml('summer', 'Summer changes will show a confirmed save time here.');
   }
+  const expense = document.getElementById('expense-save-status');
+  if (expense) {
+    expense.style.display = 'block';
+    expense.innerHTML = _v27SaveStatusHtml('expense', 'Expense changes will show a confirmed save time here.');
+  }
 }
 
 function _v27DismissRecoveryBanner(){
@@ -7874,7 +7883,50 @@ window._setSyncStatus = function(state, detail){
   _v16BaseSetSyncStatus(state, detail);
   const msg = document.getElementById('sync-msg');
   if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
+  if (typeof _v29RenderSyncDetail === 'function') _v29RenderSyncDetail(state, detail);
 };
+
+function _v29RenderSyncDetail(state, detail){
+  const bar = document.getElementById('sync-detail-bar');
+  if (!bar) return;
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  const confirmed = typeof _v27ReadConfirmedSaves === 'function' ? _v27ReadConfirmedSaves() : {};
+  const lastShared = _v16LastRemoteAt || confirmed.shared?.at || confirmed.travel?.at || confirmed.summer?.at || confirmed.expense?.at || '';
+  const trouble = backup && ['pending','error','blocked','held'].includes(backup.status);
+
+  let title = 'Shared Calendar';
+  let text = '';
+  let show = false;
+  if (trouble) {
+    show = true;
+    title = 'Local Backup Protected';
+    text = backup.status === 'held'
+      ? 'Your change is held safely on this device while the shared calendar finishes loading.'
+      : backup.status === 'blocked'
+        ? 'A save was paused because it looked like shared data could be erased.'
+        : 'Your latest change is backed up on this device and will retry when shared sync is available.';
+  } else if (state === 'connecting') {
+    show = true;
+    text = detail || 'Loading the shared calendar...';
+  } else if (state === 'error') {
+    show = true;
+    text = detail || 'Shared sync needs attention. Your local backup protects changes made on this device.';
+  } else if (state === 'saved' || state === 'remote' || state === 'synced') {
+    show = !!lastShared;
+    text = lastShared ? `Last confirmed shared update ${formatLogTime(lastShared)}.` : (detail || 'Connected to shared calendar.');
+  }
+
+  if (!show) {
+    bar.classList.remove('show');
+    bar.innerHTML = '';
+    return;
+  }
+  bar.classList.add('show');
+  bar.innerHTML = `<div class="save-recovery-card">
+    <div class="save-recovery-title">${title}</div>
+    <div>${text}</div>
+  </div>`;
+}
 
 scheduleSave = function(){
   _setSyncStatus('saving', 'Saving to shared calendar...');
@@ -8136,7 +8188,7 @@ async function _v25PatchSharedNow(keys, label){
 //  V17: Lightweight date notes
 // ═══════════════════════════════════════════════════════
 
-function sendDateNoteOnly(){
+async function sendDateNoteOnly(){
   if (!editKey) return;
   if (!currentUser) {
     alert('Unlock with your PIN first so the note is attributed correctly.');
@@ -8153,6 +8205,8 @@ function sendDateNoteOnly(){
     showToast('No note changes made');
     return;
   }
+  const beforeSwaps = _v25Clone(pendingSwaps || {});
+  const beforeActivity = _v25Clone(activityLog || []);
   const swapId = makeSwapId();
   pendingSwaps[swapId] = {
     date: editKey,
@@ -8173,10 +8227,18 @@ function sendDateNoteOnly(){
     ? `Sent note for ${formatLogDate(editKey)}: "${note}"`
     : `Requested note removal for ${formatLogDate(editKey)}`
   );
+  try {
+    await _v25PatchSharedNow(['pendingSwaps','activityLog'], 'note');
+  } catch(err) {
+    pendingSwaps = beforeSwaps;
+    activityLog = beforeActivity;
+    alert('Note did not save: ' + err.message);
+    render();
+    return;
+  }
   closeDay();
   render();
-  scheduleSave();
-  showToast(note ? '📝 Note sent for awareness' : '📝 Note removal sent');
+  showToast(note ? '📝 Note saved & sent for awareness' : '📝 Note removal saved');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8750,7 +8812,7 @@ function renderExpenses(){
   }).join('');
 }
 
-function saveExpense(){
+async function saveExpense(){
   const date = document.getElementById('xp-date')?.value;
   const amount = Number(document.getElementById('xp-amount')?.value || 0);
   const description = (document.getElementById('xp-desc')?.value || '').trim();
@@ -8761,6 +8823,15 @@ function saveExpense(){
   if (!date) { alert('Pick the expense date.'); return; }
   if (!amount || amount <= 0) { alert('Enter an expense amount.'); return; }
   if (!description) { alert('Add a short description so the record is clear.'); return; }
+
+  const beforeExpenses = _v25Clone(expenseEntries || []);
+  const beforeActivity = _v25Clone(activityLog || []);
+  const saveBtns = [...document.querySelectorAll('#expense-overlay .btn-save')];
+  saveBtns.forEach(btn => {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
+    btn.textContent = 'Saving Expense...';
+  });
 
   const existing = editingExpenseId ? expenseEntries.find(e => e.id === editingExpenseId) : null;
   const entry = Object.assign({}, existing || {}, {
@@ -8790,12 +8861,27 @@ function saveExpense(){
 
   const receiptText = entry.receipt ? ' Receipt attached.' : '';
   logAction(currentUser || paidBy, 'expense', `${existing ? 'Updated' : 'Added'} expense: ${description} (${formatMoney(entry.amount)}). ${expenseStatusLabel(entry)}.${receiptText}`);
+  try {
+    await _v25PatchSharedNow(['expenseEntries','activityLog'], 'expense');
+  } catch(err) {
+    expenseEntries = beforeExpenses;
+    activityLog = beforeActivity;
+    renderExpenses();
+    render();
+    alert('Expense did not save: ' + err.message);
+    return;
+  } finally {
+    saveBtns.forEach(btn => {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.originalText || 'Save Expense';
+    });
+  }
+
   clearExpenseForm(false);
   renderExpenses();
   render();
-  scheduleSave();
   closeExpenses();
-  showToast(existing ? 'Expense updated' : 'Expense saved');
+  showToast(existing ? 'Expense saved to shared calendar' : 'Expense saved to shared calendar');
 }
 
 function editExpense(id){
@@ -8845,19 +8931,30 @@ function confirmExpensePaidDate(){
   closeExpensePaidDate();
 }
 
-function markExpensePaid(id, paidDate){
+async function markExpensePaid(id, paidDate){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp) return;
+  const beforeExpenses = _v25Clone(expenseEntries || []);
+  const beforeActivity = _v25Clone(activityLog || []);
   exp.status = 'paid';
   exp.paidDate = paidDate || expenseTodayKey();
   exp.paidAt = new Date().toISOString();
   exp.paidMarkedBy = currentUser || 'unknown';
   exp.updatedAt = new Date().toISOString();
   logAction(currentUser || 'unknown', 'expense', `Marked expense paid on ${fmtDate(exp.paidDate)}: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
+  try {
+    await _v25PatchSharedNow(['expenseEntries','activityLog'], 'expense');
+  } catch(err) {
+    expenseEntries = beforeExpenses;
+    activityLog = beforeActivity;
+    alert('Paid status did not save: ' + err.message);
+    renderExpenses();
+    render();
+    return;
+  }
   renderExpenses();
   render();
-  scheduleSave();
-  showToast('Expense marked paid');
+  showToast('Paid status saved to shared calendar');
 }
 
 function viewExpenseReceipt(id){
@@ -8882,10 +8979,13 @@ function closeReceiptViewer(){
   document.getElementById('receipt-view-overlay').classList.remove('open');
 }
 
-function deleteExpense(id){
+async function deleteExpense(id){
   const exp = (expenseEntries || []).find(e => e.id === id);
   if (!exp) return;
   if (!confirm('Delete this expense from the shared record?')) return;
+  const beforeExpenses = _v25Clone(expenseEntries || []);
+  const beforeNotices = _v25Clone(expenseNotices || []);
+  const beforeActivity = _v25Clone(activityLog || []);
   const by = currentUser || 'unknown';
   const other = by === 'Justin' ? 'Brittany' : 'Justin';
   if (by === 'Justin' || by === 'Brittany') {
@@ -8908,9 +9008,19 @@ function deleteExpense(id){
   expenseEntries = expenseEntries.filter(e => e.id !== id);
   const notifiedText = (by === 'Justin' || by === 'Brittany') ? ` ${other} was notified.` : '';
   logAction(by, 'expense', `Deleted expense: ${exp.description || exp.category} (${formatMoney(exp.amount)}).${notifiedText}`);
+  try {
+    await _v25PatchSharedNow(['expenseEntries','expenseNotices','activityLog'], 'expense');
+  } catch(err) {
+    expenseEntries = beforeExpenses;
+    expenseNotices = beforeNotices;
+    activityLog = beforeActivity;
+    alert('Expense deletion did not save: ' + err.message);
+    renderExpenses();
+    render();
+    return;
+  }
   renderExpenses();
   render();
-  scheduleSave();
   showToast('Expense deleted' + (by === 'Justin' || by === 'Brittany' ? ' & notice sent' : ''));
 }
 
