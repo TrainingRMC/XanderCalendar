@@ -10,7 +10,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, setPersistence, inMemoryPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ╔══════════════════════════════════════════════════════════════╗
   // ║  PASTE YOUR FIREBASE CONFIG BELOW — replace each value      ║
@@ -32,13 +32,16 @@
   window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") !== "false";
   window._fbAuthed = false;
   window._fbUser = null;
+  const AUTH_REMEMBER_KEY = "xander_cal_remember_auth";
 
   window._fbAuthToken = async function() {
     if (!auth.currentUser) throw new Error("Please sign in first.");
     return auth.currentUser.getIdToken();
   };
 
-  window._fbSignIn = function(email, password) {
+  window._fbSignIn = async function(email, password, rememberDevice) {
+    localStorage.setItem(AUTH_REMEMBER_KEY, rememberDevice ? "true" : "false");
+    await setPersistence(auth, rememberDevice ? browserLocalPersistence : inMemoryPersistence);
     return signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -50,9 +53,10 @@
     return signOut(auth);
   };
 
-  // Do not keep the calendar unlocked across app/browser restarts.
-  // A refresh or fresh open should require the secure sign-in screen again.
-  await setPersistence(auth, inMemoryPersistence);
+  await setPersistence(
+    auth,
+    localStorage.getItem(AUTH_REMEMBER_KEY) === "true" ? browserLocalPersistence : inMemoryPersistence
+  );
 
   window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog) {
     set(CAL_REF, {
@@ -429,6 +433,8 @@ body.auth-unlocked #who-gate{display:none}
 .pin-mode-note{font-size:.72em;color:#64748b;margin-top:10px;line-height:1.4}
 .pin-secondary{background:transparent;border:none;color:#64748b;font-size:.78em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:12px}
 .pin-secondary:hover{color:var(--j-d)}
+.remember-device-row{display:flex;align-items:center;gap:9px;color:#334155;font-size:.86em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;user-select:none}
+.remember-device-row input{width:18px;height:18px;accent-color:var(--j)}
 .pin-person-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .pin-person{padding:12px 10px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;font-family:'Nunito',sans-serif;font-weight:900;cursor:pointer;color:#334155}
 .pin-person.active.j{background:var(--j-l);border-color:var(--j);color:var(--j-d)}
@@ -732,6 +738,7 @@ body.auth-unlocked #who-gate{display:none}
 :root[data-theme="dark"] .pin-row-label{color:var(--text-2)}
 :root[data-theme="dark"] .pin-input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 :root[data-theme="dark"] .pin-mode-note{color:var(--muted)}
+:root[data-theme="dark"] .remember-device-row{color:var(--text-2)}
 :root[data-theme="dark"] .pin-person{background:var(--bg-2);color:var(--text);border-color:var(--border)}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -2373,6 +2380,8 @@ function renderPinGate() {
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'grid';
+    const remember = document.getElementById('auth-remember');
+    if (remember) remember.checked = localStorage.getItem('xander_cal_remember_auth') !== 'false';
     setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
     return true;
   }
@@ -2418,6 +2427,7 @@ async function signInFirebaseAccount() {
   hidePinError();
   const email = document.getElementById('auth-email')?.value.trim();
   const password = document.getElementById('auth-password')?.value;
+  const rememberDevice = document.getElementById('auth-remember')?.checked !== false;
   if (!email || !password) {
     showPinError('Enter your Firebase email and password.');
     return;
@@ -2428,7 +2438,7 @@ async function signInFirebaseAccount() {
     btn.textContent = 'Signing in...';
   }
   try {
-    const cred = await window._fbSignIn(email, password);
+    const cred = await window._fbSignIn(email, password, rememberDevice);
     const parent = cred && cred.user ? AUTH_PARENT_BY_UID[cred.user.uid] : null;
     if (!parent) {
       await secureSignOut();
@@ -2437,6 +2447,7 @@ async function signInFirebaseAccount() {
     }
     document.getElementById('auth-password').value = '';
     setUser(parent);
+    if (typeof startSharedSyncAfterSecureLogin === 'function') startSharedSyncAfterSecureLogin();
     showToast(`Signed in as ${parent}`);
   } catch(err) {
     showPinError('Sign-in failed: ' + (err.code || err.message));
@@ -2556,6 +2567,7 @@ window.addEventListener('fbAuthChanged', (e) => {
   if (firebaseAuthUser && AUTH_PARENT_BY_UID[firebaseAuthUser.uid]) {
     setUser(AUTH_PARENT_BY_UID[firebaseAuthUser.uid]);
     render();
+    if (typeof startSharedSyncAfterSecureLogin === 'function') startSharedSyncAfterSecureLogin();
     return;
   }
   if (!firebaseAuthUser || isFirebaseAuthRequired()) {
@@ -7957,6 +7969,22 @@ initFirebase = function(){
   });
 };
 
+function startSharedSyncAfterSecureLogin(){
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) return;
+  if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+
+  _setSyncStatus('connecting', 'Loading shared calendar...');
+  if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
+
+  if (typeof initFirebase === 'function') initFirebase();
+
+  setTimeout(() => {
+    if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+    if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
+    if (typeof _v23LoadSharedDataViaRest === 'function') _v23LoadSharedDataViaRest();
+  }, 1200);
+}
+
 async function _v23LoadSharedDataViaRest(){
   if (_v16SharedDataLoaded || _v23RestLoadStarted) return;
   _v23RestLoadStarted = true;
@@ -9100,7 +9128,12 @@ setTimeout(_v22SyncWatchdog, 8000);
 // If the Firebase module never finishes booting, start the REST-backed sync
 // anyway. This is especially important for the installed app and local preview.
 setTimeout(() => {
-  if (!_v16SharedDataLoaded && !_v26SyncBootStarted && typeof initFirebase === 'function') initFirebase();
+  if (
+    !_v16SharedDataLoaded &&
+    !_v26SyncBootStarted &&
+    typeof initFirebase === 'function' &&
+    (!isFirebaseAuthRequired() || isFirebaseSignedIn())
+  ) initFirebase();
 }, 1200);
 
 // Init
@@ -9160,6 +9193,10 @@ setTimeout(() => {
         <input class="pin-input" id="auth-password" type="password" autocomplete="current-password" placeholder="••••••••"
           onkeydown="if(event.key==='Enter')signInFirebaseAccount()">
       </div>
+      <label class="remember-device-row">
+        <input type="checkbox" id="auth-remember" checked>
+        <span>Stay signed in on this device</span>
+      </label>
       <button class="btn btn-save" id="auth-login-btn" onclick="signInFirebaseAccount()" style="width:100%;margin-top:2px">Sign In</button>
       <button class="pin-secondary" onclick="sendFirebasePasswordReset()">Forgot Password?</button>
       <div class="auth-status" id="auth-status"></div>
