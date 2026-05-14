@@ -7890,11 +7890,9 @@ function _v29RenderSyncDetail(state, detail){
   const bar = document.getElementById('sync-detail-bar');
   if (!bar) return;
   const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
-  const confirmed = typeof _v27ReadConfirmedSaves === 'function' ? _v27ReadConfirmedSaves() : {};
-  const lastShared = _v16LastRemoteAt || confirmed.shared?.at || confirmed.travel?.at || confirmed.summer?.at || confirmed.expense?.at || '';
   const trouble = backup && ['pending','error','blocked','held'].includes(backup.status);
 
-  let title = 'Shared Calendar';
+  let title = 'Sync Needs Attention';
   let text = '';
   let show = false;
   if (trouble) {
@@ -7905,15 +7903,9 @@ function _v29RenderSyncDetail(state, detail){
       : backup.status === 'blocked'
         ? 'A save was paused because it looked like shared data could be erased.'
         : 'Your latest change is backed up on this device and will retry when shared sync is available.';
-  } else if (state === 'connecting') {
-    show = true;
-    text = detail || 'Loading the shared calendar...';
   } else if (state === 'error') {
     show = true;
     text = detail || 'Shared sync needs attention. Your local backup protects changes made on this device.';
-  } else if (state === 'saved' || state === 'remote' || state === 'synced') {
-    show = !!lastShared;
-    text = lastShared ? `Last confirmed shared update ${formatLogTime(lastShared)}.` : (detail || 'Connected to shared calendar.');
   }
 
   if (!show) {
@@ -8025,7 +8017,7 @@ function startSharedSyncAfterSecureLogin(){
   if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) return;
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
 
-  _setSyncStatus('connecting', 'Loading shared calendar...');
+  _setSyncStatus('connecting', 'Loading saved calendar...');
   if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
 
   if (typeof initFirebase === 'function') initFirebase();
@@ -8034,15 +8026,33 @@ function startSharedSyncAfterSecureLogin(){
     if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
     if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
     if (typeof _v23LoadSharedDataViaRest === 'function') _v23LoadSharedDataViaRest();
-  }, 1200);
+  }, 250);
+
+  setTimeout(() => {
+    if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+    const isLocalPreview = window.location.protocol === 'file:';
+    _setSyncStatus('error', isLocalPreview
+      ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
+      : 'Could not load saved calendar. Check connection, then refresh.');
+  }, 11000);
+}
+
+async function _v29FetchWithTimeout(url, options, ms){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms || 9000);
+  try {
+    return await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function _v23LoadSharedDataViaRest(){
   if (_v16SharedDataLoaded || _v23RestLoadStarted) return;
   _v23RestLoadStarted = true;
   try {
-    _setSyncStatus('connecting', 'Connecting with backup sync...');
-    const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
+    _setSyncStatus('connecting', 'Loading saved calendar...');
+    const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' }, 9000);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (!data){
@@ -8063,14 +8073,16 @@ async function _v23LoadSharedDataViaRest(){
   } catch(err) {
     console.error('Backup sync load failed', err);
     _v23RestLoadStarted = false;
-    _setSyncStatus('error', 'Could not connect to shared calendar. Reload or use GitHub Pages.');
+    _setSyncStatus('error', window.location.protocol === 'file:'
+      ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
+      : 'Could not load saved calendar. Check connection, then refresh.');
   }
 }
 
 async function _v26EnsureSharedDataBeforeTravelSave(){
   if (_v16SharedDataLoaded) return;
   _setSyncStatus('connecting', 'Loading shared calendar before saving travel...');
-  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
+  const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' }, 9000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   if (data) {
@@ -8091,11 +8103,11 @@ async function _v28AuthedFirebaseUrl(url){
 }
 
 async function _v23WriteSharedDataViaRest(payload){
-  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
+  const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
     method:'PUT',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
-  });
+  }, 9000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
@@ -8104,7 +8116,7 @@ async function _v24EnsureSharedLoaded(){
   if (_v16SharedDataLoaded) return true;
   try {
     _setSyncStatus('connecting', 'Loading shared calendar before saving...');
-    const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' });
+    const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' }, 9000);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data) _v16ApplyPayload(data);
@@ -8168,11 +8180,11 @@ async function _v25PatchSharedNow(keys, label){
   patch.updatedAt = new Date().toISOString();
   patch.updatedBy = currentUser || 'unknown';
   _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
-  const res = await fetch(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
+  const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
     method:'PATCH',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(patch)
-  });
+  }, 9000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   await res.json();
   _v25PatchSyncReady = true;
@@ -9223,11 +9235,20 @@ getInboxUnreadCount = function(){
 
 function _v22SyncWatchdog(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-  if (typeof _v25PatchSyncReady !== 'undefined' && _v25PatchSyncReady) return;
+  if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
+  if (typeof _v23LoadSharedDataViaRest === 'function') _v23LoadSharedDataViaRest();
+  setTimeout(() => {
+    if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+    _v22ShowSyncProblem();
+  }, 1200);
+}
+
+function _v22ShowSyncProblem(){
+  if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
   const isLocalPreview = window.location.protocol === 'file:';
   const detail = isLocalPreview
-    ? 'Local preview is not connected. Use the GitHub Pages app for shared saving.'
-    : 'Still connecting - check internet, then reload.';
+    ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
+    : 'Could not load saved calendar. Check connection, then refresh.';
   _setSyncStatus('error', detail);
   renderInboxBadge();
   if (typeof renderDashboard === 'function') renderDashboard();
