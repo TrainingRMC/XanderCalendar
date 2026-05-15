@@ -104,7 +104,11 @@
 
   window._fbListen = function(onData) {
     onValue(CAL_REF, (snap) => onData(snap.val()),
-            (err)  => { window._setSyncStatus("error"); console.error(err); });
+            (err)  => {
+              window._setSyncStatus("error", err && (err.code || err.message) ? `Sync blocked: ${err.code || err.message}` : "Sync blocked by Firebase");
+              window.dispatchEvent(new CustomEvent("fbLoadError", { detail: { error: err } }));
+              console.error(err);
+            });
   };
 
   onAuthStateChanged(auth, (user) => {
@@ -1328,7 +1332,7 @@ body.drawer-open{overflow:hidden}
   <div class="legend-hint">Tap any day to edit · Auto-syncs via Firebase</div>
 </div>
 
-<div id="sync-bar">
+<div id="sync-bar" onclick="toggleSyncDetails()" title="Tap for sync details">
   <span id="sync-dot" style="width:9px;height:9px;border-radius:50%;background:#fbbf24;display:inline-block;flex-shrink:0;transition:background .3s"></span>
   <span id="sync-msg" style="color:#92400e;font-weight:600">Connecting to sync…</span>
   <span id="sync-time" style="margin-left:auto;color:#4ade80;font-style:italic;font-size:.92em"></span>
@@ -7653,6 +7657,10 @@ let _v23RestLoadStarted = false;
 let _v23RestSaveInFlight = false;
 let _v25PatchSyncReady = false;
 let _v26SyncBootStarted = false;
+let _v30SyncState = 'connecting';
+let _v30SyncDetail = 'Starting secure sync...';
+let _v30SyncWatchTimer = null;
+let _v30SyncExpanded = false;
 const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
@@ -7944,10 +7952,43 @@ window.addEventListener('fbSaveError', (e) => {
 const _v16BaseSetSyncStatus = window._setSyncStatus;
 window._setSyncStatus = function(state, detail){
   _v16BaseSetSyncStatus(state, detail);
+  _v30SyncState = state || 'synced';
+  _v30SyncDetail = detail || '';
+  clearTimeout(_v30SyncWatchTimer);
+  if (state === 'connecting') {
+    _v30SyncWatchTimer = setTimeout(() => {
+      if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+      const detail = window.location.protocol === 'file:'
+        ? 'Local preview only. Open the GitHub Pages app for live save and sync.'
+        : !isFirebaseSignedIn()
+          ? 'Sign in again to reconnect the shared calendar.'
+          : 'Still waiting on Firebase. Check connection, then refresh if this stays here.';
+      _setSyncStatus('error', detail);
+    }, 12000);
+  } else if (state === 'saving') {
+    _v30SyncWatchTimer = setTimeout(() => {
+      _setSyncStatus('error', 'Save is taking longer than expected. Your local backup is still protected.');
+    }, 14000);
+  }
   const msg = document.getElementById('sync-msg');
   if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
   if (typeof _v29RenderSyncDetail === 'function') _v29RenderSyncDetail(state, detail);
 };
+
+function _v30FriendlySyncError(err, fallback){
+  const raw = String((err && (err.code || err.message)) || fallback || '').toLowerCase();
+  if (window.location.protocol === 'file:') return 'Local preview only. Open the GitHub Pages app for live save and sync.';
+  if (raw.includes('permission') || raw.includes('401') || raw.includes('403')) return 'Firebase permission issue. Sign out, sign back in, then retry.';
+  if (raw.includes('auth') || raw.includes('token') || raw.includes('sign')) return 'Secure sign-in expired. Sign out, then sign back in.';
+  if (raw.includes('abort') || raw.includes('timeout')) return 'Firebase did not respond in time. Check connection, then refresh.';
+  if (raw.includes('network') || raw.includes('failed to fetch')) return 'Network connection issue. Changes on this device stay protected.';
+  return fallback || 'Could not reach the shared calendar. Check connection, then refresh.';
+}
+
+function toggleSyncDetails(){
+  _v30SyncExpanded = !_v30SyncExpanded;
+  _v29RenderSyncDetail(_v30SyncState, _v30SyncDetail);
+}
 
 function _v29RenderSyncDetail(state, detail){
   const bar = document.getElementById('sync-detail-bar');
@@ -7969,6 +8010,16 @@ function _v29RenderSyncDetail(state, detail){
   } else if (state === 'error') {
     show = true;
     text = detail || 'Shared sync needs attention. Your local backup protects changes made on this device.';
+  } else if (_v30SyncExpanded) {
+    show = true;
+    title = state === 'connecting' ? 'Connection Status'
+      : state === 'saving' ? 'Save Status'
+      : 'Shared Calendar Status';
+    text = detail || (state === 'connecting'
+      ? 'Loading the shared calendar now.'
+      : state === 'saving'
+        ? 'Saving the latest change now.'
+        : 'Connected. Changes are available to both parents.');
   }
 
   if (!show) {
@@ -8035,7 +8086,7 @@ initFirebase = function(){
     if (!_v16SharedDataLoaded) _v23LoadSharedDataViaRest();
   }, 3500);
   window._fbListen(function(data){
-    if (_ignoreNext) return;
+    if (_ignoreNext && _v16SharedDataLoaded) return;
     const backup = _v16ReadBackup();
     let chosen = data;
     let restoredLocal = false;
@@ -8093,10 +8144,7 @@ function startSharedSyncAfterSecureLogin(){
 
   setTimeout(() => {
     if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-    const isLocalPreview = window.location.protocol === 'file:';
-    _setSyncStatus('error', isLocalPreview
-      ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
-      : 'Could not load saved calendar. Check connection, then refresh.');
+    _setSyncStatus('error', _v30FriendlySyncError(null, 'Could not load saved calendar. Check connection, then refresh.'));
   }, 11000);
 }
 
@@ -8136,9 +8184,7 @@ async function _v23LoadSharedDataViaRest(){
   } catch(err) {
     console.error('Backup sync load failed', err);
     _v23RestLoadStarted = false;
-    _setSyncStatus('error', window.location.protocol === 'file:'
-      ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
-      : 'Could not load saved calendar. Check connection, then refresh.');
+    _setSyncStatus('error', _v30FriendlySyncError(err, 'Could not load saved calendar. Check connection, then refresh.'));
   }
 }
 
@@ -8189,7 +8235,7 @@ async function _v24EnsureSharedLoaded(){
     return true;
   } catch(err) {
     console.error('Could not load shared calendar before save', err);
-    _setSyncStatus('error', 'Could not load shared calendar before saving');
+    _setSyncStatus('error', _v30FriendlySyncError(err, 'Could not load shared calendar before saving'));
     return false;
   }
 }
@@ -9552,11 +9598,7 @@ function _v22SyncWatchdog(){
 
 function _v22ShowSyncProblem(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-  const isLocalPreview = window.location.protocol === 'file:';
-  const detail = isLocalPreview
-    ? 'This local preview is not connected. Open the GitHub Pages app to save and sync.'
-    : 'Could not load saved calendar. Check connection, then refresh.';
-  _setSyncStatus('error', detail);
+  _setSyncStatus('error', _v30FriendlySyncError(null, 'Could not load saved calendar. Check connection, then refresh.'));
   renderInboxBadge();
   if (typeof renderDashboard === 'function') renderDashboard();
   if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
