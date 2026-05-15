@@ -8590,6 +8590,7 @@ let editingExpenseId = null;
 let pendingPaidExpenseId = null;
 let expenseReceiptDraft = null;
 let receiptViewObjectUrl = '';
+const RECEIPT_DB_FALLBACK_LIMIT = 650 * 1024;
 
 function formatMoney(value){
   const n = Number(value) || 0;
@@ -8613,6 +8614,10 @@ function receiptSizeLabel(bytes){
 
 function isStoredReceipt(receipt){
   return !!(receipt && receipt.storagePath);
+}
+
+function isDatabaseReceipt(receipt){
+  return !!(receipt && receipt.dataUrl && receipt.storageMode === 'database');
 }
 
 function safeReceiptFileName(name, type){
@@ -8640,14 +8645,16 @@ function renderReceiptStorageStatus(){
   if (!document.getElementById('receipt-storage-status')) return;
   if (!window._fbAuthed) {
     setReceiptStorageStatus('warn', 'Sign in first so receipt uploads can be saved securely.');
+  } else if (expenseReceiptDraft && isDatabaseReceipt(expenseReceiptDraft)) {
+    setReceiptStorageStatus('ready', 'Receipt saved in the protected shared calendar record.');
   } else if (!window._fbUploadReceipt || !window._fbGetReceiptBlob) {
-    setReceiptStorageStatus('warn', 'Secure receipt storage is still loading. Try again in a moment.');
+    setReceiptStorageStatus('warn', 'Receipt storage is limited on Spark. Small receipts can still save in the protected calendar record.');
   } else if (expenseReceiptDraft && expenseReceiptDraft._newFile) {
-    setReceiptStorageStatus('ready', 'Receipt ready. It will upload securely when you save the expense.');
+    setReceiptStorageStatus('ready', 'Receipt ready. Storage will be tried first; Spark-safe fallback is available for small files.');
   } else if (expenseReceiptDraft && isStoredReceipt(expenseReceiptDraft)) {
     setReceiptStorageStatus('ready', 'Receipt saved securely in Firebase Storage.');
   } else {
-    setReceiptStorageStatus('ready', 'Secure receipt storage is ready. Attach images or PDFs under 5 MB.');
+    setReceiptStorageStatus('ready', 'Attach images or PDFs under 5 MB. On Spark, smaller receipts save inside the protected calendar record.');
   }
 }
 
@@ -8713,17 +8720,57 @@ function canvasToBlob(canvas, type, quality){
   return new Promise(resolve => canvas.toBlob(resolve, type, quality));
 }
 
+function blobToDataUrl(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Could not read receipt'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function isStorageBillingOrQuotaError(err){
+  const text = `${err?.code || ''} ${err?.message || ''}`.toLowerCase();
+  return text.includes('quota') ||
+    text.includes('billing') ||
+    text.includes('spark') ||
+    text.includes('402') ||
+    text.includes('403') ||
+    text.includes('unauthorized') ||
+    text.includes('permission');
+}
+
+async function receiptDraftToDatabaseRecord(draft, paidBy){
+  if (!draft || !draft.blob) return null;
+  if (draft.blob.size > RECEIPT_DB_FALLBACK_LIMIT) {
+    throw new Error('Spark-safe receipt saving supports smaller files. Use a clearer cropped photo under about 650 KB, or remove the receipt.');
+  }
+  const dataUrl = await blobToDataUrl(draft.blob);
+  if (dataUrl.length > RECEIPT_DB_FALLBACK_LIMIT * 1.45) {
+    throw new Error('That receipt is too large for Spark-safe saving. Try a cropped photo or save the expense without the receipt.');
+  }
+  return {
+    dataUrl,
+    storageMode: 'database',
+    name: draft.name,
+    type: draft.type,
+    size: draft.size,
+    addedBy: currentUser || paidBy || 'unknown',
+    addedAt: new Date().toISOString()
+  };
+}
+
 async function compressReceiptImage(file){
   const raw = await readFileAsDataUrl(file);
   const img = await loadImage(raw);
-  const maxDim = 1200;
+  const maxDim = 1000;
   const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(img.width * scale));
   canvas.height = Math.max(1, Math.round(img.height * scale));
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const blob = await canvasToBlob(canvas, 'image/jpeg', 0.72);
+  const blob = await canvasToBlob(canvas, 'image/jpeg', 0.62);
   if (!blob) throw new Error('Could not compress image');
   return {
     name: file.name.replace(/\.[^.]+$/, '') + '.jpg',
@@ -8963,48 +9010,74 @@ async function saveExpense(){
 
   if (expenseReceiptDraft && expenseReceiptDraft._newFile) {
     if (!window._fbUploadReceipt) {
-      setExpenseSaveStatus('warn', 'Secure receipt storage is still loading. Try again in a moment.');
-      alert('Receipt upload is still loading. Try again in a moment.');
-      saveBtns.forEach(btn => {
-        btn.disabled = false;
-        btn.textContent = btn.dataset.originalText || 'Save Expense';
-      });
-      return;
+      try {
+        setExpenseSaveStatus('saving', 'Storage is unavailable on Spark. Saving small receipt in the protected calendar record...');
+        setReceiptStorageStatus('warn', 'Storage is unavailable on Spark. Saving small receipt in the protected calendar record...');
+        receiptForRecord = await receiptDraftToDatabaseRecord(expenseReceiptDraft, paidBy);
+      } catch(fallbackErr) {
+        setExpenseSaveStatus('error', fallbackErr.message);
+        setReceiptStorageStatus('error', fallbackErr.message);
+        alert(fallbackErr.message);
+        saveBtns.forEach(btn => {
+          btn.disabled = false;
+          btn.textContent = btn.dataset.originalText || 'Save Expense';
+        });
+        return;
+      }
     }
-    const fileName = `${Date.now()}-${safeReceiptFileName(expenseReceiptDraft.name, expenseReceiptDraft.type)}`;
-    const path = `receipts/${expenseId}/${fileName}`;
-    try {
-      _setSyncStatus('saving', 'Uploading receipt securely...');
-      setExpenseSaveStatus('saving', 'Uploading receipt securely to Firebase Storage...');
-      setReceiptStorageStatus('ready', 'Uploading receipt securely...');
-      await window._fbUploadReceipt(path, expenseReceiptDraft.blob, {
-        contentType: expenseReceiptDraft.type || 'application/octet-stream',
-        customMetadata: {
-          expenseId,
-          uploadedBy: currentUser || paidBy || 'unknown'
+    if (!receiptForRecord) {
+      const fileName = `${Date.now()}-${safeReceiptFileName(expenseReceiptDraft.name, expenseReceiptDraft.type)}`;
+      const path = `receipts/${expenseId}/${fileName}`;
+      try {
+        _setSyncStatus('saving', 'Uploading receipt securely...');
+        setExpenseSaveStatus('saving', 'Uploading receipt securely to Firebase Storage...');
+        setReceiptStorageStatus('ready', 'Uploading receipt securely...');
+        await window._fbUploadReceipt(path, expenseReceiptDraft.blob, {
+          contentType: expenseReceiptDraft.type || 'application/octet-stream',
+          customMetadata: {
+            expenseId,
+            uploadedBy: currentUser || paidBy || 'unknown'
+          }
+        });
+        uploadedReceiptPath = path;
+        receiptForRecord = {
+          storagePath: path,
+          name: expenseReceiptDraft.name,
+          type: expenseReceiptDraft.type,
+          size: expenseReceiptDraft.size,
+          addedBy: currentUser || paidBy || 'unknown',
+          addedAt: new Date().toISOString()
+        };
+        setExpenseSaveStatus('saving', 'Receipt uploaded securely. Saving the expense record...');
+        setReceiptStorageStatus('ready', 'Receipt uploaded securely. Saving expense record...');
+      } catch(err) {
+        console.error('Receipt upload failed', err);
+        if (isStorageBillingOrQuotaError(err)) {
+          try {
+            setExpenseSaveStatus('saving', 'Firebase Storage is blocked by the Spark plan. Saving small receipt in the protected calendar record...');
+            setReceiptStorageStatus('warn', 'Firebase Storage is blocked by the Spark plan. Saving small receipt in the protected calendar record...');
+            receiptForRecord = await receiptDraftToDatabaseRecord(expenseReceiptDraft, paidBy);
+          } catch(fallbackErr) {
+            setExpenseSaveStatus('error', fallbackErr.message);
+            setReceiptStorageStatus('error', fallbackErr.message);
+            alert(fallbackErr.message);
+            saveBtns.forEach(btn => {
+              btn.disabled = false;
+              btn.textContent = btn.dataset.originalText || 'Save Expense';
+            });
+            return;
+          }
+        } else {
+          setExpenseSaveStatus('error', 'Receipt upload failed. Nothing was saved yet.');
+          setReceiptStorageStatus('error', 'Receipt upload failed. Try again or save without the receipt.');
+          alert('Receipt did not upload: ' + (err.code || err.message));
+          saveBtns.forEach(btn => {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.originalText || 'Save Expense';
+          });
+          return;
         }
-      });
-      uploadedReceiptPath = path;
-      receiptForRecord = {
-        storagePath: path,
-        name: expenseReceiptDraft.name,
-        type: expenseReceiptDraft.type,
-        size: expenseReceiptDraft.size,
-        addedBy: currentUser || paidBy || 'unknown',
-        addedAt: new Date().toISOString()
-      };
-      setExpenseSaveStatus('saving', 'Receipt uploaded securely. Saving the expense record...');
-      setReceiptStorageStatus('ready', 'Receipt uploaded securely. Saving expense record...');
-    } catch(err) {
-      console.error('Receipt upload failed', err);
-      setExpenseSaveStatus('error', 'Receipt upload failed. Nothing was saved yet.');
-      setReceiptStorageStatus('error', 'Receipt upload failed. Try again or save without the receipt.');
-      alert('Receipt did not upload: ' + (err.code || err.message));
-      saveBtns.forEach(btn => {
-        btn.disabled = false;
-        btn.textContent = btn.dataset.originalText || 'Save Expense';
-      });
-      return;
+      }
     }
   } else if (expenseReceiptDraft) {
     receiptForRecord = Object.assign({}, expenseReceiptDraft);
