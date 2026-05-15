@@ -1294,13 +1294,18 @@ body.drawer-open{overflow:hidden}
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
+        <button id="inbox-bell" class="inbox-bell" onclick="toggleInbox(event)" title="Inbox" aria-label="Inbox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          <span id="inbox-badge" class="inbox-badge" style="display:none">0</span>
+        </button>
       </div>
       <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <div class="user-badge account" id="user-badge" title="Signed-in account">
           <span id="user-badge-text">Loading…</span>
         </div>
-        <button class="logout-btn" id="logout-btn" onclick="secureSignOut()" style="display:none">Log Out</button>
       </div>
     </div>
   </div>
@@ -1398,6 +1403,13 @@ body.drawer-open{overflow:hidden}
 </section>
 
 <div id="menu-dropdown" class="menu-dropdown">
+  <button class="menu-item" onclick="closeMenu();toggleTheme()">
+    <span class="menu-icon" id="menu-theme-icon">🌙</span>
+    <div class="menu-text">
+      <div class="menu-label" id="menu-theme-label">Appearance</div>
+      <div class="menu-hint" id="menu-theme-hint">Switch display mode</div>
+    </div>
+  </button>
   <button class="menu-item" onclick="closeMenu();openExport()">
     <span class="menu-icon">📲</span>
     <div class="menu-text">
@@ -1445,6 +1457,13 @@ body.drawer-open{overflow:hidden}
     <div class="menu-text">
       <div class="menu-label">School Calendar</div>
       <div class="menu-hint">Breaks, first/last day, no-school days</div>
+    </div>
+  </button>
+  <button class="menu-item" id="menu-logout-item" onclick="closeMenu();secureSignOut()" style="display:none">
+    <span class="menu-icon">↪</span>
+    <div class="menu-text">
+      <div class="menu-label">Log Out</div>
+      <div class="menu-hint" id="menu-logout-hint">Sign out of this device</div>
     </div>
   </button>
 </div>
@@ -2351,7 +2370,8 @@ async function secureSignOut() {
 function updateUserBadge() {
   const badge = document.getElementById('user-badge');
   const text  = document.getElementById('user-badge-text');
-  const logout = document.getElementById('logout-btn');
+  const logout = document.getElementById('menu-logout-item');
+  const logoutHint = document.getElementById('menu-logout-hint');
   if (!badge || !text) return;
   if (!currentUser) {
     text.textContent = 'Locked';
@@ -2361,7 +2381,8 @@ function updateUserBadge() {
   }
   text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
   badge.classList.toggle('b', currentUser === 'Brittany');
-  if (logout) logout.style.display = 'inline-flex';
+  if (logout) logout.style.display = 'flex';
+  if (logoutHint) logoutHint.textContent = `Signed in as ${currentUser}`;
 }
 
 async function pinHash(pin, name) {
@@ -4503,6 +4524,12 @@ function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   const btn = document.getElementById('theme-toggle');
   if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  const icon = document.getElementById('menu-theme-icon');
+  const label = document.getElementById('menu-theme-label');
+  const hint = document.getElementById('menu-theme-hint');
+  if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+  if (label) label.textContent = t === 'dark' ? 'Light Mode' : 'Dark Mode';
+  if (hint) hint.textContent = t === 'dark' ? 'Use the brighter daytime view' : 'Use the softer evening view';
 }
 function toggleTheme() {
   const next = getTheme() === 'dark' ? 'light' : 'dark';
@@ -5578,9 +5605,11 @@ initFirebase = function(){
 
 // Inject inbox bell + school cal modal HTML once DOM is ready
 (function _v12_injectUI(){
-  // 1. Inbox bell — drop next to theme toggle in the header
+  // 1. Inbox bell — keep one visible header bell even on older cached markup
   const themeToggle = document.getElementById('theme-toggle');
-  if (themeToggle && !document.getElementById('inbox-bell')){
+  const menuBtn = document.getElementById('menu-btn');
+  const anchor = themeToggle || menuBtn;
+  if (anchor && !document.getElementById('inbox-bell')){
     const bell = document.createElement('button');
     bell.id = 'inbox-bell';
     bell.className = 'inbox-bell';
@@ -5594,7 +5623,7 @@ initFirebase = function(){
       </svg>
       <span id="inbox-badge" class="inbox-badge" style="display:none">0</span>
     `;
-    themeToggle.parentNode.insertBefore(bell, themeToggle);
+    anchor.parentNode.insertBefore(bell, themeToggle || menuBtn.nextSibling);
   }
 
   // 2. Inbox drawer
