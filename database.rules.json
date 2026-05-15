@@ -13,8 +13,8 @@
       }
     },
     "xander_cal": {
-      ".read": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
-      ".write": "auth != null && root.child('authorizedUsers').child(auth.uid).exists()",
+      ".read": "auth != null && (root.child('authorizedUsers').child(auth.uid).exists() || auth.uid == 'AVTqawxYzSQh9xgqUL9aSRigTwk2' || auth.uid == 'eBi4fVGfY7P8WvxXJXdjk6QkDV43')",
+      ".write": "auth != null && (root.child('authorizedUsers').child(auth.uid).exists() || auth.uid == 'AVTqawxYzSQh9xgqUL9aSRigTwk2' || auth.uid == 'eBi4fVGfY7P8WvxXJXdjk6QkDV43')",
       ".validate": "newData.hasChildren(['updatedAt'])"
     }
   }

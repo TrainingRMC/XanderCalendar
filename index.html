@@ -8007,7 +8007,7 @@ function _v29RenderSyncDetail(state, detail){
       : backup.status === 'blocked'
         ? 'A save was paused because it looked like shared data could be erased.'
         : 'Your latest change is backed up on this device and will retry when shared sync is available.';
-  } else if (state === 'error') {
+  } else if (state === 'error' && _v30SyncExpanded) {
     show = true;
     text = detail || 'Shared sync needs attention. Your local backup protects changes made on this device.';
   } else if (_v30SyncExpanded) {
