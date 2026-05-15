@@ -398,6 +398,14 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 .quick-block-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 9px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
 .quick-block-btn:hover{border-color:var(--j);background:var(--j-soft);color:var(--j)}
 .quick-blocks.single{grid-template-columns:1fr}
+.summer-add-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:11px;box-shadow:var(--shadow-sm)}
+.summer-add-title{font-family:'Nunito',sans-serif;font-size:.86em;font-weight:900;color:var(--text);margin-bottom:2px}
+.summer-add-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-bottom:9px}
+.summer-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.summer-add-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:9px 0}
+.summer-add-save{width:100%;margin-top:9px;background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border:none;border-radius:10px;padding:10px 12px;font-family:'Nunito',sans-serif;font-size:.86em;font-weight:900;cursor:pointer;box-shadow:0 2px 8px var(--j-soft)}
+.summer-add-save:hover{filter:brightness(1.06)}
+.summer-owner-toggle{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
 .summer-email-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:540px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow:hidden;display:flex;flex-direction:column}
 .summer-email-hdr{background:linear-gradient(135deg,#78350f,#d97706);color:#fff;padding:17px 20px 13px;flex-shrink:0}
 .summer-email-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.12em}
@@ -1258,6 +1266,8 @@ body.drawer-open{overflow:hidden}
   .sum-modal-ftr,.summer-prop-ftr{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 13px}
   .sum-modal-ftr .btn,.summer-prop-ftr .btn{width:100%}
   .quick-blocks{grid-template-columns:1fr}
+  .summer-add-grid{grid-template-columns:1fr}
+  .summer-add-actions{grid-template-columns:1fr 1fr}
   .summer-gap-row{grid-template-columns:1fr 1fr}
   .summer-gap-date{grid-column:1/-1}
   .week-card{padding:10px;border-radius:10px}
@@ -7275,6 +7285,7 @@ function getSummerBlocks(yr){
 }
 
 let summerGapPanelOpen = false;
+let summerDraftOwner = null;
 
 function summerGapRanges(summary){
   const ranges = [];
@@ -7340,6 +7351,98 @@ function summarizeSummerPlan(yr){
     total:daysBetween(range.min, range.max),
     gaps
   };
+}
+
+function defaultSummerDraftOwner(){
+  return summerDraftOwner || (currentUser === 'Brittany' ? 'Brittany' : 'Justin');
+}
+
+function setSummerDraftOwner(owner){
+  summerDraftOwner = owner === 'Brittany' ? 'Brittany' : 'Justin';
+  const j = document.getElementById('summer-draft-owner-justin');
+  const b = document.getElementById('summer-draft-owner-brittany');
+  if (j) j.classList.toggle('active-j', summerDraftOwner === 'Justin');
+  if (b) b.classList.toggle('active-b', summerDraftOwner === 'Brittany');
+}
+
+function syncSummerDraftDates(changed){
+  const start = document.getElementById('summer-add-start');
+  const end = document.getElementById('summer-add-end');
+  if (!start || !end) return;
+  if (changed === 'start' && start.value && (!end.value || end.value < start.value)) end.value = start.value;
+  if (changed === 'end' && end.value && (!start.value || start.value > end.value)) start.value = end.value;
+}
+
+function prefillSummerDraft(days){
+  const summary = summarizeSummerPlan(activeSummerYear);
+  const start = document.getElementById('summer-add-start');
+  const end = document.getElementById('summer-add-end');
+  if (!start || !end) return;
+  const next = start.value || nextSummerOpenDate(summary);
+  start.value = next > summary.range.max ? summary.range.max : next;
+  const length = Math.max(1, parseInt(days || 1, 10));
+  let nextEnd = addDays(start.value, length - 1);
+  if (nextEnd > summary.range.max) nextEnd = summary.range.max;
+  end.value = nextEnd;
+}
+
+function addSummerDraftRange(){
+  const summary = summarizeSummerPlan(activeSummerYear);
+  const start = document.getElementById('summer-add-start')?.value;
+  const end = document.getElementById('summer-add-end')?.value || start;
+  const label = document.getElementById('summer-add-label')?.value.trim() || '';
+  const owner = defaultSummerDraftOwner();
+  if (!start) {
+    showToast('Pick a start date first');
+    return;
+  }
+  if (end < start) {
+    showToast('End date cannot be before start date');
+    return;
+  }
+  if (start < summary.range.min || end > summary.range.max) {
+    showToast('Pick dates inside the summer window');
+    return;
+  }
+  summerPlan.push({ start, end, owner, label });
+  summerDraftOwner = owner;
+  summerGapPanelOpen = false;
+  renderSummerBody();
+  showToast(`Added ${daysBetween(start,end)} summer day${daysBetween(start,end)===1?'':'s'}`);
+}
+
+function renderSummerAddPanel(summary){
+  const owner = defaultSummerDraftOwner();
+  const next = nextSummerOpenDate(summary);
+  const start = next > summary.range.max ? summary.range.min : next;
+  return `
+    <div class="summer-add-panel">
+      <div class="summer-add-title">Add summer dates</div>
+      <div class="summer-add-sub">Choose any day or date range. Use quick lengths if helpful, then adjust the dates before adding.</div>
+      <div class="summer-add-grid">
+        <div>
+          <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:3px">START</div>
+          <input type="date" class="date-inp" id="summer-add-start" value="${start}" min="${summary.range.min}" max="${summary.range.max}" onchange="syncSummerDraftDates('start')">
+        </div>
+        <div>
+          <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:3px">END</div>
+          <input type="date" class="date-inp" id="summer-add-end" value="${start}" min="${summary.range.min}" max="${summary.range.max}" onchange="syncSummerDraftDates('end')">
+        </div>
+      </div>
+      <div class="summer-add-actions">
+        <button class="quick-block-btn" onclick="prefillSummerDraft(1)">1 day</button>
+        <button class="quick-block-btn" onclick="prefillSummerDraft(3)">Long weekend</button>
+        <button class="quick-block-btn" onclick="prefillSummerDraft(7)">1 week</button>
+        <button class="quick-block-btn" onclick="prefillSummerDraft(14)">2 weeks</button>
+      </div>
+      <div style="font-size:.7em;font-weight:700;color:var(--muted);margin-bottom:4px">WHO HAS XANDER?</div>
+      <div class="summer-owner-toggle">
+        <button class="owner-btn ${owner==='Justin'?'active-j':''}" id="summer-draft-owner-justin" onclick="setSummerDraftOwner('Justin')">Justin</button>
+        <button class="owner-btn ${owner==='Brittany'?'active-b':''}" id="summer-draft-owner-brittany" onclick="setSummerDraftOwner('Brittany')">Brittany</button>
+      </div>
+      <input class="week-label-inp" id="summer-add-label" placeholder="Optional label e.g. Florida, lake week, camp pickup">
+      <button class="summer-add-save" onclick="addSummerDraftRange()">+ Add These Dates</button>
+    </div>`;
 }
 
 function setSummerStart(i, value){
@@ -7538,6 +7641,7 @@ function renderSummerBody(){
     : `<div class="summer-warnings"><div class="summer-warning ok">✓ Date ranges look clean: no overlaps found${summary.gaps ? '' : ' and the summer is fully assigned'}.</div></div>`;
   const gapPanelHtml = renderSummerGapPanel(summary);
   const applyPanelHtml = renderSummerApplyPanel(summary);
+  const addPanelHtml = renderSummerAddPanel(summary);
 
   body.innerHTML = `
     <div class="summer-overview">
@@ -7557,12 +7661,9 @@ function renderSummerBody(){
     ${warningsHtml}
     ${gapPanelHtml}
     ${applyPanelHtml}
-    <div class="quick-blocks">
-      <button class="quick-block-btn" onclick="addSummerDateRange(1,'Single day')">+ Single Day</button>
-      <button class="quick-block-btn" onclick="addSummerDateRange(7,'One week')">+ One Week</button>
-      <button class="quick-block-btn" onclick="addSummerDateRange(14,'Two weeks')">+ Two Weeks</button>
-      <button class="quick-block-btn" onclick="addSummerDateRange(1,'Custom range')">+ Custom Range</button>
-      <button class="quick-block-btn" onclick="openSummerEmailSummary()">Email Summary</button>
+    ${addPanelHtml}
+    <div class="quick-blocks single">
+      <button class="quick-block-btn" onclick="openSummerEmailSummary()">April 1 Email Summary</button>
     </div>
   `;
 
