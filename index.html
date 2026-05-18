@@ -33,6 +33,7 @@
   const CAL_REF = ref(db, "xander_cal");
   window._fbAuthRequired = localStorage.getItem("xander_cal_require_firebase_auth") !== "false";
   window._fbAuthed = false;
+  window._fbAuthSettled = false;
   window._fbUser = null;
   const AUTH_REMEMBER_KEY = "xander_cal_remember_auth";
 
@@ -112,6 +113,7 @@
   };
 
   onAuthStateChanged(auth, (user) => {
+    window._fbAuthSettled = true;
     window._fbAuthed = !!user;
     window._fbUser = user ? { uid: user.uid, email: user.email || "" } : null;
     window.dispatchEvent(new CustomEvent("fbAuthChanged", { detail: { user: window._fbUser } }));
@@ -2364,6 +2366,9 @@ function isFirebaseAuthRequired() {
 }
 function isFirebaseSignedIn() {
   return window._fbAuthed === true && !!window._fbUser;
+}
+function isFirebaseAuthSettled() {
+  return window._fbAuthSettled === true;
 }
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
@@ -8008,6 +8013,7 @@ let _v16LastRemoteAt = null;
 let _v16SharedDataLoaded = false;
 let _v16LastSharedPayload = null;
 let _v23RestLoadStarted = false;
+let _v23LastLoadError = null;
 let _v23RestSaveInFlight = false;
 let _v25PatchSyncReady = false;
 let _v26SyncBootStarted = false;
@@ -8545,7 +8551,11 @@ function startSharedSyncAfterSecureLogin(){
 
   setTimeout(() => {
     if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-    _setSyncStatus('error', _v30FriendlySyncError(null, 'Could not load saved calendar. Check connection, then refresh.'));
+    if (typeof _v23RestLoadStarted !== 'undefined' && _v23RestLoadStarted) {
+      _setSyncStatus('connecting', 'Still loading saved calendar...');
+      return;
+    }
+    _setSyncStatus('error', _v30FriendlySyncError(_v23LastLoadError || null, 'Could not load saved calendar. Check connection, then refresh.'));
   }, 11000);
 }
 
@@ -8562,6 +8572,7 @@ async function _v29FetchWithTimeout(url, options, ms){
 async function _v23LoadSharedDataViaRest(){
   if (_v16SharedDataLoaded || _v23RestLoadStarted) return;
   _v23RestLoadStarted = true;
+  _v23LastLoadError = null;
   try {
     _setSyncStatus('connecting', 'Loading saved calendar...');
     const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), { cache:'no-store' }, 9000);
@@ -8584,6 +8595,7 @@ async function _v23LoadSharedDataViaRest(){
     _setSyncStatus('remote', ts ? `📲 Last updated ${ts}` : '✓ Connected with backup sync');
   } catch(err) {
     console.error('Backup sync load failed', err);
+    _v23LastLoadError = err;
     _v23RestLoadStarted = false;
     _setSyncStatus('error', _v30FriendlySyncError(err, 'Could not load saved calendar. Check connection, then refresh.'));
   }
@@ -10011,17 +10023,35 @@ getInboxUnreadCount = function(){
 
 function _v22SyncWatchdog(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-  if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
-  if (typeof _v23LoadSharedDataViaRest === 'function') _v23LoadSharedDataViaRest();
+  if (isFirebaseAuthRequired() && !isFirebaseAuthSettled()) {
+    _setSyncStatus('connecting', 'Restoring secure sign in...');
+    setTimeout(_v22SyncWatchdog, 3000);
+    return;
+  }
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
+    _setSyncStatus('connecting', 'Please sign in to load the shared calendar.');
+    setTimeout(_v22SyncWatchdog, 3000);
+    return;
+  }
+  if (typeof _v23LoadSharedDataViaRest === 'function' && !_v23RestLoadStarted) _v23LoadSharedDataViaRest();
   setTimeout(() => {
     if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+    if (typeof _v23RestLoadStarted !== 'undefined' && _v23RestLoadStarted) {
+      _setSyncStatus('connecting', 'Still loading saved calendar...');
+      setTimeout(_v22SyncWatchdog, 4000);
+      return;
+    }
     _v22ShowSyncProblem();
-  }, 1200);
+  }, 9500);
 }
 
 function _v22ShowSyncProblem(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-  _setSyncStatus('error', _v30FriendlySyncError(null, 'Could not load saved calendar. Check connection, then refresh.'));
+  if (typeof _v23RestLoadStarted !== 'undefined' && _v23RestLoadStarted) {
+    _setSyncStatus('connecting', 'Still loading saved calendar...');
+    return;
+  }
+  _setSyncStatus('error', _v30FriendlySyncError(_v23LastLoadError || null, 'Could not load saved calendar. Check connection, then refresh.'));
   renderInboxBadge();
   if (typeof renderDashboard === 'function') renderDashboard();
   if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
