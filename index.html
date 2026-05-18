@@ -1533,6 +1533,7 @@ body.drawer-open{overflow:hidden}
 
     <div class="field-lbl">Notes</div>
     <textarea class="ta" id="m-note" placeholder="Heads-up, reminder, pickup detail, school note…"></textarea>
+    <div id="day-save-status" class="save-confidence" style="display:none;margin-bottom:10px"></div>
 
     <div class="day-quick-actions">
       <button class="btn" style="flex:1;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="addTravelFromDay()">✈️ Add Travel Range</button>
@@ -4839,6 +4840,7 @@ async function saveTravel() {
     saveBtn.disabled = true;
     saveBtn.textContent = editingTravelId ? 'Saving Trip...' : 'Saving Travel...';
   }
+  setScopedSaveStatus('travel', 'saving', editingTravelId ? 'Saving travel changes to the shared calendar...' : 'Saving travel and notifying the other parent...');
 
   try {
     await _v26EnsureSharedDataBeforeTravelSave();
@@ -4847,6 +4849,7 @@ async function saveTravel() {
       saveBtn.disabled = false;
       updateTravelEditMode();
     }
+    setScopedSaveStatus('travel', 'error', 'Travel did not save. The shared calendar could not be reached.');
     alert('Travel did not save because the shared calendar could not be reached: ' + err.message);
     return;
   }
@@ -4910,6 +4913,7 @@ async function saveTravel() {
       saveBtn.disabled = false;
       updateTravelEditMode();
     }
+    setScopedSaveStatus('travel', 'error', 'Travel did not save. Your previous shared travel record was restored.');
     alert('Travel did not save: ' + err.message);
     return;
   }
@@ -4930,10 +4934,12 @@ async function removeTravel(id) {
     if (editingTravelId === id) editingTravelId = null;
     logAction(currentUser, 'travel', `Removed travel ${fmtDate(t.start)} → ${fmtDate(t.end)}`);
     try {
+      setScopedSaveStatus('travel', 'saving', 'Deleting travel from the shared calendar...');
       await _v25PatchSharedNow(['travelEntries','activityLog'], 'travel');
     } catch(err) {
       travelEntries = beforeTravel;
       activityLog = beforeActivity;
+      setScopedSaveStatus('travel', 'error', 'Travel deletion did not save. The trip was restored.');
       alert('Travel deletion did not save: ' + err.message);
       return;
     }
@@ -7905,11 +7911,50 @@ function _v27ReadConfirmedSaves(){
   catch(e) { return {}; }
 }
 
+function _v31NormalizeSaveArea(area){
+  area = String(area || '').toLowerCase();
+  if (area.includes('summer')) return 'summer';
+  if (area.includes('travel')) return 'travel';
+  if (area.includes('expense') || area.includes('receipt')) return 'expense';
+  if (area.includes('note') || area.includes('swap') || area.includes('calendar change')) return 'day';
+  return 'shared';
+}
+
+function _v31SaveElementForArea(area){
+  const ids = {
+    travel: 'travel-save-status',
+    summer: 'summer-save-status',
+    expense: 'expense-save-status',
+    day: 'day-save-status'
+  };
+  return document.getElementById(ids[_v31NormalizeSaveArea(area)] || '');
+}
+
+function _v31AudienceText(area){
+  const other = currentUser === 'Justin' ? 'Brittany' : currentUser === 'Brittany' ? 'Justin' : 'the other parent';
+  const key = _v31NormalizeSaveArea(area);
+  if (key === 'travel') return `${other} will see this travel update and can acknowledge it in Inbox.`;
+  if (key === 'summer') return `${other} will see the updated summer plan.`;
+  if (key === 'expense') return `${other} will see this expense update.`;
+  if (key === 'day') return `${other} will see this calendar note or change in Inbox.`;
+  return 'Changes are available to both parents.';
+}
+
+function setScopedSaveStatus(area, kind, text){
+  const el = _v31SaveElementForArea(area);
+  if (!el) return;
+  const warn = kind === 'error' || kind === 'warn';
+  const title = kind === 'saving' ? 'Saving'
+    : kind === 'error' ? 'Save Needs Attention'
+    : 'Save Confirmation';
+  el.style.display = 'block';
+  el.className = `save-confidence${warn ? ' warn' : ''}`;
+  el.innerHTML = `<div class="save-confidence-title">${title}</div><div>${_v13EscapeHtml(text || '')}</div>`;
+}
+
 function _v27RecordConfirmedSave(area, at){
   try {
-    area = /summer/i.test(area || '') ? 'summer'
-      : /travel/i.test(area || '') ? 'travel'
-      : area || 'shared';
+    area = _v31NormalizeSaveArea(area);
     const saves = _v27ReadConfirmedSaves();
     saves[area] = {
       at: at || new Date().toISOString(),
@@ -7922,10 +7967,11 @@ function _v27RecordConfirmedSave(area, at){
 }
 
 function _v27SaveStatusHtml(area, emptyText){
+  const key = _v31NormalizeSaveArea(area);
   const saves = _v27ReadConfirmedSaves();
-  const item = saves[area];
+  const item = saves[key];
   if (!item) return `<div class="save-confidence-title">Save Confirmation</div><div>${emptyText || 'No confirmed save on this device yet.'}</div>`;
-  return `<div class="save-confidence-title">Save Confirmation</div><div>✓ Last saved to the shared calendar ${formatLogTime(item.at)}${item.by ? ` by ${item.by}` : ''}.</div>`;
+  return `<div class="save-confidence-title">Save Confirmation</div><div>✓ Last saved to the shared calendar ${formatLogTime(item.at)}${item.by ? ` by ${item.by}` : ''}. ${_v31AudienceText(key)}</div>`;
 }
 
 function _v27RenderScopedSaveStatuses(){
@@ -8385,23 +8431,32 @@ function _v25PatchValueForKey(key){
 }
 
 async function _v25PatchSharedNow(keys, label){
+  const saveArea = _v31NormalizeSaveArea(label);
+  setScopedSaveStatus(saveArea, 'saving', label ? `Saving ${label} to the shared calendar...` : 'Saving to the shared calendar...');
   const patch = {};
   keys.forEach(key => { patch[key] = _v25PatchValueForKey(key); });
   patch.updatedAt = new Date().toISOString();
   patch.updatedBy = currentUser || 'unknown';
   _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
-  const res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
-    method:'PATCH',
-    headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify(patch)
-  }, 9000);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  await res.json();
+  let res;
+  try {
+    res = await _v29FetchWithTimeout(await _v28AuthedFirebaseUrl(FIREBASE_REST_URL), {
+      method:'PATCH',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(patch)
+    }, 9000);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    await res.json();
+  } catch(err) {
+    setScopedSaveStatus(saveArea, 'error', `${label || 'Change'} did not save. ${_v30FriendlySyncError(err, 'Check connection, then try again.')}`);
+    throw err;
+  }
   _v25PatchSyncReady = true;
   _v16LastRemoteAt = patch.updatedAt;
   _v16LastSharedPayload = Object.assign({}, _v16LastSharedPayload || {}, _v25Clone(patch));
   _v16StoreBackup(Object.assign(_v16BuildSavePayload(), patch), 'synced');
   _v27RecordConfirmedSave(label || 'shared', patch.updatedAt);
+  setScopedSaveStatus(saveArea, 'saved', `✓ ${label || 'Change'} saved to the shared calendar. ${_v31AudienceText(saveArea)}`);
   _setSyncStatus('saved', '✓ Saved to shared calendar');
   return patch;
 }
@@ -8429,6 +8484,7 @@ async function sendDateNoteOnly(){
   }
   const beforeSwaps = _v25Clone(pendingSwaps || {});
   const beforeActivity = _v25Clone(activityLog || []);
+  setScopedSaveStatus('note', 'saving', note ? 'Saving note and sending it to Inbox...' : 'Saving note removal request...');
   const swapId = makeSwapId();
   pendingSwaps[swapId] = {
     date: editKey,
@@ -8454,6 +8510,7 @@ async function sendDateNoteOnly(){
   } catch(err) {
     pendingSwaps = beforeSwaps;
     activityLog = beforeActivity;
+    setScopedSaveStatus('note', 'error', 'Note did not save. The shared calendar was not changed.');
     alert('Note did not save: ' + err.message);
     render();
     return;
@@ -9317,7 +9374,12 @@ async function saveExpense(){
   renderExpenses();
   render();
   closeExpenses();
-  setExpenseSaveStatus('saved', entry.receipt ? '✓ Expense and receipt saved securely to the shared calendar.' : '✓ Expense saved to the shared calendar.');
+  const receiptMode = entry.receipt
+    ? entry.receipt.storageMode === 'database'
+      ? ' Receipt saved inside the protected calendar record for Spark compatibility.'
+      : ' Receipt saved securely.'
+    : '';
+  setExpenseSaveStatus('saved', `✓ Expense saved to the shared calendar.${receiptMode} ${_v31AudienceText('expense')}`);
   showToast(existing ? 'Expense saved to shared calendar' : 'Expense saved to shared calendar');
 }
 
@@ -9385,10 +9447,12 @@ async function markExpensePaid(id, paidDate){
   exp.updatedAt = new Date().toISOString();
   logAction(currentUser || 'unknown', 'expense', `Marked expense paid on ${fmtDate(exp.paidDate)}: ${exp.description || exp.category} (${formatMoney(exp.amount)}).`);
   try {
+    setExpenseSaveStatus('saving', 'Saving paid date to the shared calendar...');
     await _v25PatchSharedNow(['expenseEntries','activityLog'], 'expense');
   } catch(err) {
     expenseEntries = beforeExpenses;
     activityLog = beforeActivity;
+    setExpenseSaveStatus('error', 'Paid date did not save. The previous expense record was restored.');
     alert('Paid status did not save: ' + err.message);
     renderExpenses();
     render();
@@ -9472,11 +9536,13 @@ async function deleteExpense(id){
   const notifiedText = (by === 'Justin' || by === 'Brittany') ? ` ${other} was notified.` : '';
   logAction(by, 'expense', `Deleted expense: ${exp.description || exp.category} (${formatMoney(exp.amount)}).${notifiedText}`);
   try {
+    setExpenseSaveStatus('saving', 'Deleting expense and notifying the other parent...');
     await _v25PatchSharedNow(['expenseEntries','expenseNotices','activityLog'], 'expense');
   } catch(err) {
     expenseEntries = beforeExpenses;
     expenseNotices = beforeNotices;
     activityLog = beforeActivity;
+    setExpenseSaveStatus('error', 'Expense deletion did not save. The expense was restored.');
     alert('Expense deletion did not save: ' + err.message);
     renderExpenses();
     render();
