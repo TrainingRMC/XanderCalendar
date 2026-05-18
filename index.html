@@ -1025,11 +1025,20 @@ body.drawer-open{overflow:hidden}
 .dash-pill{flex-shrink:0;padding:6px 10px;border-radius:20px;font-size:.75em;font-weight:900;font-family:'Nunito',sans-serif;color:#fff;box-shadow:var(--shadow-sm)}
 .dash-pill.j{background:linear-gradient(135deg,var(--j-d),var(--j))}
 .dash-pill.b{background:linear-gradient(135deg,var(--b-d),var(--b))}
-.dash-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:13px;position:relative;z-index:1}
-.dash-action{border:1px solid var(--border);background:var(--card-elev);color:var(--text);border-radius:11px;padding:9px 7px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;line-height:1.1;box-shadow:var(--shadow-sm);transition:transform .14s,box-shadow .14s,border-color .14s}
+.dash-actions{display:none}
+.dash-tools{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px;box-shadow:var(--shadow-sm)}
+.dash-tools-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.dash-tools-title{font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.dash-tools-sub{font-size:.7em;color:var(--muted)}
+.dash-tools-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.dash-action{border:1px solid var(--border);background:var(--bg-2);color:var(--text);border-radius:11px;padding:9px 7px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;line-height:1.1;box-shadow:var(--shadow-sm);transition:transform .14s,box-shadow .14s,border-color .14s;position:relative}
 .dash-action:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--j)}
-.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.dash-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:11px;box-shadow:var(--shadow-sm);min-height:86px}
+.dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent}
+.dash-action.warn{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.dash-action.wait{border-color:var(--emerald);background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card))}
+.dash-action-badge{position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:2px solid var(--card);border-radius:999px;min-width:20px;height:20px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;font-size:.68em;font-weight:900}
+.dash-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:8px}
+.dash-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px;box-shadow:var(--shadow-sm);min-height:92px}
 .dash-card.tap{cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
 .dash-card.tap:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--j)}
 .dash-card.attn{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
@@ -1208,14 +1217,16 @@ body.drawer-open{overflow:hidden}
 #search-bar{display:none}
 #search-bar.open{display:flex}
 :root[data-theme="dark"] .dash-hero{background:linear-gradient(135deg,var(--bg-2),var(--card))}
-:root[data-theme="dark"] .dash-action{background:var(--card)}
+:root[data-theme="dark"] .dash-tools{background:var(--card)}
+:root[data-theme="dark"] .dash-action{background:var(--card-elev)}
+:root[data-theme="dark"] .dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j))}
 :root[data-theme="dark"] .dash-card.attn{background:linear-gradient(135deg,rgba(255,159,10,.18),var(--card))}
 :root[data-theme="dark"] .dash-card.travel.wait{background:linear-gradient(135deg,rgba(16,185,129,.18),var(--card))}
 :root[data-theme="dark"] .timeline-icon{background:var(--card-elev)}
 @media(max-width:700px){
   .home-dash{padding:10px 10px 6px}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
-  .dash-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-tools-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
   .dash-action{padding:9px 6px;font-size:.76em}
   .dash-title{font-size:1.18em}
   .travel-item{align-items:flex-start}
@@ -1223,7 +1234,7 @@ body.drawer-open{overflow:hidden}
 }
 @media(max-width:380px){
   .dash-grid{grid-template-columns:1fr}
-  .dash-actions{grid-template-columns:repeat(2,1fr)}
+  .dash-tools-grid{grid-template-columns:repeat(3,1fr)}
   .history-date-row{grid-template-columns:1fr}
 }
 
@@ -1375,15 +1386,15 @@ body.drawer-open{overflow:hidden}
         </div>
         <div class="dash-pill" id="dash-owner-pill">Syncing</div>
       </div>
-      <div class="dash-actions">
-        <button class="dash-action" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox</button>
-        <button class="dash-action" onclick="openTravel()">✈️<br>Travel</button>
-        <button class="dash-action" onclick="openExpenses()">💳<br>Expenses</button>
-        <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-        <button class="dash-action" onclick="_v13ShowSearch()">🔎<br>Find</button>
-      </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
+    <div class="dash-tools">
+      <div class="dash-tools-head">
+        <div class="dash-tools-title">Tools</div>
+        <div class="dash-tools-sub">Open when you need them</div>
+      </div>
+      <div class="dash-tools-grid" id="dash-tools-grid"></div>
+    </div>
     <div class="dash-timeline">
       <div class="dash-timeline-head">
         <div class="dash-timeline-title">Next Up</div>
@@ -7124,22 +7135,22 @@ function renderDashboard(){
       <div class="dash-card-main">${handoff ? _v13ShortDate(handoff.date) : 'None soon'}</div>
       <div class="dash-card-sub">${handoff ? `${handoff.from} to ${handoff.owner}` : 'No exchange found in the next 90 days.'}</div>
     </div>
-    <div class="dash-card tap travel ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}" role="button" tabindex="0">
-      <div class="dash-card-title">Travel</div>
-      <div class="dash-card-main">${travelText}</div>
-      <div class="dash-card-sub">${travelSub}</div>
-    </div>
-    <div class="dash-card tap expense ${expenseSummary.openCount ? 'open' : ''}" onclick="openExpenses()" role="button" tabindex="0">
-      <div class="dash-card-title">Expenses</div>
-      <div class="dash-card-main">${expenseSummary.openCount ? `${expenseSummary.openCount} open` : 'All settled'}</div>
-      <div class="dash-card-sub">${expenseSummary.openCount ? `Justin ${formatMoney(expenseSummary.owedToJustin)} · Brittany ${formatMoney(expenseSummary.owedToBrittany)}` : 'Shared costs are balanced right now.'}</div>
-    </div>
     <div class="dash-card tap" onclick="${highlightAction}" role="button" tabindex="0" style="grid-column:1/-1">
       <div class="dash-card-title">Coming Up</div>
       <div class="dash-card-main">${highlight ? highlight.event : 'No major events soon'}</div>
       <div class="dash-card-sub">${highlight ? `${_v13ShortDate(highlight.date)} · ${highlight.owner} has Xander` : `The next 45 days look clear.`}</div>
     </div>
   `;
+  const tools = document.getElementById('dash-tools-grid');
+  if (tools) {
+    tools.innerHTML = `
+      <button class="dash-action ${hasAttention ? 'warn' : ''}" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox${hasAttention ? `<span class="dash-action-badge">${inboxCount}</span>` : ''}</button>
+      <button class="dash-action ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}">✈️<br>Travel</button>
+      <button class="dash-action ${expenseSummary.openCount ? 'warn' : ''}" onclick="openExpenses()">💳<br>Expenses${expenseSummary.openCount ? `<span class="dash-action-badge">${expenseSummary.openCount}</span>` : ''}</button>
+      <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
+      <button class="dash-action primary" onclick="_v13ShowSearch()">🔎<br>Find</button>
+    `;
+  }
   renderTimeline();
 }
 
