@@ -398,6 +398,15 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 .quick-block-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 9px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
 .quick-block-btn:hover{border-color:var(--j);background:var(--j-soft);color:var(--j)}
 .quick-blocks.single{grid-template-columns:1fr}
+.summer-year-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.summer-year-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 10px;font-size:.82em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
+.summer-year-btn.active{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--j-soft)}
+.summer-year-btn.done:not(.active){border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.08);color:#047857}
+.summer-notice-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.summer-complete-panel{border:1px solid rgba(16,185,129,.35);background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(255,255,255,.82));border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+.summer-complete-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:.94em;color:#047857;margin-bottom:3px}
+.summer-complete-sub{font-size:.78em;color:var(--muted);line-height:1.45}
+.summer-complete-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .summer-add-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:11px;box-shadow:var(--shadow-sm)}
 .summer-add-title{font-family:'Nunito',sans-serif;font-size:.86em;font-weight:900;color:var(--text);margin-bottom:2px}
 .summer-add-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-bottom:9px}
@@ -417,6 +426,7 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 .summer-email-status{display:none;margin-top:10px}
 .summer-email-ta{width:100%;min-height:280px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:12px;padding:12px;font-family:'DM Sans',sans-serif;font-size:.86em;line-height:1.45;resize:vertical}
 .summer-email-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)}
+.summer-email-actions .btn-cancel{grid-column:1/-1}
 .sum-stats{display:flex;gap:7px;flex-wrap:wrap;padding:9px 18px;background:#fffbeb;border-top:1px solid #fde68a;flex-shrink:0}
 .sum-stat{font-size:.74em;display:flex;align-items:center;gap:4px}
 .sum-stat-dot{width:7px;height:7px;border-radius:50%}
@@ -1615,6 +1625,7 @@ body.drawer-open{overflow:hidden}
     </div>
     <div class="summer-email-actions">
       <button class="btn btn-save" onclick="copySummerEmailSummary()">Copy Summary</button>
+      <button class="btn btn-save" id="summer-email-parent-btn" onclick="openSummerEmailToParent()">Email Parent</button>
       <button class="btn btn-save" onclick="openSummerEmailDraft()">Open Email Draft</button>
       <button class="btn btn-save" onclick="saveSummerEmailSummaryRecord()">Save to Record</button>
       <button class="btn btn-cancel" onclick="closeSummerEmailSummary()">Close</button>
@@ -2331,6 +2342,7 @@ function showToast(msg){
 
 const USER_KEY = 'xander_cal_user';
 const PIN_KEY = 'xander_cal_parent_pins_v1';
+const PARENT_EMAIL_KEY = 'xander_cal_parent_emails_v1';
 const AUTH_PARENT_BY_UID = {
   AVTqawxYzSQh9xgqUL9aSRigTwk2: 'Justin',
   eBi4fVGfY7P8WvxXJXdjk6QkDV43: 'Brittany'
@@ -2344,12 +2356,38 @@ function isFirebaseSignedIn() {
 }
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
+let parentEmails = {};
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
+
+function getParentEmails(){
+  let local = {};
+  try { local = JSON.parse(localStorage.getItem(PARENT_EMAIL_KEY) || '{}'); }
+  catch(e) { local = {}; }
+  return Object.assign({}, parentEmails || {}, local || {});
+}
+
+function setParentEmail(name, email){
+  if (!name || !email) return;
+  const emails = getParentEmails();
+  emails[name] = String(email).trim();
+  parentEmails = emails;
+  localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(emails));
+  if (typeof _v25PatchSharedNow === 'function' && typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
+    _v25PatchSharedNow(['parentEmails'], 'contact email').catch(() => {});
+  }
+}
+
+function rememberSignedInEmail(){
+  if (!firebaseAuthUser || !firebaseAuthUser.email) return;
+  const parent = AUTH_PARENT_BY_UID[firebaseAuthUser.uid] || currentUser;
+  if (parent) setParentEmail(parent, firebaseAuthUser.email);
+}
 
 function setUser(name) {
   currentUser = name;
   sessionStorage.setItem(USER_KEY, name);
+  rememberSignedInEmail();
   const gate = document.getElementById('who-gate');
   if (gate) gate.classList.remove('show');
   document.body.classList.remove('auth-locked');
@@ -2517,6 +2555,7 @@ async function signInFirebaseAccount() {
       showPinError('That account is not authorized for this calendar.');
       return;
     }
+    firebaseAuthUser = cred.user;
     document.getElementById('auth-password').value = '';
     setUser(parent);
     if (typeof startSharedSyncAfterSecureLogin === 'function') startSharedSyncAfterSecureLogin();
@@ -7298,6 +7337,46 @@ function getSummerBlocks(yr){
 
 let summerGapPanelOpen = false;
 let summerDraftOwner = null;
+let summerArchivedOpen = {};
+let summerNoticeSent = {};
+
+function availableSummerYears(){
+  const years = new Set([2026, 2027]);
+  (summerPlan || []).forEach(blk => {
+    if (blk && blk.start) years.add(parseInt(blk.start.slice(0,4), 10));
+  });
+  return [...years].filter(Boolean).sort((a,b) => a-b);
+}
+
+function setActiveSummerYear(yr){
+  activeSummerYear = parseInt(yr, 10) || activeSummerYear;
+  summerGapPanelOpen = false;
+  renderSummerBody();
+}
+
+function isSummerYearArchived(yr){
+  const deadline = new Date(yr, 3, 1, 23, 59, 59);
+  return isSummerSubmitted(yr) && today > deadline;
+}
+
+function isSummerNoticeMarkedSent(yr){
+  return !!(summerNoticeSent && summerNoticeSent[yr]);
+}
+
+function toggleSummerArchivedRanges(yr){
+  summerArchivedOpen[yr] = !summerArchivedOpen[yr];
+  renderSummerBody();
+}
+
+function renderSummerYearSwitch(){
+  return `<div class="summer-year-switch">
+    ${availableSummerYears().map(yr => `
+      <button class="summer-year-btn ${yr===activeSummerYear?'active':''} ${isSummerYearArchived(yr)?'done':''}" onclick="setActiveSummerYear(${yr})">
+        ${yr}${isSummerYearArchived(yr)?' · Done':''}
+      </button>
+    `).join('')}
+  </div>`;
+}
 
 function summerGapRanges(summary){
   const ranges = [];
@@ -7573,8 +7652,15 @@ function openSummerEmailSummary(){
   renderSummerEmailChecks();
   const ta = document.getElementById('summer-email-text');
   if (ta) ta.value = buildSummerEmailSummary(activeSummerYear);
+  const parentBtn = document.getElementById('summer-email-parent-btn');
+  if (parentBtn) parentBtn.textContent = `Email ${summerEmailRecipientName()}`;
   setSummerEmailStatus('', '');
   document.getElementById('summer-email-overlay').classList.add('open');
+}
+
+function openSummerEmailSummaryAndSend(){
+  openSummerEmailSummary();
+  openSummerEmailToParent();
 }
 
 function renderSummerEmailChecks(){
@@ -7635,6 +7721,32 @@ function openSummerEmailDraft(){
   window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
 }
 
+function summerEmailRecipientName(){
+  return currentUser === 'Brittany' ? 'Justin' : 'Brittany';
+}
+
+function getSummerEmailRecipientAddress(){
+  const recipient = summerEmailRecipientName();
+  const emails = getParentEmails();
+  if (emails[recipient]) return emails[recipient];
+  const entered = prompt(`Enter ${recipient}'s email once so the app can open addressed summer notices.`);
+  if (!entered) return '';
+  setParentEmail(recipient, entered);
+  return entered.trim();
+}
+
+function openSummerEmailToParent(){
+  const to = getSummerEmailRecipientAddress();
+  if (!to) {
+    setSummerEmailStatus('warn', 'No email address was entered, so the draft was not opened.');
+    return;
+  }
+  const text = document.getElementById('summer-email-text')?.value || buildSummerEmailSummary(activeSummerYear);
+  const subject = `Summer ${activeSummerYear} Parenting Time Notice`;
+  setSummerEmailStatus('saved', `Opening an addressed email draft to ${summerEmailRecipientName()}.`);
+  window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+}
+
 async function saveSummerEmailSummaryRecord(){
   if (!currentUser) {
     alert('Sign in first so the record shows who prepared the summary.');
@@ -7655,6 +7767,25 @@ async function saveSummerEmailSummaryRecord(){
     activityLog = beforeActivity;
     setSummerEmailStatus('error', 'Summer notice record did not save. The email text was not changed.');
     alert('Summer notice record did not save: ' + err.message);
+  }
+}
+
+async function markSummerNoticeSent(yr){
+  const targetYear = parseInt(yr || activeSummerYear, 10);
+  if (!targetYear) return;
+  summerNoticeSent[targetYear] = {
+    by: currentUser || 'unknown',
+    at: new Date().toISOString()
+  };
+  if (typeof logAction === 'function') {
+    logAction(currentUser || 'unknown', 'summer-notice', `Marked Summer ${targetYear} April 1 notice email as sent`);
+  }
+  renderSummerBody();
+  try {
+    await _v25PatchSharedNow(['summerNoticeSent','activityLog'], 'summer notice');
+    showToast(`Summer ${targetYear} email marked sent`);
+  } catch(err) {
+    showToast('Marked locally, but shared save needs attention');
   }
 }
 
@@ -7724,8 +7855,33 @@ function renderSummerBody(){
   const gapPanelHtml = renderSummerGapPanel(summary);
   const applyPanelHtml = renderSummerApplyPanel(summary);
   const addPanelHtml = renderSummerAddPanel(summary);
+  const archived = isSummerYearArchived(activeSummerYear);
+  const showArchivedRanges = !archived || summerArchivedOpen[activeSummerYear];
+  const noticeSent = isSummerNoticeMarkedSent(activeSummerYear);
+  const recipient = summerEmailRecipientName();
+  const archivedPanelHtml = archived
+    ? `<div class="summer-complete-panel">
+        <div class="summer-complete-title">Summer ${activeSummerYear} selection is recorded</div>
+        <div class="summer-complete-sub">${noticeSent
+          ? `The April 1 email is marked sent. The saved date ranges are tucked away by default, but you can still review or email again if needed.`
+          : `The April 1 selection window has passed. Mark the email sent once the notice has gone out, then this prompt will stay quiet.`}</div>
+        <div class="summer-complete-actions">
+          ${noticeSent
+            ? `<button class="quick-block-btn" onclick="openSummerEmailSummary()">Email Again</button>`
+            : `<button class="quick-block-btn" onclick="markSummerNoticeSent(${activeSummerYear})">Mark Email Sent</button>`}
+          <button class="quick-block-btn" onclick="toggleSummerArchivedRanges(${activeSummerYear})">${showArchivedRanges ? 'Hide Ranges' : 'View/Edit Ranges'}</button>
+        </div>
+      </div>`
+    : '';
+  const noticeActionsHtml = (!archived || !noticeSent)
+    ? `<div class="summer-notice-actions">
+        <button class="quick-block-btn" onclick="openSummerEmailSummary()">April 1 Notice</button>
+        <button class="quick-block-btn" onclick="openSummerEmailSummaryAndSend()">Email ${recipient}</button>
+      </div>`
+    : '';
 
   body.innerHTML = `
+    ${renderSummerYearSwitch()}
     <div class="summer-overview">
       <div class="summer-overview-top">
         <div>
@@ -7740,14 +7896,18 @@ function renderSummerBody(){
       </div>
       <div class="summer-overview-meta" style="margin-top:7px">Justin ${summary.justin} days · Brittany ${summary.brittany} days</div>
     </div>
+    ${noticeActionsHtml}
+    ${archivedPanelHtml}
     ${warningsHtml}
     ${gapPanelHtml}
-    ${applyPanelHtml}
-    ${addPanelHtml}
-    <div class="quick-blocks single">
-      <button class="quick-block-btn" onclick="openSummerEmailSummary()">April 1 Email Summary</button>
-    </div>
+    ${showArchivedRanges ? applyPanelHtml : ''}
+    ${showArchivedRanges ? addPanelHtml : ''}
   `;
+
+  if (!showArchivedRanges) {
+    renderSummerStats();
+    return;
+  }
 
   summary.blocks.forEach((blk, order) => {
     const i = blk._idx;
@@ -7861,6 +8021,8 @@ function _v16BuildSavePayload(){
     schoolCalendar:    schoolCalendar || {},
     inboxState:        inboxState     || {},
     summerSubmitted:   summerSubmitted || {},
+    summerNoticeSent:  summerNoticeSent || {},
+    parentEmails:      parentEmails || {},
     updatedAt:         new Date().toISOString(),
     updatedBy:         currentUser || 'unknown'
   };
@@ -7961,6 +8123,11 @@ function _v16ApplyPayload(data){
   if (data.schoolCalendar)    schoolCalendar    = data.schoolCalendar;
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
+  if (data.summerNoticeSent)  summerNoticeSent  = data.summerNoticeSent;
+  if (data.parentEmails) {
+    parentEmails = data.parentEmails;
+    localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(getParentEmails()));
+  }
   _v16LastSharedPayload = JSON.parse(JSON.stringify(data));
 }
 
@@ -8501,7 +8668,9 @@ function _v25PatchValueForKey(key){
     expenseNotices: expenseNotices || [],
     schoolCalendar: schoolCalendar || {},
     inboxState: inboxState || {},
-    summerSubmitted: summerSubmitted || {}
+    summerSubmitted: summerSubmitted || {},
+    summerNoticeSent: summerNoticeSent || {},
+    parentEmails: parentEmails || {}
   };
   return _v25Clone(values[key]);
 }
