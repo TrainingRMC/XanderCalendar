@@ -318,6 +318,18 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 @keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
 .modal-title{font-family:'Nunito',sans-serif;font-size:1.15em;font-weight:800;margin-bottom:2px}
 .modal-sub{font-size:.76em;color:var(--muted);margin-bottom:14px}
+.day-detail-card{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:12px;padding:12px 13px;margin:0 0 13px;box-shadow:var(--shadow-sm)}
+.day-detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:9px}
+.day-detail-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:1.02em;line-height:1.15}
+.day-detail-sub{font-size:.78em;color:var(--muted);line-height:1.35;margin-top:2px}
+.day-detail-owner{font-family:'Nunito',sans-serif;font-weight:900;color:#fff;border-radius:999px;padding:5px 10px;font-size:.76em;white-space:nowrap}
+.day-detail-owner.j{background:linear-gradient(135deg,var(--j-d),var(--j))}
+.day-detail-owner.b{background:linear-gradient(135deg,var(--b-d),var(--b))}
+.day-detail-chips{display:flex;gap:6px;flex-wrap:wrap}
+.day-detail-chip{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 8px;font-size:.72em;font-weight:800;color:var(--muted);font-family:'Nunito',sans-serif}
+.day-detail-chip.gold{background:var(--gold-l);border-color:rgba(245,158,11,.35);color:#92400e}
+.day-detail-chip.green{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#047857}
+.day-detail-chip.purple{background:rgba(167,139,250,.14);border-color:rgba(167,139,250,.32);color:#7c3aed}
 .field-lbl{font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .sel,.inp,.ta{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.93em;font-family:'DM Sans',sans-serif;margin-bottom:12px;transition:all .2s ease;background:var(--input-bg);color:var(--text);font-weight:500}
 .sel:focus,.inp:focus,.ta:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
@@ -1593,6 +1605,7 @@ body.drawer-open{overflow:hidden}
   <div class="modal">
     <div class="modal-title" id="m-title">Edit Day</div>
     <div class="modal-sub" id="m-sub"></div>
+    <div class="day-detail-card" id="day-detail-card"></div>
 
     <div class="field-lbl">Who has Xander?</div>
     <select class="sel" id="m-owner">
@@ -1633,6 +1646,7 @@ body.drawer-open{overflow:hidden}
       <button class="btn" style="flex:1;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)" onclick="addTravelFromDay()">✈️ Add Travel Range</button>
       <button class="btn" style="flex:1;background:rgba(245,158,11,.16);color:#92400e;border:1px solid rgba(245,158,11,.35)" onclick="openSummerTrade(editKey)">☀️ Adjust Summer Days</button>
       <button class="btn" style="flex:1;background:rgba(167,139,250,.15);color:#7c3aed;border:1px solid rgba(167,139,250,.35)" onclick="sendDateNoteOnly()">📝 Send Note</button>
+      <button class="btn" style="flex:1;background:var(--bg-2);color:var(--text);border:1px solid var(--border)" onclick="openDayRecord()">📜 View Record</button>
     </div>
     <div class="btn-row">
       <button class="btn btn-reset"  onclick="resetDay()">↺ Reset</button>
@@ -2170,14 +2184,66 @@ function buildTimeStr(from, to, mode){
   return '';
 }
 
+function dayTravelForDate(dateKey){
+  return (travelEntries || []).filter(t => t && t.start && t.end && dateKey >= t.start && dateKey <= t.end);
+}
+
+function pendingItemsForDate(dateKey){
+  return Object.values(pendingSwaps || {}).filter(s => s && s.date === dateKey);
+}
+
+function renderDayDetailPanel(y,m,d,info){
+  const el = document.getElementById('day-detail-card');
+  if (!el) return;
+  const dateKey = dk(y,m,d);
+  const owner = info && info.owner ? info.owner : 'Brittany';
+  const timeStr = buildTimeStr(info.timeFrom, info.timeTo, info.timeMode);
+  const chips = [];
+  if (info.event) chips.push(`<span class="day-detail-chip gold">${_v13EscapeHtml(info.event)}</span>`);
+  if (info.is_bday) chips.push('<span class="day-detail-chip gold">Xander birthday</span>');
+  if (info.parent_bday) chips.push(`<span class="day-detail-chip gold">${_v13EscapeHtml(info.parent_bday)} birthday</span>`);
+  if (info.midweek) chips.push('<span class="day-detail-chip purple">Tue/Thu after school</span>');
+  if (timeStr) chips.push(`<span class="day-detail-chip purple">${_v13EscapeHtml(timeStr)}</span>`);
+  const travel = dayTravelForDate(dateKey);
+  if (travel.length) chips.push(`<span class="day-detail-chip green">${travel.length} travel item${travel.length===1?'':'s'}</span>`);
+  const pending = pendingItemsForDate(dateKey);
+  if (pending.length) chips.push(`<span class="day-detail-chip gold">${pending.length} inbox update${pending.length===1?'':'s'}</span>`);
+  if (overrides[dateKey]) chips.push('<span class="day-detail-chip">Manually edited</span>');
+  if (info.note) chips.push('<span class="day-detail-chip purple">Has note</span>');
+  const sub = info.note
+    ? _v13EscapeHtml(info.note)
+    : travel.length
+      ? _v13EscapeHtml(travel.map(t => t.label || 'Travel').join(', '))
+      : 'Use the fields below for notes, schedule details, or a proposed change.';
+  el.innerHTML = `<div class="day-detail-top">
+    <div>
+      <div class="day-detail-title">${owner} has Xander</div>
+      <div class="day-detail-sub">${sub}</div>
+    </div>
+    <div class="day-detail-owner ${owner==='Justin'?'j':'b'}">${owner}</div>
+  </div>
+  <div class="day-detail-chips">${chips.length ? chips.join('') : '<span class="day-detail-chip">Regular day</span>'}</div>`;
+}
+
+function openDayRecord(){
+  if (!editKey) return;
+  historyQuery = '';
+  historyMonth = '';
+  historyDate = editKey;
+  historyFilter = 'all';
+  closeDay();
+  openHistory();
+}
+
 // ── DAY EDIT MODAL ───────────────────────────────────────────────
 function openDay(y,m,d){
   editKey=dk(y,m,d);
   const info=getInfo(y,m,d)||{owner:'Brittany',event:'',note:''};
   const ov=overrides[editKey]||{};
   const dateStr=new Date(y,m,d).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('m-title').textContent=`Edit ${MN[m]} ${d}, ${y}`;
+  document.getElementById('m-title').textContent=`${MN[m]} ${d}, ${y}`;
   document.getElementById('m-sub').textContent=dateStr;
+  renderDayDetailPanel(y,m,d,info);
   document.getElementById('m-owner').value=info.owner;
   document.getElementById('m-event').value=ov.event!==undefined?ov.event:(info.event||'');
   document.getElementById('m-note').value=ov.note||'';
