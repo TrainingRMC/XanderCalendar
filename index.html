@@ -1102,6 +1102,14 @@ body.drawer-open{overflow:hidden}
 .inbox-history-title{font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px;font-family:'Nunito',sans-serif}
 .inbox-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}
 .inbox-section-count{background:var(--bg-2);border:1px solid var(--border);border-radius:14px;padding:3px 8px;font-size:.7em;font-weight:900;color:var(--muted);font-family:'Nunito',sans-serif}
+.inbox-action-summary{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin:0 0 12px;box-shadow:var(--shadow-sm)}
+.inbox-action-main{font-family:'Nunito',sans-serif;font-size:1.02em;font-weight:900;color:var(--text);line-height:1.2}
+.inbox-action-sub{font-size:.8em;color:var(--muted);line-height:1.4;margin-top:3px}
+.inbox-action-group{margin:12px 0 14px}
+.inbox-action-group:first-of-type{margin-top:0}
+.inbox-action-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px}
+.inbox-action-group-title{font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.inbox-action-group-count{font-size:.68em;font-weight:900;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-family:'Nunito',sans-serif}
 .inbox-view-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:0 0 13px}
 .inbox-view-tab{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:10px;padding:8px 6px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
 .inbox-view-tab.active{background:var(--j);border-color:var(--j);color:#fff}
@@ -10244,6 +10252,44 @@ function _v21VisibleInboxItems(){
   })).filter(row => row.html && row.html.trim());
 }
 
+function _v23InboxGroupFor(item){
+  const type = item && item.type ? item.type : '';
+  if (type === 'swap' || type === 'summer-adjustment' || type === 'summer-review' || type === 'summer-finalize') {
+    return { key:'approval', title:'Needs Decision', order:1 };
+  }
+  if (type === 'travel' || type === 'expense-notice') {
+    return { key:'ack', title:'Needs Acknowledgement', order:2 };
+  }
+  if (type === 'expense') {
+    return { key:'expense', title:'Expenses', order:3 };
+  }
+  if (type === 'school' || type === 'summer-plan') {
+    return { key:'reminder', title:'Reminders', order:4 };
+  }
+  return { key:'other', title:'Other Updates', order:5 };
+}
+
+function _v23RenderInboxGroups(rows){
+  if (!rows.length) {
+    return '<div class="inbox-empty">✨ You’re all caught up<br><span style="font-size:.86em">No swaps, travel, expenses, or reminders need attention.</span></div>';
+  }
+  const grouped = new Map();
+  rows.forEach(row => {
+    const group = _v23InboxGroupFor(row.item);
+    if (!grouped.has(group.key)) grouped.set(group.key, { group, rows: [] });
+    grouped.get(group.key).rows.push(row);
+  });
+  return [...grouped.values()]
+    .sort((a,b) => a.group.order - b.group.order)
+    .map(({group, rows}) => `<div class="inbox-action-group">
+      <div class="inbox-action-group-head">
+        <div class="inbox-action-group-title">${group.title}</div>
+        <div class="inbox-action-group-count">${rows.length}</div>
+      </div>
+      ${rows.map(r => r.html).join('')}
+    </div>`).join('');
+}
+
 getInboxUnreadCount = function(){
   return (getInboxItems() || []).filter(i => i && i.unread).length;
 };
@@ -10272,13 +10318,19 @@ renderInboxBody = function(){
   const title = document.querySelector('.inbox-title');
   if (title) title.textContent = '📥 Inbox';
   const rows = _v21VisibleInboxItems();
-  const actionHtml = rows.length
-    ? rows.map(r => r.html).join('')
-    : '<div class="inbox-empty">✨ You’re all caught up<br><span style="font-size:.86em">Shared updates, travel notices, expenses, and reminders will show up here.</span></div>';
+  const unread = rows.filter(r => r.item && r.item.unread).length;
+  const actionHtml = _v23RenderInboxGroups(rows);
+  const summaryText = rows.length
+    ? `${rows.length} open item${rows.length===1?'':'s'}${unread ? ` · ${unread} unread` : ''}`
+    : 'No decisions or acknowledgements waiting right now.';
   body.innerHTML = `
     <div class="inbox-section-head">
       <div class="inbox-history-title" style="margin:0">Action Items</div>
       <div class="inbox-section-count">${rows.length} open</div>
+    </div>
+    <div class="inbox-action-summary">
+      <div class="inbox-action-main">${rows.length ? 'Here’s what needs attention' : 'You’re all caught up'}</div>
+      <div class="inbox-action-sub">${summaryText}</div>
     </div>
     ${actionHtml}`;
 };
