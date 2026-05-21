@@ -1137,17 +1137,7 @@ body.drawer-open{overflow:hidden}
 .week-chip.expense{background:var(--gold-soft);border-color:rgba(245,158,11,.35);color:#92400e}
 .week-chip.event{background:rgba(167,139,250,.13);border-color:rgba(167,139,250,.35);color:#7c3aed}
 .calendar-anchor-label{max-width:980px;margin:4px auto 0;padding:0 2px;font-size:.72em;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-family:'Nunito',sans-serif}
-.dash-timeline{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
-.dash-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
-.dash-timeline-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .dash-timeline-link{border:none;background:transparent;color:var(--j);font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer}
-.timeline-list{display:grid;gap:7px}
-.timeline-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:11px;padding:8px 9px;min-height:50px}
-.timeline-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--card);box-shadow:var(--shadow-sm);font-size:1em}
-.timeline-title{font-weight:900;font-family:'Nunito',sans-serif;font-size:.86em;color:var(--text);line-height:1.15}
-.timeline-sub{font-size:.74em;color:var(--muted);line-height:1.25;margin-top:2px}
-.timeline-date{font-family:'Nunito',sans-serif;font-size:.73em;font-weight:900;color:var(--muted);text-align:right;white-space:nowrap}
-.timeline-item.j{border-left:3px solid var(--j)}.timeline-item.b{border-left:3px solid var(--b)}.timeline-item.travel{border-left:3px solid var(--emerald)}.timeline-item.attn{border-left:3px solid var(--gold)}
 .inbox-history-title{font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px;font-family:'Nunito',sans-serif}
 .inbox-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}
 .inbox-section-count{background:var(--bg-2);border:1px solid var(--border);border-radius:14px;padding:3px 8px;font-size:.7em;font-weight:900;color:var(--muted);font-family:'Nunito',sans-serif}
@@ -1321,7 +1311,6 @@ body.drawer-open{overflow:hidden}
 :root[data-theme="dark"] .week-day-row{background:var(--card)}
 :root[data-theme="dark"] .week-chip.travel{color:#6ee7b7}
 :root[data-theme="dark"] .week-chip.expense{color:var(--gold)}
-:root[data-theme="dark"] .timeline-icon{background:var(--card-elev)}
 @media(max-width:700px){
   .home-dash{padding:10px 10px 6px}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
@@ -1340,7 +1329,7 @@ body.drawer-open{overflow:hidden}
 /* V15: final iPhone polish */
 .dash-action,.cal-icon-btn,.cal-today-btn,.ix-btn,.travel-item-btn,.quick-block-btn,.owner-btn,.btn,.mth-btn,.year-tab{min-height:44px}
 .dash-action{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
-.dash-card.tap,.timeline-item,.myday-row,.record-match{touch-action:manipulation}
+.dash-card.tap,.myday-row,.record-match{touch-action:manipulation}
 .inbox-item-actions,.btn-row,.sum-modal-ftr,.summer-prop-ftr,.export-url-box{gap:8px}
 .ix-btn,.btn{font-weight:900}
 .modal,.travel-modal,.sum-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal{overscroll-behavior:contain}
@@ -1349,7 +1338,7 @@ body.drawer-open{overflow:hidden}
 .btn-save,.ix-approve{box-shadow:var(--shadow-sm)}
 
 @media(hover:none){
-  .dc:hover,.dash-card.tap:hover,.dash-action:hover,.timeline-item:hover,.myday-row:hover,.record-match:hover,.cal-icon-btn:hover,.cal-today-btn:hover,.travel-item-btn:hover{
+  .dc:hover,.dash-card.tap:hover,.dash-action:hover,.myday-row:hover,.record-match:hover,.cal-icon-btn:hover,.cal-today-btn:hover,.travel-item-btn:hover{
     transform:none;
   }
 }
@@ -1374,12 +1363,6 @@ body.drawer-open{overflow:hidden}
   .week-day-row{grid-template-columns:44px 1fr;gap:8px;padding:8px}
   .week-chips{grid-column:2;justify-content:flex-start;max-width:none}
   .week-detail{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .dash-timeline{padding:10px;border-radius:12px}
-  .timeline-item{grid-template-columns:28px 1fr auto;gap:7px;padding:8px;min-height:48px}
-  .timeline-icon{width:28px;height:28px;border-radius:8px}
-  .timeline-title{font-size:.82em}
-  .timeline-sub{font-size:.7em}
-  .timeline-date{font-size:.68em}
   .modal{width:94%;padding:18px;border-radius:16px}
   .modal-title{font-size:1.05em}
   .sel,.inp,.ta{font-size:.9em;padding:10px 12px}
@@ -1416,7 +1399,7 @@ body.drawer-open{overflow:hidden}
   .travel-item-btn{width:100%;padding:8px 10px}
 }
 
-.dash-card-main,.dash-card-sub,.timeline-title,.timeline-sub,.inbox-item-t,.inbox-item-body,.travel-item-dates,.travel-item-label,.myday-meta{overflow-wrap:anywhere}
+.dash-card-main,.dash-card-sub,.inbox-item-t,.inbox-item-body,.travel-item-dates,.travel-item-label,.myday-meta{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -1508,13 +1491,6 @@ body.drawer-open{overflow:hidden}
         <div class="dash-tools-sub">Open when you need them</div>
       </div>
       <div class="dash-tools-grid" id="dash-tools-grid"></div>
-    </div>
-    <div class="dash-timeline">
-      <div class="dash-timeline-head">
-        <div class="dash-timeline-title">Next Up</div>
-        <button class="dash-timeline-link" onclick="_v13ShowSearch()">Find</button>
-      </div>
-      <div class="timeline-list" id="dash-timeline-list"></div>
     </div>
     <div class="calendar-anchor-label">Month Calendar</div>
   </div>
@@ -7565,127 +7541,6 @@ function _v13FindUpcomingHighlight(){
   return null;
 }
 
-function _v13BuildTimeline(){
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
-  const items = [];
-  let prevOwner = _v13InfoForDate(start).owner;
-  const seen = new Set();
-
-  const pushItem = (item) => {
-    const id = `${item.type}-${item.date}-${item.title}`;
-    if (seen.has(id)) return;
-    seen.add(id);
-    items.push(item);
-  };
-
-  for (let i = 0; i <= 45; i++){
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const dateKey = _v13KeyFromDate(d);
-    const info = _v13InfoForDate(d);
-
-    if (i > 0 && info.owner && prevOwner && info.owner !== prevOwner){
-      pushItem({
-        type:'exchange',
-        icon:'↔',
-        date:dateKey,
-        title:`Exchange with ${info.owner}`,
-        sub:`${prevOwner} to ${info.owner}`,
-        owner:info.owner
-      });
-    }
-    prevOwner = info.owner || prevOwner;
-
-    if (info.is_bday || info.parent_bday || info.event){
-      const title = info.event || (info.is_bday ? "Xander's Birthday" : `${info.parent_bday}'s Birthday`);
-      const icon = info.is_bday || info.parent_bday ? '🎂'
-        : title.toLowerCase().includes('school') ? '🏫'
-        : title.toLowerCase().includes('summer') ? '☀️'
-        : '★';
-      pushItem({
-        type:'event',
-        icon,
-        date:dateKey,
-        title,
-        sub:`${info.owner || 'Parent'} has Xander`,
-        owner:info.owner
-      });
-    }
-  }
-
-  (travelEntries || []).forEach(t => {
-    if (!t || !t.end || t.end < _v13TodayKey()) return;
-    pushItem({
-      type:'travel',
-      icon:'✈️',
-      date:t.start,
-      title:t.label || `${t.by || 'Parent'} travel`,
-      sub:`${fmtDate(t.start)}${t.end !== t.start ? ' - ' + fmtDate(t.end) : ''}`,
-      owner:t.by,
-      travelId:t.id,
-      travel:true
-    });
-  });
-
-  if (typeof getInboxItems === 'function'){
-    getInboxItems().slice(0, 2).forEach(i => {
-      const label = i.type === 'swap' ? 'Calendar change'
-        : i.type === 'travel' ? 'Travel acknowledgement'
-        : i.type === 'expense' || i.type === 'expense-notice' ? 'Expense update'
-        : i.type === 'school' ? 'School calendar reminder'
-        : i.type && i.type.includes('summer') ? 'Summer planning'
-        : 'Inbox item';
-      pushItem({
-        type:'attention',
-        icon:'📥',
-        date:(i.ts || new Date().toISOString()).slice(0,10),
-        title:label,
-        sub:'Open Inbox to handle it',
-        owner:currentUser,
-        attention:true
-      });
-    });
-  }
-
-  return items
-    .filter(i => i.date)
-    .sort((a,b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
-}
-
-function renderTimeline(){
-  const el = document.getElementById('dash-timeline-list');
-  if (!el) return;
-  const items = _v13BuildTimeline();
-  if (items.length === 0){
-    el.innerHTML = `<div class="timeline-item">
-      <div class="timeline-icon">✓</div>
-      <div>
-        <div class="timeline-title">Nothing urgent ahead</div>
-        <div class="timeline-sub">The next few weeks look calm.</div>
-      </div>
-      <div class="timeline-date">Now</div>
-    </div>`;
-    return;
-  }
-  el.innerHTML = items.map(item => {
-    const cls = item.attention ? 'attn' : item.travel ? 'travel' : (item.owner === 'Justin' ? 'j' : item.owner === 'Brittany' ? 'b' : '');
-    const action = item.attention
-      ? '_v13OpenInboxFromPage(event)'
-      : item.travel
-        ? `_v17OpenTravelFromDashboard('${item.travelId || ''}')`
-        : `jumpToSearchResult(${_v13DateFromKey(item.date).getFullYear()},${_v13DateFromKey(item.date).getMonth()},${_v13DateFromKey(item.date).getDate()})`;
-    return `<div class="timeline-item ${cls}" onclick="${action}" style="cursor:pointer">
-      <div class="timeline-icon">${item.icon}</div>
-      <div>
-        <div class="timeline-title">${item.title}</div>
-        <div class="timeline-sub">${item.sub || ''}</div>
-      </div>
-      <div class="timeline-date">${_v13ShortDate(item.date).replace(',', '')}</div>
-    </div>`;
-  }).join('');
-}
-
 function _v33WeekTravelForDate(dateKey){
   return (travelEntries || []).filter(t => t && t.start && t.end && dateKey >= t.start && dateKey <= t.end);
 }
@@ -7836,7 +7691,6 @@ function renderDashboard(){
     `;
   }
   renderWeekAgenda();
-  renderTimeline();
 }
 
 const _v13_origRender = render;
