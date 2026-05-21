@@ -916,6 +916,16 @@ body.auth-unlocked #who-gate{display:none}
 .settings-sync-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
 .settings-sync-row-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .settings-sync-row-value{font-size:.82em;color:var(--text);font-weight:800;margin-top:2px;line-height:1.25}
+.system-check-grid{display:grid;gap:9px}
+.system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
+.system-check-card.ok{border-color:rgba(16,185,129,.32);background:linear-gradient(135deg,rgba(16,185,129,.1),var(--card))}
+.system-check-card.warn{border-color:rgba(245,158,11,.38);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.system-check-card.err{border-color:rgba(220,38,38,.32);background:linear-gradient(135deg,rgba(220,38,38,.1),var(--card))}
+.system-check-icon{width:32px;height:32px;border-radius:10px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.05em}
+.system-check-title{font-family:'Nunito',sans-serif;font-size:.9em;font-weight:900;color:var(--text);line-height:1.15}
+.system-check-text{font-size:.78em;color:var(--muted);line-height:1.4;margin-top:3px}
+.system-check-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.system-check-actions .btn{padding:9px 10px}
 
 /* The year-tabs row needs position:relative for the absolute dropdown */
 .year-tabs{position:relative}
@@ -1351,7 +1361,7 @@ body.drawer-open{overflow:hidden}
   .sum-modal,.travel-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal,.settings-modal{width:96%;max-height:96vh;border-radius:16px}
   .sum-modal-hdr,.travel-hdr,.mydays-hdr,.summer-prop-hdr,.export-hdr,.notif-hdr,.swap-block-hdr{padding:15px 16px 12px}
   .sum-modal-body,.travel-body,.mydays-body,.summer-prop-body,.export-body,.notif-body,.swap-block-body{padding:12px 13px}
-  .settings-grid,.settings-actions,.settings-mini-grid,.welcome-benefits{grid-template-columns:1fr}
+  .settings-grid,.settings-actions,.settings-mini-grid,.system-check-actions,.welcome-benefits{grid-template-columns:1fr}
   .sum-modal-ftr,.summer-prop-ftr{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 13px}
   .sum-modal-ftr .btn,.summer-prop-ftr .btn{width:100%}
   .quick-blocks{grid-template-columns:1fr}
@@ -1559,6 +1569,13 @@ body.drawer-open{overflow:hidden}
   </div>
   <div class="menu-section">
     <div class="menu-section-label">Setup</div>
+    <button class="menu-item" onclick="closeMenu();openSystemCheck()">
+      <span class="menu-icon">✅</span>
+      <div class="menu-text">
+        <div class="menu-label">System Check</div>
+        <div class="menu-hint">Sync, save, receipts, backup</div>
+      </div>
+    </button>
     <button class="menu-item" onclick="closeMenu();openSettings()">
       <span class="menu-icon">⚙️</span>
       <div class="menu-text">
@@ -1795,6 +1812,22 @@ body.drawer-open{overflow:hidden}
     <div class="settings-actions">
       <button class="btn btn-cancel" onclick="closeSettings()">Close</button>
       <button class="btn btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════ SYSTEM CHECK MODAL ═══════════════════════ -->
+<div class="overlay" id="system-check-overlay">
+  <div class="settings-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">✅ System Check</div>
+      <div class="settings-sub">Save, sync, receipts, backup, and account health</div>
+    </div>
+    <div class="settings-body" id="system-check-body"></div>
+    <div class="settings-actions">
+      <button class="btn btn-cancel" onclick="closeSystemCheck()">Close</button>
+      <button class="btn btn-save" onclick="renderSystemCheck()">Refresh Check</button>
     </div>
   </div>
 </div>
@@ -2658,6 +2691,119 @@ function settingsNewestConfirmedSave(){
 function welcomeCalendarName(){
   const s = typeof getAppSettings === 'function' ? getAppSettings() : {};
   return s && s.childName ? `${s.childName}'s Parenting Calendar` : 'Your Shared Parenting Calendar';
+}
+
+function openSystemCheck(){
+  renderSystemCheck();
+  document.getElementById('system-check-overlay').classList.add('open');
+}
+
+function closeSystemCheck(){
+  document.getElementById('system-check-overlay').classList.remove('open');
+}
+
+document.getElementById('system-check-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeSystemCheck();
+});
+
+function systemCheckCard(tone, icon, title, text){
+  return `<div class="system-check-card ${tone}">
+    <div class="system-check-icon">${icon}</div>
+    <div>
+      <div class="system-check-title">${_v13EscapeHtml(title)}</div>
+      <div class="system-check-text">${_v13EscapeHtml(text)}</div>
+    </div>
+  </div>`;
+}
+
+function systemCheckBackupInfo(){
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  if (!backup) return { tone:'ok', title:'Local backup ready', text:'No unsynced backup is waiting on this device.' };
+  const when = backup.savedAt ? settingsTimeLabel(backup.savedAt, 'recently') : 'recently';
+  if (['pending','error','held','blocked'].includes(backup.status)) {
+    return { tone:'warn', title:'Local backup protected', text:`A ${backup.status} backup from ${when} is saved on this device and can be retried or exported.` };
+  }
+  return { tone:'ok', title:'Local backup ready', text:`Last local backup was confirmed ${when}.` };
+}
+
+function systemCheckLastSaved(){
+  const lastSaved = settingsNewestConfirmedSave();
+  return lastSaved
+    ? { tone:'ok', title:'Last save confirmed', text:`This device last confirmed a shared save ${settingsTimeLabel(lastSaved)}.` }
+    : { tone:'warn', title:'No save confirmed here yet', text:'After the next successful change, this device will show a confirmed shared save time.' };
+}
+
+function systemCheckReceiptInfo(){
+  if (!isFirebaseSignedIn()) {
+    return { tone:'warn', title:'Receipts need sign-in', text:'Sign in before uploading or viewing receipts.' };
+  }
+  if (window._fbUploadReceipt && window._fbGetReceiptBlob) {
+    return { tone:'ok', title:'Receipts ready', text:'Firebase Storage is available. If Spark quota blocks an upload, small receipts can save inside the protected calendar record.' };
+  }
+  return { tone:'warn', title:'Receipt fallback ready', text:'Firebase Storage helper is not available here, but small receipts can still save inside the protected calendar record.' };
+}
+
+function systemCheckModeInfo(){
+  if (window.location.protocol === 'file:') {
+    return { tone:'warn', title:'Local preview mode', text:'This is the file preview. Use the GitHub Pages app for live saving with Brittany.' };
+  }
+  return { tone:'ok', title:'Live app mode', text:'You are viewing the hosted app, so shared save and sync can run here.' };
+}
+
+function systemCheckSyncInfo(){
+  const state = typeof _v30SyncState !== 'undefined' ? _v30SyncState : 'connecting';
+  const tone = state === 'error' ? 'err' : (state === 'connecting' || state === 'saving' ? 'warn' : 'ok');
+  return { tone, title: settingsSyncTitle(), text: settingsSyncText() };
+}
+
+function systemCheckAccountInfo(){
+  if (!isFirebaseAuthRequired()) {
+    return { tone:'ok', title:'Private mode relaxed', text:`App password mode is active. Current user: ${currentUser || 'not selected'}.` };
+  }
+  if (isFirebaseSignedIn()) {
+    const email = window._fbUser && window._fbUser.email ? ` (${window._fbUser.email})` : '';
+    return { tone:'ok', title:`Signed in as ${currentUser || 'parent'}`, text:`Secure Firebase login is active${email}.` };
+  }
+  if (!isFirebaseAuthSettled()) return { tone:'warn', title:'Checking sign-in', text:'The app is restoring secure sign-in now.' };
+  return { tone:'err', title:'Signed out', text:'Sign in again before making shared changes.' };
+}
+
+async function retrySystemBackup(){
+  if (typeof _v27RetryLocalBackupSave === 'function') await _v27RetryLocalBackupSave();
+  renderSystemCheck();
+}
+
+function renderSystemCheck(){
+  const body = document.getElementById('system-check-body');
+  if (!body) return;
+  const sync = systemCheckSyncInfo();
+  const account = systemCheckAccountInfo();
+  const backup = systemCheckBackupInfo();
+  const saved = systemCheckLastSaved();
+  const receipts = systemCheckReceiptInfo();
+  const mode = systemCheckModeInfo();
+  const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
+  const loadedCard = loaded
+    ? systemCheckCard('ok', '📡', 'Shared calendar loaded', `Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.`)
+    : systemCheckCard('warn', '📡', 'Shared calendar loading', 'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.');
+
+  body.innerHTML = `
+    <div class="system-check-grid">
+      ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
+      ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
+      ${loadedCard}
+      ${systemCheckCard(saved.tone, '💾', saved.title, saved.text)}
+      ${systemCheckCard(backup.tone, '🛟', backup.title, backup.text)}
+      ${systemCheckCard(receipts.tone, '🧾', receipts.title, receipts.text)}
+      ${systemCheckCard(mode.tone, '🌐', mode.title, mode.text)}
+    </div>
+    <div class="system-check-actions">
+      <button class="btn btn-cancel" onclick="location.reload()">Refresh Shared Calendar</button>
+      <button class="btn btn-cancel" onclick="retrySystemBackup()">Retry Backup Save</button>
+      <button class="btn btn-cancel" onclick="exportXanderLocalBackups()">Export Backup</button>
+      <button class="btn btn-cancel" onclick="closeSystemCheck();secureSignOut()">Log Out</button>
+    </div>
+  `;
 }
 
 function renderSettings(){
@@ -8808,6 +8954,9 @@ window._setSyncStatus = function(state, detail){
   if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
   if (msg && state === 'error' && detail) msg.textContent = detail;
   if (typeof _v29RenderSyncDetail === 'function') _v29RenderSyncDetail(state, detail);
+  if (document.getElementById('system-check-overlay')?.classList.contains('open') && typeof renderSystemCheck === 'function') {
+    renderSystemCheck();
+  }
 };
 
 function _v30FriendlySyncError(err, fallback){
