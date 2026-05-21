@@ -6484,20 +6484,30 @@ function findSummerDrift(){
     btn.title = 'Save current date ranges to the shared calendar';
     btn.textContent = '✓ Save Summer Plan';
     btn.onclick = async function(){
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = 'Saving Summer...';
       if (typeof _v16SharedDataLoaded !== 'undefined' && !_v16SharedDataLoaded) {
         await _v23LoadSharedDataViaRest();
         if (!_v16SharedDataLoaded) {
+          btn.disabled = false;
+          btn.textContent = oldText;
           alert('The shared calendar is still connecting. Please wait for the sync bar to show connected before saving summer dates.');
           return;
         }
       }
       const summary = summarizeSummerPlan(activeSummerYear);
       if (summary.warnings.length) {
+        btn.disabled = false;
+        btn.textContent = oldText;
         summerGapPanelOpen = true;
         renderSummerBody();
         showToast('Fix summer warnings before saving');
         return;
       }
+      const beforeOverrides = _v25Clone(overrides || {});
+      const beforeSubmitted = _v25Clone(summerSubmitted || {});
+      const beforeActivity = _v25Clone(activityLog || []);
       const n = applySummerDirect(activeSummerYear);
       if (n > 0){
         if (typeof logAction === 'function' && currentUser){
@@ -6517,6 +6527,13 @@ function findSummerDrift(){
         try {
           await _v25PatchSharedNow(['overrides','summerPlan','summerSubmitted','activityLog'], 'summer plan');
         } catch(err) {
+          overrides = beforeOverrides;
+          summerSubmitted = beforeSubmitted;
+          activityLog = beforeActivity;
+          renderSummerBody();
+          render();
+          btn.disabled = false;
+          btn.textContent = oldText;
           alert('Summer plan did not save: ' + err.message);
           return;
         }
@@ -6526,6 +6543,8 @@ function findSummerDrift(){
       } else {
         showToast('No date ranges to save for ' + activeSummerYear);
       }
+      btn.disabled = false;
+      btn.textContent = oldText;
     };
     // Insert before the existing proposal-flow button
     const saveBtn = ftr.querySelector('.btn-save');
@@ -8181,6 +8200,8 @@ async function saveSummerEmailSummaryRecord(){
 async function markSummerNoticeSent(yr){
   const targetYear = parseInt(yr || activeSummerYear, 10);
   if (!targetYear) return;
+  const beforeNoticeSent = _v25Clone(summerNoticeSent || {});
+  const beforeActivity = _v25Clone(activityLog || []);
   summerNoticeSent[targetYear] = {
     by: currentUser || 'unknown',
     at: new Date().toISOString()
@@ -8193,7 +8214,11 @@ async function markSummerNoticeSent(yr){
     await _v25PatchSharedNow(['summerNoticeSent','activityLog'], 'summer notice');
     showToast(`Summer ${targetYear} email marked sent`);
   } catch(err) {
-    showToast('Marked locally, but shared save needs attention');
+    summerNoticeSent = beforeNoticeSent;
+    activityLog = beforeActivity;
+    renderSummerBody();
+    showToast('Email sent mark did not save');
+    alert('Email sent mark did not save: ' + err.message);
   }
 }
 
@@ -9109,6 +9134,8 @@ async function _v25PatchSharedNow(keys, label){
   keys.forEach(key => { patch[key] = _v25PatchValueForKey(key); });
   patch.updatedAt = new Date().toISOString();
   patch.updatedBy = currentUser || 'unknown';
+  const backupPayload = Object.assign(_v16BuildSavePayload(), patch);
+  _v16StoreBackup(backupPayload, 'pending');
   _setSyncStatus('saving', label ? `Saving ${label}...` : 'Saving to shared calendar...');
   let res;
   try {
@@ -9120,13 +9147,14 @@ async function _v25PatchSharedNow(keys, label){
     if (!res.ok) throw new Error('HTTP ' + res.status);
     await res.json();
   } catch(err) {
+    _v16StoreBackup(backupPayload, 'error');
     setScopedSaveStatus(saveArea, 'error', `${label || 'Change'} did not save. ${_v30FriendlySyncError(err, 'Check connection, then try again.')}`);
     throw err;
   }
   _v25PatchSyncReady = true;
   _v16LastRemoteAt = patch.updatedAt;
   _v16LastSharedPayload = Object.assign({}, _v16LastSharedPayload || {}, _v25Clone(patch));
-  _v16StoreBackup(Object.assign(_v16BuildSavePayload(), patch), 'synced');
+  _v16StoreBackup(backupPayload, 'synced');
   _v27RecordConfirmedSave(label || 'shared', patch.updatedAt);
   setScopedSaveStatus(saveArea, 'saved', `✓ ${label || 'Change'} saved to the shared calendar. ${_v31AudienceText(saveArea)}`);
   _setSyncStatus('saved', '✓ Saved to shared calendar');
