@@ -2254,6 +2254,7 @@ function renderBanner(){
 }
 
 function renderStats(){
+  const child = _v13EscapeHtml(appChildName());
   const last=new Date(cY,cM+1,0).getDate();
   let j=0,b=0,ch=0;
   for(let d=1;d<=last;d++){
@@ -2263,9 +2264,9 @@ function renderStats(){
   }
   document.getElementById('stats').innerHTML=`
     <div class="stat"><div class="stat-dot" style="background:var(--j)"></div>
-      <div><div class="stat-v" style="color:var(--j)">${j}</div><div class="stat-l">Justin with Xander</div></div></div>
+      <div><div class="stat-v" style="color:var(--j)">${j}</div><div class="stat-l">Justin with ${child}</div></div></div>
     <div class="stat"><div class="stat-dot" style="background:var(--b)"></div>
-      <div><div class="stat-v" style="color:var(--b)">${b}</div><div class="stat-l">Brittany with Xander</div></div></div>
+      <div><div class="stat-v" style="color:var(--b)">${b}</div><div class="stat-l">Brittany with ${child}</div></div></div>
     <div class="stat"><div class="stat-dot" style="background:var(--muted)"></div>
       <div><div class="stat-v">${j+b}</div><div class="stat-l">Total days</div></div></div>
     ${ch>0?`<div class="stat"><div class="stat-dot" style="background:var(--gold)"></div>
@@ -2345,6 +2346,7 @@ function pendingItemsForDate(dateKey){
 function renderDayDetailPanel(y,m,d,info){
   const el = document.getElementById('day-detail-card');
   if (!el) return;
+  const child = _v13EscapeHtml(appChildName());
   const dateKey = dk(y,m,d);
   const owner = info && info.owner ? info.owner : 'Brittany';
   const timeStr = buildTimeStr(info.timeFrom, info.timeTo, info.timeMode);
@@ -2367,7 +2369,7 @@ function renderDayDetailPanel(y,m,d,info){
       : 'Use the fields below for notes, schedule details, or a proposed change.';
   el.innerHTML = `<div class="day-detail-top">
     <div>
-      <div class="day-detail-title">${owner} has Xander</div>
+      <div class="day-detail-title">${owner} has ${child}</div>
       <div class="day-detail-sub">${sub}</div>
     </div>
     <div class="day-detail-owner ${owner==='Justin'?'j':'b'}">${owner}</div>
@@ -2673,10 +2675,14 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 let appSettings = {
+  familyName: "Xander's Family",
+  calendarName: "Xander's Parenting Calendar",
   childName: 'Xander',
   childBirthday: '2012-05-27',
   schoolName: 'Center Grove Schools',
   guidelineName: 'Indiana Parenting Time Guidelines',
+  homeState: 'Indiana',
+  timeZone: 'America/Indiana/Indianapolis',
   justinDisplay: 'Justin',
   brittanyDisplay: 'Brittany',
   justinRole: 'Father',
@@ -2687,15 +2693,29 @@ let activityLog  = [];   // array of {ts, by, type, msg}
 
 function getAppSettings(){
   return Object.assign({
+    familyName: "Xander's Family",
+    calendarName: "Xander's Parenting Calendar",
     childName: 'Xander',
     childBirthday: '2012-05-27',
     schoolName: 'Center Grove Schools',
     guidelineName: 'Indiana Parenting Time Guidelines',
+    homeState: 'Indiana',
+    timeZone: 'America/Indiana/Indianapolis',
     justinDisplay: 'Justin',
     brittanyDisplay: 'Brittany',
     justinRole: 'Father',
     brittanyRole: 'Mother'
   }, appSettings || {});
+}
+
+function appChildName(){
+  const s = getAppSettings();
+  return s.childName || 'Xander';
+}
+
+function appCalendarName(){
+  const s = getAppSettings();
+  return s.calendarName || `${appChildName()}'s Parenting Calendar`;
 }
 
 function getParentEmails(){
@@ -2726,11 +2746,12 @@ function rememberSignedInEmail(){
 
 function applyAppSettings(){
   const s = getAppSettings();
+  const calendarName = appCalendarName();
   const title = document.querySelector('.hdr-title');
-  if (title) title.textContent = `📅 ${s.childName}'s Parenting Calendar`;
+  if (title) title.textContent = `📅 ${calendarName}`;
   const sub = document.querySelector('.hdr-sub');
   if (sub) sub.textContent = `${s.schoolName} · ${s.guidelineName}`;
-  document.title = `${s.childName}'s Parenting Calendar`;
+  document.title = calendarName;
   const badges = document.querySelectorAll('.badges .badge');
   if (badges[0]) badges[0].textContent = `👨 ${s.justinDisplay} — ${s.justinRole}`;
   if (badges[1]) badges[1].textContent = `👩 ${s.brittanyDisplay} — ${s.brittanyRole}`;
@@ -2802,7 +2823,7 @@ function settingsNewestConfirmedSave(){
 
 function welcomeCalendarName(){
   const s = typeof getAppSettings === 'function' ? getAppSettings() : {};
-  return s && s.childName ? `${s.childName}'s Parenting Calendar` : 'Your Shared Parenting Calendar';
+  return s && s.calendarName ? s.calendarName : (s && s.childName ? `${s.childName}'s Parenting Calendar` : 'Your Shared Parenting Calendar');
 }
 
 function openSystemCheck(){
@@ -2955,6 +2976,16 @@ function renderSettings(){
       </div>
     </div>
     <div class="settings-section">
+      <div class="settings-section-title">Family Profile</div>
+      <div class="settings-grid">
+        ${settingsField('set-family-name', 'Family name', s.familyName)}
+        ${settingsField('set-calendar-name', 'Calendar name', s.calendarName)}
+        ${settingsField('set-home-state', 'Home state', s.homeState)}
+        ${settingsField('set-time-zone', 'Time zone', s.timeZone)}
+      </div>
+      <div class="settings-status" style="margin-top:9px">These fields prepare the app for a future multi-family version. They update the app label and records without changing the underlying IPG schedule logic.</div>
+    </div>
+    <div class="settings-section">
       <div class="settings-section-title">Child & Calendar</div>
       <div class="settings-grid">
         ${settingsField('set-child-name', 'Child name', s.childName)}
@@ -3010,10 +3041,14 @@ function renderSettings(){
 
 async function saveSettings(){
   const next = {
+    familyName: document.getElementById('set-family-name')?.value.trim() || "Xander's Family",
+    calendarName: document.getElementById('set-calendar-name')?.value.trim() || "Xander's Parenting Calendar",
     childName: document.getElementById('set-child-name')?.value.trim() || 'Xander',
     childBirthday: document.getElementById('set-child-bday')?.value || '2012-05-27',
     schoolName: document.getElementById('set-school-name')?.value.trim() || 'Center Grove Schools',
     guidelineName: document.getElementById('set-guideline-name')?.value.trim() || 'Indiana Parenting Time Guidelines',
+    homeState: document.getElementById('set-home-state')?.value.trim() || 'Indiana',
+    timeZone: document.getElementById('set-time-zone')?.value.trim() || 'America/Indiana/Indianapolis',
     justinDisplay: document.getElementById('set-justin-name')?.value.trim() || 'Justin',
     brittanyDisplay: document.getElementById('set-brittany-name')?.value.trim() || 'Brittany',
     justinRole: document.getElementById('set-justin-role')?.value.trim() || 'Father',
@@ -7391,11 +7426,14 @@ function _v19BuildPrintableRecordHtml(autoPrint){
       <div class="msg">${_v13EscapeHtml(e.msg)}</div>
     </div>`;
   }).join('') : '<div class="empty">No matching record items.</div>';
+  const settings = getAppSettings();
+  const calendarName = appCalendarName();
+  const familyLine = settings.familyName ? `${settings.familyName} · ` : '';
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Xander Calendar Record - ${_v13EscapeHtml(title)}</title>
+  <title>${_v13EscapeHtml(calendarName)} Record - ${_v13EscapeHtml(title)}</title>
   <style>
     body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;margin:32px;line-height:1.4}
     header{border-bottom:3px solid #1d4ed8;padding-bottom:18px;margin-bottom:18px}
@@ -7421,9 +7459,9 @@ function _v19BuildPrintableRecordHtml(autoPrint){
 </head>
 <body>
   <header>
-    <h1>Xander's Parenting Calendar Record</h1>
+    <h1>${_v13EscapeHtml(calendarName)} Record</h1>
     <div class="sub">${_v13EscapeHtml(title)}</div>
-    <div class="sub">Generated ${_v13EscapeHtml(generated)} · ${_v13EscapeHtml(countLine)}</div>
+    <div class="sub">${_v13EscapeHtml(familyLine)}Generated ${_v13EscapeHtml(generated)} · ${_v13EscapeHtml(countLine)}</div>
     <div class="chips">${chipHtml || '<span class="chip">No category filters</span>'}</div>
   </header>
   ${travelHtml}
@@ -7697,6 +7735,7 @@ function renderWeekAgenda(){
     sub.textContent = `Justin ${justinDays} day${justinDays===1?'':'s'} · Brittany ${brittanyDays} day${brittanyDays===1?'':'s'}${extras.length ? ' · ' + extras.join(' · ') : ''}`;
   }
   list.innerHTML = rows.map(row => {
+    const child = _v13EscapeHtml(appChildName());
     const cls = row.owner === 'Justin' ? 'j' : 'b';
     const todayCls = row.dateKey === _v13TodayKey() ? ' today' : '';
     const chips = [];
@@ -7713,7 +7752,7 @@ function renderWeekAgenda(){
         <div class="week-num">${num}</div>
       </div>
       <div class="week-main">
-        <div class="week-owner">${row.owner} has Xander</div>
+        <div class="week-owner">${row.owner} has ${child}</div>
         <div class="week-detail">${_v13EscapeHtml(detail)}</div>
       </div>
       <div class="week-chips">${chips.join('')}</div>
@@ -7725,6 +7764,7 @@ function renderDashboard(){
   const dash = document.getElementById('home-dash');
   if (!dash) return;
   const todayInfo = _v13InfoForDate(today);
+  const child = _v13EscapeHtml(appChildName());
   const owner = todayInfo.owner || 'Brittany';
   const other = currentUser === 'Justin' ? 'Brittany' : 'Justin';
   const ownerCls = owner === 'Justin' ? 'j' : 'b';
@@ -7745,7 +7785,7 @@ function renderDashboard(){
   document.getElementById('dash-kicker').textContent =
     today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
   document.getElementById('dash-title').textContent =
-    `${owner} has Xander today`;
+    `${owner} has ${child} today`;
   document.getElementById('dash-sub').textContent = todayInfo.event
     ? todayInfo.event
     : (handoff ? `Next exchange: ${_v13ShortDate(handoff.date)} to ${handoff.owner}` : 'Everything looks calm right now.');
@@ -7774,7 +7814,7 @@ function renderDashboard(){
     <div class="dash-card tap" onclick="${highlightAction}" role="button" tabindex="0" style="grid-column:1/-1">
       <div class="dash-card-title">Coming Up</div>
       <div class="dash-card-main">${highlight ? highlight.event : 'No major events soon'}</div>
-      <div class="dash-card-sub">${highlight ? `${_v13ShortDate(highlight.date)} · ${highlight.owner} has Xander` : `The next 45 days look clear.`}</div>
+      <div class="dash-card-sub">${highlight ? `${_v13ShortDate(highlight.date)} · ${highlight.owner} has ${child}` : `The next 45 days look clear.`}</div>
     </div>
   `;
   const tools = document.getElementById('dash-tools-grid');
