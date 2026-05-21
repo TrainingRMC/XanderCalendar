@@ -1092,17 +1092,21 @@ body.drawer-open{overflow:hidden}
 .dash-pill.j{background:linear-gradient(135deg,var(--j-d),var(--j))}
 .dash-pill.b{background:linear-gradient(135deg,var(--b-d),var(--b))}
 .dash-actions{display:none}
-.dash-tools{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px;box-shadow:var(--shadow-sm)}
-.dash-tools-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.dash-tools{background:rgba(255,255,255,.72);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:var(--shadow-sm);backdrop-filter:blur(14px)}
+.dash-tools-head{display:none}
 .dash-tools-title{font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .dash-tools-sub{font-size:.7em;color:var(--muted)}
-.dash-tools-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
-.dash-action{border:1px solid var(--border);background:var(--bg-2);color:var(--text);border-radius:11px;padding:9px 7px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;line-height:1.1;box-shadow:var(--shadow-sm);transition:transform .14s,box-shadow .14s,border-color .14s;position:relative}
+.dash-tools-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.dash-action{border:1px solid transparent;background:transparent;color:var(--text);border-radius:11px;padding:7px 5px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;line-height:1.1;box-shadow:none;transition:transform .14s,box-shadow .14s,border-color .14s,background .14s;position:relative;min-width:0}
 .dash-action:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--j)}
-.dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent}
-.dash-action.warn{border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
-.dash-action.wait{border-color:var(--emerald);background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card))}
-.dash-action-badge{position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:2px solid var(--card);border-radius:999px;min-width:20px;height:20px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;font-size:.68em;font-weight:900}
+.dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j));color:#fff;border-color:transparent;box-shadow:0 2px 8px var(--j-soft)}
+.dash-action.warn{border-color:rgba(245,158,11,.45);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.dash-action.wait{border-color:rgba(16,185,129,.45);background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card))}
+.dash-action-icon{font-size:1.12em;line-height:1;margin-bottom:3px}
+.dash-action-label{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-action-note{display:block;font-size:.62em;font-weight:900;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-action.primary .dash-action-note{color:rgba(255,255,255,.8)}
+.dash-action-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:2px solid var(--card);border-radius:999px;min-width:18px;height:18px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;font-size:.64em;font-weight:900}
 .dash-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:8px}
 .dash-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px;box-shadow:var(--shadow-sm);min-height:92px}
 .dash-card.tap{cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
@@ -1303,8 +1307,8 @@ body.drawer-open{overflow:hidden}
 #search-bar{display:none}
 #search-bar.open{display:flex}
 :root[data-theme="dark"] .dash-hero{background:linear-gradient(135deg,var(--bg-2),var(--card))}
-:root[data-theme="dark"] .dash-tools{background:var(--card)}
-:root[data-theme="dark"] .dash-action{background:var(--card-elev)}
+:root[data-theme="dark"] .dash-tools{background:rgba(44,44,46,.72)}
+:root[data-theme="dark"] .dash-action{background:transparent}
 :root[data-theme="dark"] .dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j))}
 :root[data-theme="dark"] .dash-card.attn{background:linear-gradient(135deg,rgba(255,159,10,.18),var(--card))}
 :root[data-theme="dark"] .dash-card.travel.wait{background:linear-gradient(135deg,rgba(16,185,129,.18),var(--card))}
@@ -1315,20 +1319,23 @@ body.drawer-open{overflow:hidden}
   .home-dash{padding:10px 10px 6px}
   .dash-grid{grid-template-columns:repeat(2,1fr)}
   .dash-tools-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
-  .dash-action{padding:9px 6px;font-size:.76em}
+  .dash-action{padding:7px 4px;font-size:.7em}
+  .dash-action-note{display:none}
   .dash-title{font-size:1.18em}
   .travel-item{align-items:flex-start}
   .travel-item-actions{flex-direction:column}
 }
 @media(max-width:380px){
   .dash-grid{grid-template-columns:1fr}
-  .dash-tools-grid{grid-template-columns:repeat(3,1fr)}
+  .dash-tools{overflow-x:auto;scrollbar-width:none}
+  .dash-tools-grid{display:flex;min-width:max-content}
+  .dash-action{width:74px;flex:0 0 74px}
   .history-date-row{grid-template-columns:1fr}
 }
 
 /* V15: final iPhone polish */
 .dash-action,.cal-icon-btn,.cal-today-btn,.ix-btn,.travel-item-btn,.quick-block-btn,.owner-btn,.btn,.mth-btn,.year-tab{min-height:44px}
-.dash-action{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
+.dash-action{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px}
 .dash-card.tap,.myday-row,.record-match{touch-action:manipulation}
 .inbox-item-actions,.btn-row,.sum-modal-ftr,.summer-prop-ftr,.export-url-box{gap:8px}
 .ix-btn,.btn{font-weight:900}
@@ -7682,12 +7689,25 @@ function renderDashboard(){
   `;
   const tools = document.getElementById('dash-tools-grid');
   if (tools) {
+    const inboxNote = hasAttention ? `${inboxCount} open` : 'Clear';
+    const travelNote = travelNeedsAck ? 'Review' : (travel ? _v13ShortDate(travel.start).replace(',', '') : 'Ready');
+    const expenseNote = expenseSummary.openCount ? `${expenseSummary.openCount} open` : 'Settled';
     tools.innerHTML = `
-      <button class="dash-action ${hasAttention ? 'warn' : ''}" onclick="_v13OpenInboxFromPage(event)">📥<br>Inbox${hasAttention ? `<span class="dash-action-badge">${inboxCount}</span>` : ''}</button>
-      <button class="dash-action ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}">✈️<br>Travel</button>
-      <button class="dash-action ${expenseSummary.openCount ? 'warn' : ''}" onclick="openExpenses()">💳<br>Expenses${expenseSummary.openCount ? `<span class="dash-action-badge">${expenseSummary.openCount}</span>` : ''}</button>
-      <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">☀️<br>Summer</button>
-      <button class="dash-action primary" onclick="_v13ShowSearch()">🔎<br>Find</button>
+      <button class="dash-action ${hasAttention ? 'warn' : ''}" onclick="_v13OpenInboxFromPage(event)">
+        <span class="dash-action-icon">📥</span><span class="dash-action-label">Inbox</span><span class="dash-action-note">${inboxNote}</span>${hasAttention ? `<span class="dash-action-badge">${inboxCount}</span>` : ''}
+      </button>
+      <button class="dash-action ${travelNeedsAck ? 'wait' : ''}" onclick="${travelAction}">
+        <span class="dash-action-icon">✈️</span><span class="dash-action-label">Travel</span><span class="dash-action-note">${travelNote}</span>
+      </button>
+      <button class="dash-action ${expenseSummary.openCount ? 'warn' : ''}" onclick="openExpenses()">
+        <span class="dash-action-icon">💳</span><span class="dash-action-label">Expenses</span><span class="dash-action-note">${expenseNote}</span>${expenseSummary.openCount ? `<span class="dash-action-badge">${expenseSummary.openCount}</span>` : ''}
+      </button>
+      <button class="dash-action" onclick="openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
+        <span class="dash-action-icon">☀️</span><span class="dash-action-label">Summer</span><span class="dash-action-note">Plan</span>
+      </button>
+      <button class="dash-action primary" onclick="_v13ShowSearch()">
+        <span class="dash-action-icon">🔎</span><span class="dash-action-label">Find</span><span class="dash-action-note">Search</span>
+      </button>
     `;
   }
   renderWeekAgenda();
