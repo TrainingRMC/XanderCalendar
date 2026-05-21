@@ -868,9 +868,12 @@ body.auth-unlocked #who-gate{display:none}
 /* ── HAMBURGER MENU ── */
 #menu-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .18s ease;backdrop-filter:blur(10px)}
 #menu-btn:hover{background:rgba(255,255,255,.22);transform:scale(1.06)}
-.menu-dropdown{display:none;position:fixed;top:58px;right:18px;background:var(--card-elev);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-xl);min-width:240px;z-index:2000;padding:6px;animation:menuPop .18s cubic-bezier(.4,0,.2,1)}
+.menu-dropdown{display:none;position:fixed;top:58px;right:18px;background:var(--card-elev);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-xl);width:300px;max-width:calc(100vw - 28px);max-height:calc(100vh - 76px);overflow-y:auto;z-index:2000;padding:7px;animation:menuPop .18s cubic-bezier(.4,0,.2,1)}
 .menu-dropdown.show{display:block}
 @keyframes menuPop{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.menu-section{padding:5px 0 7px;border-bottom:1px solid var(--border-subtle)}
+.menu-section:last-child{border-bottom:none;padding-bottom:0}
+.menu-section-label{font-family:'Nunito',sans-serif;font-size:.66em;font-weight:900;color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em;padding:6px 10px 4px}
 .menu-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:none;background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92em;text-align:left;cursor:pointer;border-radius:9px;transition:background .14s}
 .menu-item:hover{background:var(--bg-2)}
 .menu-icon{font-size:1.4em;line-height:1;width:30px;text-align:center}
@@ -1478,76 +1481,91 @@ body.drawer-open{overflow:hidden}
 </section>
 
 <div id="menu-dropdown" class="menu-dropdown">
-  <button class="menu-item" onclick="closeMenu();toggleTheme()">
-    <span class="menu-icon" id="menu-theme-icon">🌙</span>
-    <div class="menu-text">
-      <div class="menu-label" id="menu-theme-label">Appearance</div>
-      <div class="menu-hint" id="menu-theme-hint">Switch display mode</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openSettings()">
-    <span class="menu-icon">⚙️</span>
-    <div class="menu-text">
-      <div class="menu-label">Settings</div>
-      <div class="menu-hint">Family details, emails, sync, backup</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openExport()">
-    <span class="menu-icon">📲</span>
-    <div class="menu-text">
-      <div class="menu-label">Add to Phone</div>
-      <div class="menu-hint">iPhone calendar subscription</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openNotifs()">
-    <span class="menu-icon">🔔</span>
-    <div class="menu-text">
-      <div class="menu-label">Notifications</div>
-      <div class="menu-hint" id="menu-notif-hint">Push alerts when needed</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openTravel()">
-    <span class="menu-icon">✈️</span>
-    <div class="menu-text">
-      <div class="menu-label">Travel</div>
-      <div class="menu-hint">Add or manage trips</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openExpenses()">
-    <span class="menu-icon">💳</span>
-    <div class="menu-text">
-      <div class="menu-label">Expenses</div>
-      <div class="menu-hint">Track shared costs and reimbursements</div>
-    </div>
-  </button>
-  <button class="menu-item" onclick="closeMenu();openHistory(event)">
-    <span class="menu-icon">📜</span>
-    <div class="menu-text">
-      <div class="menu-label">Record</div>
-      <div class="menu-hint">Search history, dates, notes, travel</div>
-    </div>
-  </button>
-  <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
-    <span class="menu-icon">☀️</span>
-    <div class="menu-text">
-      <div class="menu-label">Summer Planner</div>
-      <div class="menu-hint">Plan summer dates and share the April 1 summary</div>
-    </div>
-  </button>
-  <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
-    <span class="menu-icon">🏫</span>
-    <div class="menu-text">
-      <div class="menu-label">School Calendar</div>
-      <div class="menu-hint">Breaks, first/last day, no-school days</div>
-    </div>
-  </button>
-  <button class="menu-item" id="menu-logout-item" onclick="closeMenu();secureSignOut()" style="display:none">
-    <span class="menu-icon">↪</span>
-    <div class="menu-text">
-      <div class="menu-label">Log Out</div>
-      <div class="menu-hint" id="menu-logout-hint">Sign out of this device</div>
-    </div>
-  </button>
+  <div class="menu-section">
+    <div class="menu-section-label">Today</div>
+    <button class="menu-item" onclick="closeMenu();openTravel()">
+      <span class="menu-icon">✈️</span>
+      <div class="menu-text">
+        <div class="menu-label">Travel</div>
+        <div class="menu-hint">Add or manage trips</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openExpenses()">
+      <span class="menu-icon">💳</span>
+      <div class="menu-text">
+        <div class="menu-label">Expenses</div>
+        <div class="menu-hint">Track shared costs and reimbursements</div>
+      </div>
+    </button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-label">Planning</div>
+    <button class="menu-item" id="menu-summer-item" onclick="closeMenu();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">
+      <span class="menu-icon">☀️</span>
+      <div class="menu-text">
+        <div class="menu-label">Summer Planner</div>
+        <div class="menu-hint">Plan summer dates and share the April 1 summary</div>
+      </div>
+    </button>
+    <button class="menu-item" id="menu-school-item" onclick="closeMenu();openSchoolCal()">
+      <span class="menu-icon">🏫</span>
+      <div class="menu-text">
+        <div class="menu-label">School Calendar</div>
+        <div class="menu-hint">Breaks, first/last day, no-school days</div>
+      </div>
+    </button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-label">Records</div>
+    <button class="menu-item" onclick="closeMenu();openHistory()">
+      <span class="menu-icon">📜</span>
+      <div class="menu-text">
+        <div class="menu-label">Record</div>
+        <div class="menu-hint">Search history, dates, notes, travel</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openExport()">
+      <span class="menu-icon">📲</span>
+      <div class="menu-text">
+        <div class="menu-label">Add to Phone</div>
+        <div class="menu-hint">iPhone calendar subscription</div>
+      </div>
+    </button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-label">Setup</div>
+    <button class="menu-item" onclick="closeMenu();openSettings()">
+      <span class="menu-icon">⚙️</span>
+      <div class="menu-text">
+        <div class="menu-label">Settings</div>
+        <div class="menu-hint">Family details, emails, sync, backup</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openNotifs()">
+      <span class="menu-icon">🔔</span>
+      <div class="menu-text">
+        <div class="menu-label">Notifications</div>
+        <div class="menu-hint" id="menu-notif-hint">Push alerts when needed</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();toggleTheme()">
+      <span class="menu-icon" id="menu-theme-icon">🌙</span>
+      <div class="menu-text">
+        <div class="menu-label" id="menu-theme-label">Appearance</div>
+        <div class="menu-hint" id="menu-theme-hint">Switch display mode</div>
+      </div>
+    </button>
+  </div>
+  <div class="menu-section" id="menu-account-section" style="display:none">
+    <div class="menu-section-label">Account</div>
+    <button class="menu-item" id="menu-logout-item" onclick="closeMenu();secureSignOut()" style="display:none">
+      <span class="menu-icon">↪</span>
+      <div class="menu-text">
+        <div class="menu-label">Log Out</div>
+        <div class="menu-hint" id="menu-logout-hint">Sign out of this device</div>
+      </div>
+    </button>
+  </div>
 </div>
 
 <div id="sum-banner"></div>
@@ -2679,16 +2697,19 @@ function updateUserBadge() {
   const badge = document.getElementById('user-badge');
   const text  = document.getElementById('user-badge-text');
   const logout = document.getElementById('menu-logout-item');
+  const accountSection = document.getElementById('menu-account-section');
   const logoutHint = document.getElementById('menu-logout-hint');
   if (!badge || !text) return;
   if (!currentUser) {
     text.textContent = 'Locked';
     badge.classList.remove('b');
     if (logout) logout.style.display = 'none';
+    if (accountSection) accountSection.style.display = 'none';
     return;
   }
   text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
   badge.classList.toggle('b', currentUser === 'Brittany');
+  if (accountSection) accountSection.style.display = 'block';
   if (logout) logout.style.display = 'flex';
   if (logoutHint) logoutHint.textContent = `Signed in as ${currentUser}`;
 }
