@@ -455,8 +455,16 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 #who-gate.show{display:flex}
 body.auth-unlocked #who-gate{display:none}
 .who-card{background:#fff;border-radius:20px;padding:34px 30px 28px;width:90%;max-width:400px;box-shadow:0 28px 70px rgba(0,0,0,.35);text-align:center;animation:pwPop .3s cubic-bezier(.34,1.56,.64,1)}
+.who-card.welcome-card{max-width:430px;padding:30px 28px 26px}
+.welcome-mark{width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#1d4ed8,#ec4899);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:1.9em;box-shadow:0 12px 28px rgba(29,78,216,.28);margin-bottom:11px}
+.welcome-eyebrow{font-size:.72em;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
 .who-title{font-weight:900;font-size:1.4em;color:#0f172a;margin-bottom:5px}
-.who-sub{font-size:.85em;color:#64748b;margin-bottom:22px}
+.who-sub{font-size:.88em;color:#64748b;margin-bottom:18px;line-height:1.45}
+.welcome-benefits{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px;text-align:left}
+.welcome-benefit{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 11px;min-height:74px}
+.welcome-benefit-icon{font-size:1.15em;line-height:1;margin-bottom:5px}
+.welcome-benefit-title{font-family:'Nunito',sans-serif;font-weight:900;color:#0f172a;font-size:.84em;line-height:1.1}
+.welcome-benefit-text{font-size:.72em;color:#64748b;line-height:1.3;margin-top:3px}
 .who-btns{display:flex;gap:10px}
 .who-btn{flex:1;padding:18px 12px;border:2.5px solid var(--border);border-radius:14px;font-size:1em;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;background:#fff;transition:all .14s;display:flex;flex-direction:column;align-items:center;gap:6px}
 .who-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.1)}
@@ -484,6 +492,8 @@ body.auth-unlocked #who-gate{display:none}
 .auth-login{display:grid;gap:10px;text-align:left;margin-top:4px}
 .auth-note{font-size:.72em;color:#64748b;line-height:1.4;text-align:center;margin-top:8px}
 .auth-status{font-size:.74em;color:var(--muted);font-weight:800;text-align:center;margin-top:7px}
+.auth-loading{display:none;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:12px;padding:12px;font-size:.84em;font-weight:800;line-height:1.4}
+.auth-loading.show{display:block}
 
 /* ── CURRENT USER BADGE (in header) ── */
 .user-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:20px;font-size:.79em;font-weight:700;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(10px)}
@@ -778,11 +788,16 @@ body.auth-unlocked #who-gate{display:none}
 :root[data-theme="dark"] #pw-input{background:var(--bg-2);color:var(--text);border-color:var(--border)}
 :root[data-theme="dark"] .who-card{background:var(--card-elev);color:var(--text)}
 :root[data-theme="dark"] .who-title{color:var(--text)}
+:root[data-theme="dark"] .welcome-eyebrow{color:var(--muted)}
+:root[data-theme="dark"] .welcome-benefit{background:var(--bg-2);border-color:var(--border)}
+:root[data-theme="dark"] .welcome-benefit-title{color:var(--text)}
+:root[data-theme="dark"] .welcome-benefit-text{color:var(--muted)}
 :root[data-theme="dark"] .who-btn{background:var(--bg-2);color:var(--text)}
 :root[data-theme="dark"] .pin-row{background:var(--bg-2);border-color:var(--border)}
 :root[data-theme="dark"] .pin-row-label{color:var(--text-2)}
 :root[data-theme="dark"] .pin-input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 :root[data-theme="dark"] .pin-mode-note{color:var(--muted)}
+:root[data-theme="dark"] .auth-loading{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.28);color:#93c5fd}
 :root[data-theme="dark"] .remember-device-row{color:var(--text-2)}
 :root[data-theme="dark"] .pin-person{background:var(--bg-2);color:var(--text);border-color:var(--border)}
 
@@ -1308,7 +1323,7 @@ body.drawer-open{overflow:hidden}
   .sum-modal,.travel-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal,.settings-modal{width:96%;max-height:96vh;border-radius:16px}
   .sum-modal-hdr,.travel-hdr,.mydays-hdr,.summer-prop-hdr,.export-hdr,.notif-hdr,.swap-block-hdr{padding:15px 16px 12px}
   .sum-modal-body,.travel-body,.mydays-body,.summer-prop-body,.export-body,.notif-body,.swap-block-body{padding:12px 13px}
-  .settings-grid,.settings-actions,.settings-mini-grid{grid-template-columns:1fr}
+  .settings-grid,.settings-actions,.settings-mini-grid,.welcome-benefits{grid-template-columns:1fr}
   .sum-modal-ftr,.summer-prop-ftr{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 13px}
   .sum-modal-ftr .btn,.summer-prop-ftr .btn{width:100%}
   .quick-blocks{grid-template-columns:1fr}
@@ -2506,6 +2521,11 @@ function settingsSyncTone(){
   return 'warn';
 }
 
+function welcomeCalendarName(){
+  const s = typeof getAppSettings === 'function' ? getAppSettings() : {};
+  return s && s.childName ? `${s.childName}'s Parenting Calendar` : 'Your Shared Parenting Calendar';
+}
+
 function renderSettings(){
   const body = document.getElementById('settings-body');
   if (!body) return;
@@ -2711,11 +2731,26 @@ function renderPinGate() {
   const setup = document.getElementById('pin-setup');
   const login = document.getElementById('pin-login');
   const authLogin = document.getElementById('firebase-auth-login');
+  const loading = document.getElementById('auth-loading');
+  const benefits = document.getElementById('welcome-benefits');
+  const eyebrow = document.getElementById('welcome-eyebrow');
   if (!title || !sub || !setup || !login || !authLogin) return false;
   hidePinError();
+  if (eyebrow) eyebrow.textContent = welcomeCalendarName();
+  if (benefits) benefits.style.display = 'grid';
+  if (loading) loading.classList.remove('show');
+  if (isFirebaseAuthRequired() && !isFirebaseAuthSettled()) {
+    title.textContent = 'Welcome';
+    sub.textContent = 'Checking whether this device is already signed in.';
+    setup.style.display = 'none';
+    login.style.display = 'none';
+    authLogin.style.display = 'none';
+    if (loading) loading.classList.add('show');
+    return true;
+  }
   if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
-    title.textContent = 'Secure sign in';
-    sub.textContent = '';
+    title.textContent = 'Welcome back';
+    sub.textContent = 'Sign in to open the shared calendar and keep both homes aligned.';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'grid';
@@ -2732,7 +2767,7 @@ function renderPinGate() {
       return true;
     }
     title.textContent = 'Account not authorized';
-    sub.textContent = 'This Firebase account is signed in, but it is not listed as Justin or Brittany.';
+    sub.textContent = 'This account is signed in, but it is not connected to this family calendar.';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'none';
@@ -2742,7 +2777,7 @@ function renderPinGate() {
     const store = getPinStore();
     const profiles = ['Justin','Brittany'].filter(name => !!store[name]);
     const profileLabel = profiles.length === 1 ? profiles[0] : 'Justin or Brittany';
-    title.textContent = 'Enter your PIN';
+    title.textContent = 'Welcome back';
     sub.textContent = profiles.length === 1
       ? `This phone is set up for ${profileLabel}.`
       : 'Your PIN identifies who is using the calendar.';
@@ -2753,7 +2788,7 @@ function renderPinGate() {
     setTimeout(() => document.getElementById('pin-login-input')?.focus(), 80);
   } else {
     title.textContent = 'Set up this phone';
-    sub.textContent = 'Choose who uses this phone, then create your PIN.';
+    sub.textContent = 'Choose who uses this device, then create a private PIN for quick access.';
     setup.style.display = 'grid';
     login.style.display = 'none';
     selectPinParent(setupPinParent);
@@ -10327,11 +10362,25 @@ setTimeout(() => {
 
 <!-- ═══════════════════════ PERSONAL PIN GATE ═══════════════════════ -->
 <div id="who-gate">
-  <div class="who-card">
-    <div style="font-size:2.4em;margin-bottom:6px">🔐</div>
+  <div class="who-card welcome-card">
+    <div class="welcome-mark">📅</div>
+    <div class="welcome-eyebrow" id="welcome-eyebrow">Shared Parenting Calendar</div>
     <div class="who-title" id="pin-title">Secure sign in</div>
     <div class="who-sub" id="pin-sub"></div>
+    <div class="welcome-benefits" id="welcome-benefits">
+      <div class="welcome-benefit">
+        <div class="welcome-benefit-icon">📥</div>
+        <div class="welcome-benefit-title">One shared source</div>
+        <div class="welcome-benefit-text">Calendar, travel, expenses, and updates stay aligned.</div>
+      </div>
+      <div class="welcome-benefit">
+        <div class="welcome-benefit-icon">🔒</div>
+        <div class="welcome-benefit-title">Private access</div>
+        <div class="welcome-benefit-text">Each parent signs in with their own secure account.</div>
+      </div>
+    </div>
     <div class="pin-error" id="pin-error"></div>
+    <div class="auth-loading" id="auth-loading">Checking saved sign-in...</div>
 
     <div class="auth-login" id="firebase-auth-login" style="display:grid">
       <div class="pin-row">
