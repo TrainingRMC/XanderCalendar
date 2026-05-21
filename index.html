@@ -862,6 +862,16 @@ body.auth-unlocked #who-gate{display:none}
 .menu-text{flex:1}
 .menu-label{font-weight:700;color:var(--text);font-family:'Nunito',sans-serif;line-height:1.1}
 .menu-hint{font-size:.75em;color:var(--muted);margin-top:2px}
+.settings-modal{background:var(--card-elev);border:1px solid var(--border);border-radius:18px;width:94%;max-width:560px;box-shadow:var(--shadow-xl);animation:popIn .22s cubic-bezier(.34,1.56,.64,1);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+.settings-hdr{background:var(--hdr-grad);color:#fff;padding:18px 20px 14px;flex-shrink:0}
+.settings-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.18em}
+.settings-sub{font-size:.82em;opacity:.86;margin-top:2px}
+.settings-body{padding:14px 16px;overflow-y:auto}
+.settings-section{background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:11px}
+.settings-section-title{font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.settings-status{font-size:.78em;line-height:1.45;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px}
+.settings-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)}
 
 /* The year-tabs row needs position:relative for the absolute dropdown */
 .year-tabs{position:relative}
@@ -1286,9 +1296,10 @@ body.drawer-open{overflow:hidden}
   .btn-row .btn-save{grid-column:1/-1}
   .day-quick-actions{display:grid;grid-template-columns:1fr;gap:8px}
   .btn{padding:11px 12px}
-  .sum-modal,.travel-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal{width:96%;max-height:96vh;border-radius:16px}
+  .sum-modal,.travel-modal,.mydays-modal,.summer-prop-modal,.export-modal,.notif-modal,.swap-block-modal,.settings-modal{width:96%;max-height:96vh;border-radius:16px}
   .sum-modal-hdr,.travel-hdr,.mydays-hdr,.summer-prop-hdr,.export-hdr,.notif-hdr,.swap-block-hdr{padding:15px 16px 12px}
   .sum-modal-body,.travel-body,.mydays-body,.summer-prop-body,.export-body,.notif-body,.swap-block-body{padding:12px 13px}
+  .settings-grid,.settings-actions{grid-template-columns:1fr}
   .sum-modal-ftr,.summer-prop-ftr{display:grid;grid-template-columns:1fr;gap:8px;padding:10px 13px}
   .sum-modal-ftr .btn,.summer-prop-ftr .btn{width:100%}
   .quick-blocks{grid-template-columns:1fr}
@@ -1448,6 +1459,13 @@ body.drawer-open{overflow:hidden}
     <div class="menu-text">
       <div class="menu-label" id="menu-theme-label">Appearance</div>
       <div class="menu-hint" id="menu-theme-hint">Switch display mode</div>
+    </div>
+  </button>
+  <button class="menu-item" onclick="closeMenu();openSettings()">
+    <span class="menu-icon">⚙️</span>
+    <div class="menu-text">
+      <div class="menu-label">Settings</div>
+      <div class="menu-hint">Family details, emails, sync, backup</div>
     </div>
   </button>
   <button class="menu-item" onclick="closeMenu();openExport()">
@@ -1694,6 +1712,21 @@ body.drawer-open{overflow:hidden}
       <div class="notif-sub">Get notified when something needs your attention</div>
     </div>
     <div class="notif-body" id="notif-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SETTINGS MODAL ═══════════════════════ -->
+<div class="overlay" id="settings-overlay">
+  <div class="settings-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">⚙️ Settings</div>
+      <div class="settings-sub">Family details, contact info, sync, and records</div>
+    </div>
+    <div class="settings-body" id="settings-body"></div>
+    <div class="settings-actions">
+      <button class="btn btn-cancel" onclick="closeSettings()">Close</button>
+      <button class="btn btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
   </div>
 </div>
 
@@ -2373,8 +2406,31 @@ function isFirebaseAuthSettled() {
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
+let appSettings = {
+  childName: 'Xander',
+  childBirthday: '2012-05-27',
+  schoolName: 'Center Grove Schools',
+  guidelineName: 'Indiana Parenting Time Guidelines',
+  justinDisplay: 'Justin',
+  brittanyDisplay: 'Brittany',
+  justinRole: 'Father',
+  brittanyRole: 'Mother'
+};
 let pendingSwaps = {};   // {swapId: {date, by, fromOwner, toOwner, fromEvent, toEvent, fromNote, toNote, timeMode, timeFrom, timeTo, createdAt}}
 let activityLog  = [];   // array of {ts, by, type, msg}
+
+function getAppSettings(){
+  return Object.assign({
+    childName: 'Xander',
+    childBirthday: '2012-05-27',
+    schoolName: 'Center Grove Schools',
+    guidelineName: 'Indiana Parenting Time Guidelines',
+    justinDisplay: 'Justin',
+    brittanyDisplay: 'Brittany',
+    justinRole: 'Father',
+    brittanyRole: 'Mother'
+  }, appSettings || {});
+}
 
 function getParentEmails(){
   let local = {};
@@ -2383,13 +2439,15 @@ function getParentEmails(){
   return Object.assign({}, parentEmails || {}, local || {});
 }
 
-function setParentEmail(name, email){
-  if (!name || !email) return;
+function setParentEmail(name, email, patchNow){
+  if (!name) return;
   const emails = getParentEmails();
-  emails[name] = String(email).trim();
+  const clean = String(email || '').trim();
+  if (clean) emails[name] = clean;
+  else delete emails[name];
   parentEmails = emails;
   localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(emails));
-  if (typeof _v25PatchSharedNow === 'function' && typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
+  if (patchNow !== false && typeof _v25PatchSharedNow === 'function' && typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
     _v25PatchSharedNow(['parentEmails'], 'contact email').catch(() => {});
   }
 }
@@ -2398,6 +2456,109 @@ function rememberSignedInEmail(){
   if (!firebaseAuthUser || !firebaseAuthUser.email) return;
   const parent = AUTH_PARENT_BY_UID[firebaseAuthUser.uid] || currentUser;
   if (parent) setParentEmail(parent, firebaseAuthUser.email);
+}
+
+function applyAppSettings(){
+  const s = getAppSettings();
+  const title = document.querySelector('.hdr-title');
+  if (title) title.textContent = `📅 ${s.childName}'s Parenting Calendar`;
+  const sub = document.querySelector('.hdr-sub');
+  if (sub) sub.textContent = `${s.schoolName} · ${s.guidelineName}`;
+  document.title = `${s.childName}'s Parenting Calendar`;
+  const badges = document.querySelectorAll('.badges .badge');
+  if (badges[0]) badges[0].textContent = `👨 ${s.justinDisplay} — ${s.justinRole}`;
+  if (badges[1]) badges[1].textContent = `👩 ${s.brittanyDisplay} — ${s.brittanyRole}`;
+}
+
+function openSettings(){
+  renderSettings();
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+document.getElementById('settings-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeSettings();
+});
+
+function settingsField(id, label, value, type){
+  return `<div>
+    <div class="field-lbl">${label}</div>
+    <input class="inp" id="${id}" type="${type || 'text'}" value="${_v13EscapeHtml(value || '')}">
+  </div>`;
+}
+
+function renderSettings(){
+  const body = document.getElementById('settings-body');
+  if (!body) return;
+  const s = getAppSettings();
+  const emails = getParentEmails();
+  const signedIn = currentUser ? `Signed in as ${currentUser}` : 'Not signed in';
+  const syncText = typeof _v30SyncDetail !== 'undefined' ? _v30SyncDetail : 'Sync status unavailable';
+  body.innerHTML = `
+    <div class="settings-section">
+      <div class="settings-section-title">Child & Calendar</div>
+      <div class="settings-grid">
+        ${settingsField('set-child-name', 'Child name', s.childName)}
+        ${settingsField('set-child-bday', 'Birthday', s.childBirthday, 'date')}
+        ${settingsField('set-school-name', 'School / District', s.schoolName)}
+        ${settingsField('set-guideline-name', 'Guideline basis', s.guidelineName)}
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Parents</div>
+      <div class="settings-grid">
+        ${settingsField('set-justin-name', 'Justin display name', s.justinDisplay)}
+        ${settingsField('set-brittany-name', 'Brittany display name', s.brittanyDisplay)}
+        ${settingsField('set-justin-email', 'Justin email', emails.Justin || '', 'email')}
+        ${settingsField('set-brittany-email', 'Brittany email', emails.Brittany || '', 'email')}
+        ${settingsField('set-justin-role', 'Justin visible role', s.justinRole)}
+        ${settingsField('set-brittany-role', 'Brittany visible role', s.brittanyRole)}
+      </div>
+      <div class="settings-status" style="margin-top:9px">Custodial/noncustodial logic stays preserved internally for IPG calculations. These fields only clean up what the app displays.</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Account & Sync</div>
+      <div class="settings-status">
+        <b>${_v13EscapeHtml(signedIn)}</b><br>
+        ${_v13EscapeHtml(syncText)}<br>
+        Firebase Auth protects the shared calendar. Receipt uploads may be limited by the current Firebase plan.
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">Records & Backup</div>
+      <div class="settings-grid">
+        <button class="btn btn-cancel" onclick="closeSettings();openHistory()">Open Permanent Record</button>
+        <button class="btn btn-cancel" onclick="exportXanderLocalBackups()">Export Local Backup</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveSettings(){
+  const next = {
+    childName: document.getElementById('set-child-name')?.value.trim() || 'Xander',
+    childBirthday: document.getElementById('set-child-bday')?.value || '2012-05-27',
+    schoolName: document.getElementById('set-school-name')?.value.trim() || 'Center Grove Schools',
+    guidelineName: document.getElementById('set-guideline-name')?.value.trim() || 'Indiana Parenting Time Guidelines',
+    justinDisplay: document.getElementById('set-justin-name')?.value.trim() || 'Justin',
+    brittanyDisplay: document.getElementById('set-brittany-name')?.value.trim() || 'Brittany',
+    justinRole: document.getElementById('set-justin-role')?.value.trim() || 'Father',
+    brittanyRole: document.getElementById('set-brittany-role')?.value.trim() || 'Mother'
+  };
+  appSettings = next;
+  setParentEmail('Justin', document.getElementById('set-justin-email')?.value.trim() || '', false);
+  setParentEmail('Brittany', document.getElementById('set-brittany-email')?.value.trim() || '', false);
+  applyAppSettings();
+  try {
+    await _v25PatchSharedNow(['appSettings','parentEmails'], 'settings');
+    showToast('Settings saved');
+    closeSettings();
+  } catch(err) {
+    alert('Settings did not save: ' + err.message);
+  }
 }
 
 function setUser(name) {
@@ -8040,6 +8201,7 @@ function _v16BuildSavePayload(){
     summerSubmitted:   summerSubmitted || {},
     summerNoticeSent:  summerNoticeSent || {},
     parentEmails:      parentEmails || {},
+    appSettings:       getAppSettings(),
     updatedAt:         new Date().toISOString(),
     updatedBy:         currentUser || 'unknown'
   };
@@ -8141,10 +8303,12 @@ function _v16ApplyPayload(data){
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
   if (data.summerNoticeSent)  summerNoticeSent  = data.summerNoticeSent;
+  if (data.appSettings)       appSettings       = Object.assign(getAppSettings(), data.appSettings);
   if (data.parentEmails) {
     parentEmails = data.parentEmails;
     localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(getParentEmails()));
   }
+  if (typeof applyAppSettings === 'function') applyAppSettings();
   _v16LastSharedPayload = JSON.parse(JSON.stringify(data));
 }
 
@@ -8693,7 +8857,8 @@ function _v25PatchValueForKey(key){
     inboxState: inboxState || {},
     summerSubmitted: summerSubmitted || {},
     summerNoticeSent: summerNoticeSent || {},
-    parentEmails: parentEmails || {}
+    parentEmails: parentEmails || {},
+    appSettings: getAppSettings()
   };
   return _v25Clone(values[key]);
 }
@@ -10070,6 +10235,7 @@ setTimeout(() => {
 }, 1200);
 
 // Init
+applyAppSettings();
 render();
 _v27RenderRecoveryBar();
 _v27RenderScopedSaveStatuses();
