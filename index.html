@@ -459,6 +459,7 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
   .d-owner,.d-owner.j,.d-owner.b{font-size:.54em;gap:3px}
   .d-owner::before{width:5px;height:5px}
   .calendar-toolbar{margin-top:8px;padding:0 8px}.cal-toolbar-top{grid-template-columns:auto 1fr auto auto;padding:10px 9px;gap:6px}.month-lbl{font-size:1.05em}.cal-sub{font-size:.68em}.cal-picker-row{grid-template-columns:1fr;padding:8px}.year-tabs{overflow-x:auto;scrollbar-width:none}.year-tab{padding:5px 12px}.mth-btn{padding:5px 10px}
+  .settings-sync-meta{grid-template-columns:1fr}
   .week-grid,.time-row{grid-template-columns:1fr}
 }
 
@@ -911,6 +912,10 @@ body.auth-unlocked #who-gate{display:none}
 .settings-sync-dot.ok{background:var(--emerald)}
 .settings-sync-dot.warn{background:var(--gold)}
 .settings-sync-dot.err{background:#dc2626}
+.settings-sync-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.settings-sync-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
+.settings-sync-row-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.settings-sync-row-value{font-size:.82em;color:var(--text);font-weight:800;margin-top:2px;line-height:1.25}
 
 /* The year-tabs row needs position:relative for the absolute dropdown */
 .year-tabs{position:relative}
@@ -2613,6 +2618,43 @@ function settingsSyncTone(){
   return 'warn';
 }
 
+function settingsSyncTitle(){
+  const state = typeof _v30SyncState !== 'undefined' ? _v30SyncState : 'connecting';
+  if (window.location.protocol === 'file:') return 'Local preview';
+  if (state === 'error') return 'Sync needs attention';
+  if (state === 'saved') return 'Saved to shared calendar';
+  if (state === 'saving') return 'Saving now';
+  if (state === 'connecting') return 'Connecting securely';
+  return 'Shared calendar ready';
+}
+
+function settingsSyncText(){
+  const detail = typeof _v30SyncDetail !== 'undefined' ? _v30SyncDetail : '';
+  if (window.location.protocol === 'file:') return 'This file preview is for testing the look of the app. Open the GitHub Pages app for live save and sync.';
+  if (detail) return detail;
+  const state = typeof _v30SyncState !== 'undefined' ? _v30SyncState : 'connecting';
+  if (state === 'connecting') return 'Loading the shared calendar now.';
+  if (state === 'saving') return 'Saving the latest change now.';
+  if (state === 'error') return 'Shared sync needs attention. Your local backup protects changes made on this device.';
+  return 'Connected. Changes are available to both parents.';
+}
+
+function settingsTimeLabel(iso, emptyText){
+  if (!iso) return emptyText || 'Not yet on this device';
+  if (typeof formatLogTime === 'function') return formatLogTime(iso);
+  return new Date(iso).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function settingsNewestConfirmedSave(){
+  if (typeof _v27ReadConfirmedSaves !== 'function') return '';
+  const saves = _v27ReadConfirmedSaves();
+  return Object.values(saves || {})
+    .map(item => item && item.at)
+    .filter(Boolean)
+    .sort()
+    .pop() || '';
+}
+
 function welcomeCalendarName(){
   const s = typeof getAppSettings === 'function' ? getAppSettings() : {};
   return s && s.childName ? `${s.childName}'s Parenting Calendar` : 'Your Shared Parenting Calendar';
@@ -2624,13 +2666,10 @@ function renderSettings(){
   const s = getAppSettings();
   const emails = getParentEmails();
   const signedIn = currentUser ? `Signed in as ${currentUser}` : 'Not signed in';
-  const syncText = typeof _v30SyncDetail !== 'undefined' ? _v30SyncDetail : 'Sync status unavailable';
-  const syncState = typeof _v30SyncState !== 'undefined' ? _v30SyncState : 'unknown';
-  const syncTitle = syncState === 'error' ? 'Sync needs attention'
-    : syncState === 'saved' ? 'Saved to shared calendar'
-      : syncState === 'saving' ? 'Saving now'
-        : syncState === 'connecting' ? 'Connecting'
-          : 'Shared calendar ready';
+  const syncText = settingsSyncText();
+  const syncTitle = settingsSyncTitle();
+  const lastLoaded = typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '';
+  const lastSaved = settingsNewestConfirmedSave();
   body.innerHTML = `
     <div class="settings-section">
       <div class="settings-section-title">How This App Works</div>
@@ -2684,6 +2723,16 @@ function renderSettings(){
         <b>${_v13EscapeHtml(signedIn)}</b><br>
         <span class="settings-sync-dot ${settingsSyncTone()}"></span><b>${_v13EscapeHtml(syncTitle)}</b><br>
         ${_v13EscapeHtml(syncText || 'Connected. Changes are available to both parents.')}
+        <div class="settings-sync-meta">
+          <div class="settings-sync-row">
+            <div class="settings-sync-row-label">Last loaded</div>
+            <div class="settings-sync-row-value">${_v13EscapeHtml(settingsTimeLabel(lastLoaded, 'Waiting for shared calendar'))}</div>
+          </div>
+          <div class="settings-sync-row">
+            <div class="settings-sync-row-label">Last saved here</div>
+            <div class="settings-sync-row-value">${_v13EscapeHtml(settingsTimeLabel(lastSaved, 'No confirmed save yet'))}</div>
+          </div>
+        </div>
       </div>
       <div class="settings-grid" style="margin-top:9px">
         <button class="btn btn-cancel" onclick="location.reload()">Refresh Shared Calendar</button>
@@ -8364,6 +8413,7 @@ let _v30SyncState = 'connecting';
 let _v30SyncDetail = 'Starting secure sync...';
 let _v30SyncWatchTimer = null;
 let _v30SyncExpanded = false;
+let _v32SyncWaitCycles = 0;
 const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
@@ -8707,8 +8757,14 @@ window._setSyncStatus = function(state, detail){
   _v16BaseSetSyncStatus(state, detail);
   _v30SyncState = state || 'synced';
   _v30SyncDetail = detail || '';
+  if (state !== 'connecting') _v32SyncWaitCycles = 0;
   clearTimeout(_v30SyncWatchTimer);
   if (state === 'connecting') {
+    if (window.location.protocol === 'file:' && !detail) {
+      const msg = document.getElementById('sync-msg');
+      if (msg) msg.textContent = 'Local preview - live sync opens from GitHub Pages';
+      _v30SyncDetail = 'This local file preview is for testing the app. Open the GitHub Pages app for live save and sync.';
+    }
     _v30SyncWatchTimer = setTimeout(() => {
       if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
       const detail = window.location.protocol === 'file:'
@@ -8725,6 +8781,7 @@ window._setSyncStatus = function(state, detail){
   }
   const msg = document.getElementById('sync-msg');
   if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
+  if (msg && state === 'error' && detail) msg.textContent = detail;
   if (typeof _v29RenderSyncDetail === 'function') _v29RenderSyncDetail(state, detail);
 };
 
@@ -8782,8 +8839,8 @@ function _v29RenderSyncDetail(state, detail){
   }
   bar.classList.add('show');
   bar.innerHTML = `<div class="save-recovery-card">
-    <div class="save-recovery-title">${title}</div>
-    <div>${text}</div>
+    <div class="save-recovery-title">${_v13EscapeHtml(title)}</div>
+    <div>${_v13EscapeHtml(text)}</div>
   </div>`;
 }
 
@@ -10413,7 +10470,10 @@ getInboxUnreadCount = function(){
 };
 
 function _v22SyncWatchdog(){
-  if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+  if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
+    _v32SyncWaitCycles = 0;
+    return;
+  }
   if (isFirebaseAuthRequired() && !isFirebaseAuthSettled()) {
     _setSyncStatus('connecting', 'Restoring secure sign in...');
     setTimeout(_v22SyncWatchdog, 3000);
@@ -10426,7 +10486,15 @@ function _v22SyncWatchdog(){
   }
   if (typeof _v23LoadSharedDataViaRest === 'function' && !_v23RestLoadStarted) _v23LoadSharedDataViaRest();
   setTimeout(() => {
-    if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
+    if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
+      _v32SyncWaitCycles = 0;
+      return;
+    }
+    _v32SyncWaitCycles++;
+    if (_v32SyncWaitCycles >= 3) {
+      _v22ShowSyncProblem();
+      return;
+    }
     if (typeof _v23RestLoadStarted !== 'undefined' && _v23RestLoadStarted) {
       _setSyncStatus('connecting', 'Still loading saved calendar...');
       setTimeout(_v22SyncWatchdog, 4000);
@@ -10438,10 +10506,6 @@ function _v22SyncWatchdog(){
 
 function _v22ShowSyncProblem(){
   if (typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) return;
-  if (typeof _v23RestLoadStarted !== 'undefined' && _v23RestLoadStarted) {
-    _setSyncStatus('connecting', 'Still loading saved calendar...');
-    return;
-  }
   _setSyncStatus('error', _v30FriendlySyncError(_v23LastLoadError || null, 'Could not load saved calendar. Check connection, then refresh.'));
   renderInboxBadge();
   if (typeof renderDashboard === 'function') renderDashboard();
