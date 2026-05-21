@@ -1114,6 +1114,28 @@ body.drawer-open{overflow:hidden}
 .dash-card-main{font-family:'Nunito',sans-serif;font-weight:900;font-size:1em;line-height:1.15;color:var(--text)}
 .dash-card-sub{font-size:.76em;color:var(--muted);line-height:1.35;margin-top:4px}
 .dash-card-main.j{color:var(--j)}.dash-card-main.b{color:var(--b)}.dash-card-main.gold{color:var(--gold)}
+.week-agenda{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
+.week-agenda-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:9px}
+.week-agenda-title{font-family:'Nunito',sans-serif;font-size:.78em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.week-agenda-sub{font-size:.72em;color:var(--muted);margin-top:2px;line-height:1.3}
+.week-agenda-list{display:grid;gap:7px}
+.week-day-row{display:grid;grid-template-columns:54px 1fr auto;gap:9px;align-items:center;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:12px;padding:9px;cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
+.week-day-row:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--j)}
+.week-day-row.today{border-color:#dc2626;box-shadow:0 0 0 1px rgba(220,38,38,.18),0 0 18px rgba(220,38,38,.18)}
+.week-day-row.j{border-left:4px solid var(--j)}
+.week-day-row.b{border-left:4px solid var(--b)}
+.week-date{font-family:'Nunito',sans-serif;text-align:center;line-height:1.05}
+.week-dow{font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.week-num{font-size:1.1em;font-weight:900;color:var(--text);margin-top:2px}
+.week-main{min-width:0}
+.week-owner{font-family:'Nunito',sans-serif;font-weight:900;font-size:.9em;color:var(--text)}
+.week-detail{font-size:.74em;color:var(--muted);line-height:1.28;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.week-chips{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:150px}
+.week-chip{border-radius:999px;padding:3px 7px;font-family:'Nunito',sans-serif;font-size:.66em;font-weight:900;background:var(--card);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.week-chip.exchange{background:var(--j-soft);border-color:var(--j-m);color:var(--j)}
+.week-chip.travel{background:rgba(16,185,129,.13);border-color:rgba(16,185,129,.35);color:#047857}
+.week-chip.expense{background:var(--gold-soft);border-color:rgba(245,158,11,.35);color:#92400e}
+.week-chip.event{background:rgba(167,139,250,.13);border-color:rgba(167,139,250,.35);color:#7c3aed}
 .calendar-anchor-label{max-width:980px;margin:4px auto 0;padding:0 2px;font-size:.72em;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-family:'Nunito',sans-serif}
 .dash-timeline{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
 .dash-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
@@ -1296,6 +1318,9 @@ body.drawer-open{overflow:hidden}
 :root[data-theme="dark"] .dash-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j))}
 :root[data-theme="dark"] .dash-card.attn{background:linear-gradient(135deg,rgba(255,159,10,.18),var(--card))}
 :root[data-theme="dark"] .dash-card.travel.wait{background:linear-gradient(135deg,rgba(16,185,129,.18),var(--card))}
+:root[data-theme="dark"] .week-day-row{background:var(--card)}
+:root[data-theme="dark"] .week-chip.travel{color:#6ee7b7}
+:root[data-theme="dark"] .week-chip.expense{color:var(--gold)}
 :root[data-theme="dark"] .timeline-icon{background:var(--card-elev)}
 @media(max-width:700px){
   .home-dash{padding:10px 10px 6px}
@@ -1345,6 +1370,10 @@ body.drawer-open{overflow:hidden}
   .dash-card-title{font-size:.64em}
   .dash-card-main{font-size:.95em}
   .dash-card-sub{font-size:.72em}
+  .week-agenda{padding:10px;border-radius:12px}
+  .week-day-row{grid-template-columns:44px 1fr;gap:8px;padding:8px}
+  .week-chips{grid-column:2;justify-content:flex-start;max-width:none}
+  .week-detail{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .dash-timeline{padding:10px;border-radius:12px}
   .timeline-item{grid-template-columns:28px 1fr auto;gap:7px;padding:8px;min-height:48px}
   .timeline-icon{width:28px;height:28px;border-radius:8px}
@@ -1463,6 +1492,16 @@ body.drawer-open{overflow:hidden}
       </div>
     </div>
     <div class="dash-grid" id="dash-grid"></div>
+    <div class="week-agenda">
+      <div class="week-agenda-head">
+        <div>
+          <div class="week-agenda-title">This Week</div>
+          <div class="week-agenda-sub" id="week-agenda-sub">The next seven days at a glance</div>
+        </div>
+        <button class="dash-timeline-link" onclick="_v13OpenCalendarFromMyDays()">Calendar</button>
+      </div>
+      <div class="week-agenda-list" id="week-agenda-list"></div>
+    </div>
     <div class="dash-tools">
       <div class="dash-tools-head">
         <div class="dash-tools-title">Tools</div>
@@ -7647,6 +7686,89 @@ function renderTimeline(){
   }).join('');
 }
 
+function _v33WeekTravelForDate(dateKey){
+  return (travelEntries || []).filter(t => t && t.start && t.end && dateKey >= t.start && dateKey <= t.end);
+}
+
+function _v33WeekExpensesForDate(dateKey){
+  return (expenseEntries || []).filter(e => e && e.date === dateKey && !expenseComputed(e).settled);
+}
+
+function _v33WeekEventText(info){
+  if (!info) return '';
+  if (info.event) return info.event;
+  if (info.is_bday) return "Xander's Birthday";
+  if (info.parent_bday) return `${info.parent_bday}'s Birthday`;
+  return '';
+}
+
+function _v33BuildWeekAgenda(){
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  let prevOwner = _v13InfoForDate(start).owner;
+  const rows = [];
+  for (let i = 0; i < 7; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dateKey = _v13KeyFromDate(d);
+    const info = _v13InfoForDate(d);
+    const owner = info.owner || 'Brittany';
+    const eventText = _v33WeekEventText(info);
+    const travel = _v33WeekTravelForDate(dateKey);
+    const expenses = _v33WeekExpensesForDate(dateKey);
+    const exchange = i > 0 && owner && prevOwner && owner !== prevOwner ? `${prevOwner} to ${owner}` : '';
+    const details = [];
+    if (exchange) details.push(`Exchange: ${exchange}`);
+    if (eventText) details.push(eventText);
+    if (travel.length) details.push(`${travel.length} travel item${travel.length === 1 ? '' : 's'}`);
+    if (expenses.length) details.push(`${expenses.length} open expense${expenses.length === 1 ? '' : 's'}`);
+    rows.push({ dateKey, date:d, owner, eventText, exchange, travel, expenses, details });
+    prevOwner = owner || prevOwner;
+  }
+  return rows;
+}
+
+function renderWeekAgenda(){
+  const list = document.getElementById('week-agenda-list');
+  const sub = document.getElementById('week-agenda-sub');
+  if (!list) return;
+  const rows = _v33BuildWeekAgenda();
+  const justinDays = rows.filter(r => r.owner === 'Justin').length;
+  const brittanyDays = rows.filter(r => r.owner === 'Brittany').length;
+  const exchangeCount = rows.filter(r => r.exchange).length;
+  const travelCount = rows.reduce((sum,r) => sum + r.travel.length, 0);
+  const expenseCount = rows.reduce((sum,r) => sum + r.expenses.length, 0);
+  if (sub) {
+    const extras = [];
+    if (exchangeCount) extras.push(`${exchangeCount} exchange${exchangeCount===1?'':'s'}`);
+    if (travelCount) extras.push(`${travelCount} travel`);
+    if (expenseCount) extras.push(`${expenseCount} expense${expenseCount===1?'':'s'}`);
+    sub.textContent = `Justin ${justinDays} day${justinDays===1?'':'s'} · Brittany ${brittanyDays} day${brittanyDays===1?'':'s'}${extras.length ? ' · ' + extras.join(' · ') : ''}`;
+  }
+  list.innerHTML = rows.map(row => {
+    const cls = row.owner === 'Justin' ? 'j' : 'b';
+    const todayCls = row.dateKey === _v13TodayKey() ? ' today' : '';
+    const chips = [];
+    if (row.exchange) chips.push('<span class="week-chip exchange">Exchange</span>');
+    if (row.eventText) chips.push('<span class="week-chip event">Event</span>');
+    if (row.travel.length) chips.push(`<span class="week-chip travel">Travel ${row.travel.length}</span>`);
+    if (row.expenses.length) chips.push(`<span class="week-chip expense">Expense ${row.expenses.length}</span>`);
+    const detail = row.details.length ? row.details.join(' · ') : 'Regular parenting schedule';
+    const dow = row.date.toLocaleDateString('en-US', { weekday:'short' });
+    const num = row.date.getDate();
+    return `<div class="week-day-row ${cls}${todayCls}" onclick="_v13OpenDate('${row.dateKey}')" role="button" tabindex="0">
+      <div class="week-date">
+        <div class="week-dow">${dow}</div>
+        <div class="week-num">${num}</div>
+      </div>
+      <div class="week-main">
+        <div class="week-owner">${row.owner} has Xander</div>
+        <div class="week-detail">${_v13EscapeHtml(detail)}</div>
+      </div>
+      <div class="week-chips">${chips.join('')}</div>
+    </div>`;
+  }).join('');
+}
+
 function renderDashboard(){
   const dash = document.getElementById('home-dash');
   if (!dash) return;
@@ -7713,6 +7835,7 @@ function renderDashboard(){
       <button class="dash-action primary" onclick="_v13ShowSearch()">🔎<br>Find</button>
     `;
   }
+  renderWeekAgenda();
   renderTimeline();
 }
 
