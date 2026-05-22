@@ -3275,15 +3275,27 @@ function firebaseAuthHelpersReady(){
   return typeof window._fbSignIn === 'function' && typeof window._fbResetPassword === 'function';
 }
 
+function isLocalFilePreview(){
+  return window.location.protocol === 'file:';
+}
+
 function updateFirebaseAuthButtonState(){
   const btn = document.getElementById('auth-login-btn');
   const status = document.getElementById('auth-status');
   if (!btn) return;
   const ready = firebaseAuthHelpersReady();
+  const localPreview = isLocalFilePreview();
   btn.disabled = !ready;
-  btn.textContent = ready ? 'Sign In' : 'Loading secure sign-in...';
-  if (status && !ready) status.textContent = 'Secure sign-in is loading. If this stays here, refresh and check your connection.';
-  if (status && ready && status.textContent.includes('Secure sign-in is loading')) status.textContent = '';
+  btn.textContent = ready ? 'Sign In' : (localPreview ? 'Use Live Site to Sign In' : 'Loading secure sign-in...');
+  if (status && !ready) {
+    status.textContent = localPreview
+      ? 'This local file preview may not load Firebase sign-in. Use the live GitHub Pages app for real sign-in and saving.'
+      : 'Secure sign-in is loading. If this stays here, refresh and check your connection.';
+  }
+  if (status && ready && (
+    status.textContent.includes('Secure sign-in is loading') ||
+    status.textContent.includes('local file preview')
+  )) status.textContent = '';
 }
 
 function waitForFirebaseAuthHelpers(timeoutMs){
@@ -3340,6 +3352,8 @@ function renderPinGate() {
     authLogin.style.display = 'grid';
     const remember = document.getElementById('auth-remember');
     if (remember) remember.checked = localStorage.getItem('xander_cal_remember_auth') !== 'false';
+    const previewBtn = document.getElementById('local-preview-btn');
+    if (previewBtn) previewBtn.style.display = isLocalFilePreview() ? 'block' : 'none';
     updateFirebaseAuthButtonState();
     setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
     return true;
@@ -3399,7 +3413,9 @@ async function signInFirebaseAccount() {
   try {
     const ready = await waitForFirebaseAuthHelpers(9000);
     if (!ready) {
-      showPinError('Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
+      showPinError(isLocalFilePreview()
+        ? 'This is the local preview. Open the live GitHub Pages app to sign in and save changes.'
+        : 'Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
       return;
     }
     const cred = await window._fbSignIn(email, password, rememberDevice);
@@ -3433,7 +3449,9 @@ async function sendFirebasePasswordReset() {
   try {
     const ready = await waitForFirebaseAuthHelpers(9000);
     if (!ready) {
-      showPinError('Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
+      showPinError(isLocalFilePreview()
+        ? 'Password reset only works from the live app after Firebase sign-in loads.'
+        : 'Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
       return;
     }
     await window._fbResetPassword(email);
@@ -3443,6 +3461,20 @@ async function sendFirebasePasswordReset() {
   } catch(err) {
     showPinError('Reset failed: ' + (err.code || err.message));
   }
+}
+
+function enterLocalPreviewMode(){
+  if (!isLocalFilePreview()) return;
+  currentUser = 'Justin';
+  sessionStorage.setItem(USER_KEY, 'Justin');
+  const gate = document.getElementById('who-gate');
+  if (gate) gate.classList.remove('show');
+  document.body.classList.remove('auth-locked');
+  document.body.classList.add('auth-unlocked');
+  document.body.style.overflow = '';
+  updateUserBadge();
+  render();
+  showToast('Local preview mode - live saving is off');
 }
 
 function selectPinParent(name) {
@@ -11064,6 +11096,7 @@ setTimeout(() => {
         <span>Stay signed in on this device</span>
       </label>
       <button class="btn btn-save" id="auth-login-btn" onclick="signInFirebaseAccount()" style="width:100%;margin-top:2px">Sign In</button>
+      <button class="btn btn-cancel" id="local-preview-btn" onclick="enterLocalPreviewMode()" style="width:100%;display:none">Preview Locally Without Sign In</button>
       <button class="pin-secondary" onclick="sendFirebasePasswordReset()">Forgot Password?</button>
       <div class="auth-status" id="auth-status"></div>
     </div>
