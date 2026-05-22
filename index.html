@@ -3283,17 +3283,26 @@ function isLocalFilePreview(){
   return window.location.protocol === 'file:';
 }
 
+let _v33FirebaseBootTimedOut = false;
+function isLocalWebPreview(){
+  return ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+}
+function isLocalPreviewOnly(){
+  return isLocalFilePreview() ||
+    (isLocalWebPreview() && _v33FirebaseBootTimedOut && !firebaseAuthHelpersReady() && !isFirebaseSignedIn());
+}
+
 function updateFirebaseAuthButtonState(){
   const btn = document.getElementById('auth-login-btn');
   const status = document.getElementById('auth-status');
   if (!btn) return;
   const ready = firebaseAuthHelpersReady();
-  const localPreview = isLocalFilePreview();
+  const localPreview = isLocalPreviewOnly();
   btn.disabled = !ready && !localPreview;
   btn.textContent = ready ? 'Sign In' : (localPreview ? 'Preview Locally' : 'Loading secure sign-in...');
   if (status && !ready) {
     status.textContent = localPreview
-      ? 'This local file preview may not load Firebase sign-in. Use the live GitHub Pages app for real sign-in and saving.'
+      ? 'Firebase did not load in this local preview. You can still open the app layout here; real sign-in and shared saving happen on the live site.'
       : 'Secure sign-in is loading. If this stays here, refresh and check your connection.';
   }
   if (status && ready && (
@@ -3349,7 +3358,7 @@ function renderPinGate() {
     return true;
   }
   if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
-    const localPreview = isLocalFilePreview();
+    const localPreview = isLocalPreviewOnly();
     title.textContent = localPreview ? 'Local preview' : 'Welcome back';
     sub.textContent = localPreview
       ? 'Open the app layout on this computer. Real sign-in and saving happen on the live site.'
@@ -3406,7 +3415,7 @@ function renderPinGate() {
 
 async function signInFirebaseAccount() {
   hidePinError();
-  if (isLocalFilePreview() && !firebaseAuthHelpersReady()) {
+  if (isLocalPreviewOnly() && !firebaseAuthHelpersReady()) {
     enterLocalPreviewMode();
     return;
   }
@@ -3425,9 +3434,13 @@ async function signInFirebaseAccount() {
   try {
     const ready = await waitForFirebaseAuthHelpers(9000);
     if (!ready) {
+      _v33FirebaseBootTimedOut = true;
+      renderPinGate();
       showPinError(isLocalFilePreview()
         ? 'This is the local preview. Open the live GitHub Pages app to sign in and save changes.'
-        : 'Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
+        : isLocalWebPreview()
+          ? 'Firebase did not load in this local preview. Tap Preview Locally, or use the live site for real sign-in and saving.'
+          : 'Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
       return;
     }
     const cred = await window._fbSignIn(email, password, rememberDevice);
@@ -3476,7 +3489,7 @@ async function sendFirebasePasswordReset() {
 }
 
 function enterLocalPreviewMode(){
-  if (!isLocalFilePreview()) return;
+  if (!isLocalFilePreview() && !isLocalPreviewOnly()) return;
   currentUser = 'Justin';
   sessionStorage.setItem(USER_KEY, 'Justin');
   const gate = document.getElementById('who-gate');
@@ -3488,6 +3501,36 @@ function enterLocalPreviewMode(){
   render();
   showToast('Local preview mode - live saving is off');
 }
+
+setTimeout(() => {
+  if (!firebaseAuthHelpersReady() && isLocalWebPreview()) {
+    _v33FirebaseBootTimedOut = true;
+    window._fbAuthSettled = true;
+    window._fbAuthed = false;
+    window._fbUser = null;
+    window.dispatchEvent(new CustomEvent('fbAuthChanged', { detail: { user: null, localPreview: true } }));
+    updateFirebaseAuthButtonState();
+    if (document.body.classList.contains('auth-locked')) renderPinGate();
+    const title = document.getElementById('pin-title');
+    const sub = document.getElementById('pin-sub');
+    const login = document.getElementById('firebase-auth-login');
+    const loading = document.getElementById('auth-loading');
+    const btn = document.getElementById('auth-login-btn');
+    const status = document.getElementById('auth-status');
+    if (title) title.textContent = 'Local preview';
+    if (sub) sub.textContent = 'Open the app layout on this computer. Real sign-in and saving happen on the live site.';
+    if (loading) loading.classList.remove('show');
+    if (login) {
+      login.style.display = 'grid';
+      login.classList.add('local-preview-auth');
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Preview Locally';
+    }
+    if (status) status.textContent = 'Firebase did not load in this local preview. You can still open the app layout here.';
+  }
+}, 6500);
 
 function selectPinParent(name) {
   setupPinParent = name === 'Brittany' ? 'Brittany' : 'Justin';
@@ -9179,14 +9222,16 @@ function _v27RenderRecoveryBar(forceHide){
   const bar = document.getElementById('save-recovery-bar');
   if (!bar) return;
   const backup = _v16ReadBackup();
-  const needsHelp = backup && ['pending','error','held','blocked'].includes(backup.status);
+  const needsHelp = backup && ['pending','error','held','blocked','local-only'].includes(backup.status);
   if (forceHide || !needsHelp) {
     bar.classList.remove('show');
     bar.innerHTML = '';
     return;
   }
   const when = backup.savedAt ? formatLogTime(backup.savedAt) : 'recently';
-  const text = backup.status === 'blocked'
+  const text = backup.status === 'local-only'
+    ? 'This preview saved a local-only backup. Use the live app for shared sync, or retry when Firebase is available.'
+    : backup.status === 'blocked'
     ? 'A save was paused because it looked like it could erase shared data.'
     : backup.status === 'held'
       ? 'A save was held while the shared calendar was still loading.'
@@ -9196,7 +9241,7 @@ function _v27RenderRecoveryBar(forceHide){
     <div class="save-recovery-title">Unsaved Backup on This Device</div>
     <div>${text} Last local backup: ${when}.</div>
     <div class="save-confidence-actions">
-      <button class="save-confidence-btn primary" onclick="_v27RetryLocalBackupSave()">Retry Save</button>
+      <button class="save-confidence-btn primary" onclick="_v33RetrySyncNow(event)">Retry Sync</button>
       <button class="save-confidence-btn" onclick="exportXanderLocalBackups()">Export Backup</button>
       <button class="save-confidence-btn" onclick="_v27DismissRecoveryBanner()">Hide</button>
     </div>
@@ -9255,6 +9300,14 @@ window.addEventListener('fbSaveError', (e) => {
 
 const _v16BaseSetSyncStatus = window._setSyncStatus;
 window._setSyncStatus = function(state, detail){
+  if (isLocalPreviewOnly()) {
+    if (state === 'connecting') {
+      state = 'saved';
+      detail = 'Preview mode - changes stay on this device';
+    } else if (state === 'error' && !detail) {
+      detail = 'Preview mode - shared sync is off here';
+    }
+  }
   _v16BaseSetSyncStatus(state, detail);
   _v30SyncState = state || 'synced';
   _v30SyncDetail = detail || '';
@@ -9309,21 +9362,32 @@ function _v29RenderSyncDetail(state, detail){
   if (!bar) return;
   const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
   const trouble = backup && ['pending','error','blocked','held'].includes(backup.status);
+  const localOnly = backup && backup.status === 'local-only';
 
   let title = 'Sync Needs Attention';
   let text = '';
   let show = false;
-  if (trouble) {
+  let actions = '';
+  if (trouble || localOnly) {
     show = true;
-    title = 'Local Backup Protected';
-    text = backup.status === 'held'
+    title = localOnly ? 'Offline Changes Saved Here' : 'Local Backup Protected';
+    text = localOnly
+      ? 'This computer has a local-only backup. Open the live app and retry sync when Firebase is available.'
+      : backup.status === 'held'
       ? 'Your change is held safely on this device while the shared calendar finishes loading.'
       : backup.status === 'blocked'
         ? 'A save was paused because it looked like shared data could be erased.'
         : 'Your latest change is backed up on this device and will retry when shared sync is available.';
+    actions = `<div class="save-confidence-actions">
+      <button class="save-confidence-btn primary" onclick="_v33RetrySyncNow(event)">Retry Sync</button>
+      <button class="save-confidence-btn" onclick="exportXanderLocalBackups()">Export Backup</button>
+    </div>`;
   } else if (state === 'error' && _v30SyncExpanded) {
     show = true;
     text = detail || 'Shared sync needs attention. Your local backup protects changes made on this device.';
+    actions = `<div class="save-confidence-actions">
+      <button class="save-confidence-btn primary" onclick="_v33RetrySyncNow(event)">Retry Sync</button>
+    </div>`;
   } else if (_v30SyncExpanded) {
     show = true;
     title = state === 'connecting' ? 'Connection Status'
@@ -9345,7 +9409,27 @@ function _v29RenderSyncDetail(state, detail){
   bar.innerHTML = `<div class="save-recovery-card">
     <div class="save-recovery-title">${_v13EscapeHtml(title)}</div>
     <div>${_v13EscapeHtml(text)}</div>
+    ${actions}
   </div>`;
+}
+
+function _v33RetrySyncNow(e){
+  if (e) e.stopPropagation();
+  if (isLocalPreviewOnly()) {
+    _setSyncStatus('saved', '✓ Local preview - changes saved on this device');
+    toggleSyncDetails();
+    return;
+  }
+  if (typeof _v23RestLoadStarted !== 'undefined') _v23RestLoadStarted = false;
+  if (typeof _v26SyncBootStarted !== 'undefined') _v26SyncBootStarted = false;
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
+    _setSyncStatus('connecting', 'Sign in to reconnect shared sync.');
+    showWhoPickerIfNeeded();
+    return;
+  }
+  _setSyncStatus('connecting', 'Retrying shared sync...');
+  if (typeof startSharedSyncAfterSecureLogin === 'function') startSharedSyncAfterSecureLogin();
+  else if (typeof initFirebase === 'function') initFirebase();
 }
 
 scheduleSave = function(){
@@ -9353,6 +9437,14 @@ scheduleSave = function(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     const payload = _v16BuildSavePayload();
+    if (isLocalPreviewOnly()) {
+      _v16StoreBackup(payload, 'local-only');
+      _setSyncStatus('saved', '✓ Offline changes saved on this device');
+      if (typeof renderDashboard === 'function') renderDashboard();
+      if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
+      showToast('Preview saved on this device');
+      return;
+    }
     if (!_v16SharedDataLoaded){
       _v16StoreBackup(payload, 'held');
       _setSyncStatus('error', 'Still loading shared calendar - save held safely on this device');
