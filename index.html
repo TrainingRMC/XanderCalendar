@@ -916,6 +916,35 @@ body.auth-unlocked #who-gate{display:none}
 .settings-sync-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
 .settings-sync-row-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .settings-sync-row-value{font-size:.82em;color:var(--text);font-weight:800;margin-top:2px;line-height:1.25}
+.settings-profile-card{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:15px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.settings-profile-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.settings-profile-kicker{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px}
+.settings-profile-title{font-family:'Nunito',sans-serif;font-size:1.12em;font-weight:900;color:var(--text);line-height:1.1}
+.settings-profile-sub{font-size:.8em;color:var(--muted);line-height:1.35;margin-top:4px}
+.settings-profile-badge{flex-shrink:0;border-radius:999px;background:var(--emerald-soft);border:1px solid rgba(16,185,129,.28);color:#047857;padding:5px 9px;font-family:'Nunito',sans-serif;font-weight:900;font-size:.72em}
+.settings-readiness{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}
+.settings-readiness-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
+.settings-readiness-label{font-family:'Nunito',sans-serif;font-size:.66em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.settings-readiness-value{font-family:'Nunito',sans-serif;font-size:.84em;font-weight:900;color:var(--text);margin-top:2px;line-height:1.15}
+.settings-section{position:relative;overflow:hidden}
+.settings-section::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--j);opacity:.65}
+.settings-section.family::before{background:var(--emerald)}
+.settings-section.rules::before{background:#8b5cf6}
+.settings-section.parents::before{background:var(--b)}
+.settings-section.security::before{background:var(--gold)}
+.settings-section.data::before{background:#0d9488}
+.settings-section-title{display:flex;align-items:center;gap:6px}
+.settings-section-title span{font-size:1.05em;letter-spacing:0;text-transform:none}
+.settings-status.premium{background:linear-gradient(135deg,var(--card),rgba(248,250,252,.72));box-shadow:var(--shadow-sm)}
+:root[data-theme="dark"] .settings-profile-card{background:linear-gradient(135deg,var(--card-elev),var(--bg-2))}
+:root[data-theme="dark"] .settings-profile-badge{color:#6ee7b7}
+:root[data-theme="dark"] .settings-readiness-item{background:var(--bg-2)}
+.settings-field-note{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:-6px;margin-bottom:8px}
+@media(max-width:520px){
+  .settings-profile-top{flex-direction:column;gap:8px}
+  .settings-profile-badge{width:fit-content}
+  .settings-readiness{grid-template-columns:1fr}
+}
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
 .system-check-card.ok{border-color:rgba(16,185,129,.32);background:linear-gradient(135deg,rgba(16,185,129,.1),var(--card))}
@@ -2949,9 +2978,36 @@ function renderSettings(){
   const syncTitle = settingsSyncTitle();
   const lastLoaded = typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '';
   const lastSaved = settingsNewestConfirmedSave();
+  const profileReady = s.familyName && s.calendarName && s.childName && s.schoolName;
+  const contactsReady = !!(emails.Justin && emails.Brittany);
+  const syncReady = settingsSyncTone() === 'ok';
   body.innerHTML = `
-    <div class="settings-section">
-      <div class="settings-section-title">How This App Works</div>
+    <div class="settings-profile-card">
+      <div class="settings-profile-top">
+        <div>
+          <div class="settings-profile-kicker">Family Profile</div>
+          <div class="settings-profile-title">${_v13EscapeHtml(s.calendarName || appCalendarName())}</div>
+          <div class="settings-profile-sub">${_v13EscapeHtml(s.familyName || 'Shared family')} · ${_v13EscapeHtml(s.schoolName || 'School not set')} · ${_v13EscapeHtml(s.guidelineName || 'Guidelines not set')}</div>
+        </div>
+        <div class="settings-profile-badge">${profileReady ? 'Profile Ready' : 'Needs Info'}</div>
+      </div>
+      <div class="settings-readiness">
+        <div class="settings-readiness-item">
+          <div class="settings-readiness-label">Profile</div>
+          <div class="settings-readiness-value">${profileReady ? 'Ready' : 'Incomplete'}</div>
+        </div>
+        <div class="settings-readiness-item">
+          <div class="settings-readiness-label">Contacts</div>
+          <div class="settings-readiness-value">${contactsReady ? 'Both Set' : 'Add Emails'}</div>
+        </div>
+        <div class="settings-readiness-item">
+          <div class="settings-readiness-label">Sync</div>
+          <div class="settings-readiness-value">${syncReady ? 'Healthy' : 'Check'}</div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section family">
+      <div class="settings-section-title"><span>Overview</span></div>
       <div class="settings-mini-grid">
         <div class="settings-mini-card">
           <div class="settings-mini-icon">📅</div>
@@ -2975,27 +3031,28 @@ function renderSettings(){
         </div>
       </div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Family Profile</div>
+    <div class="settings-section family">
+      <div class="settings-section-title"><span>Family</span></div>
       <div class="settings-grid">
         ${settingsField('set-family-name', 'Family name', s.familyName)}
         ${settingsField('set-calendar-name', 'Calendar name', s.calendarName)}
         ${settingsField('set-home-state', 'Home state', s.homeState)}
         ${settingsField('set-time-zone', 'Time zone', s.timeZone)}
       </div>
-      <div class="settings-status" style="margin-top:9px">These fields prepare the app for a future multi-family version. They update the app label and records without changing the underlying IPG schedule logic.</div>
+      <div class="settings-status premium" style="margin-top:9px">These fields prepare the app for a future multi-family version. They update the app label and records without changing the underlying IPG schedule logic.</div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Child & Calendar</div>
+    <div class="settings-section rules">
+      <div class="settings-section-title"><span>Calendar Rules</span></div>
       <div class="settings-grid">
         ${settingsField('set-child-name', 'Child name', s.childName)}
         ${settingsField('set-child-bday', 'Birthday', s.childBirthday, 'date')}
         ${settingsField('set-school-name', 'School / District', s.schoolName)}
         ${settingsField('set-guideline-name', 'Guideline basis', s.guidelineName)}
       </div>
+      <div class="settings-field-note">This describes the schedule basis. The existing custodial/noncustodial engine remains active for IPG calculations.</div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Parents</div>
+    <div class="settings-section parents">
+      <div class="settings-section-title"><span>Parents</span></div>
       <div class="settings-grid">
         ${settingsField('set-justin-name', 'Justin display name', s.justinDisplay)}
         ${settingsField('set-brittany-name', 'Brittany display name', s.brittanyDisplay)}
@@ -3004,11 +3061,11 @@ function renderSettings(){
         ${settingsField('set-justin-role', 'Justin visible role', s.justinRole)}
         ${settingsField('set-brittany-role', 'Brittany visible role', s.brittanyRole)}
       </div>
-      <div class="settings-status" style="margin-top:9px">Custodial/noncustodial logic stays preserved internally for IPG calculations. These fields only clean up what the app displays.</div>
+      <div class="settings-status premium" style="margin-top:9px">Custodial/noncustodial logic stays preserved internally for IPG calculations. These fields only clean up what the app displays.</div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Account & Sync</div>
-      <div class="settings-status">
+    <div class="settings-section security">
+      <div class="settings-section-title"><span>Security & Sync</span></div>
+      <div class="settings-status premium">
         <b>${_v13EscapeHtml(signedIn)}</b><br>
         <span class="settings-sync-dot ${settingsSyncTone()}"></span><b>${_v13EscapeHtml(syncTitle)}</b><br>
         ${_v13EscapeHtml(syncText || 'Connected. Changes are available to both parents.')}
@@ -3028,9 +3085,9 @@ function renderSettings(){
         <button class="btn btn-cancel" onclick="closeSettings();secureSignOut()">Log Out</button>
       </div>
     </div>
-    <div class="settings-section">
-      <div class="settings-section-title">Records & Backup</div>
-      <div class="settings-status" style="margin-bottom:9px">Local backup protects changes on this device if the shared calendar is slow or offline. The Permanent Record is the searchable history for both homes.</div>
+    <div class="settings-section data">
+      <div class="settings-section-title"><span>Data & Records</span></div>
+      <div class="settings-status premium" style="margin-bottom:9px">Local backup protects changes on this device if the shared calendar is slow or offline. The Permanent Record is the searchable history for both homes.</div>
       <div class="settings-grid">
         <button class="btn btn-cancel" onclick="closeSettings();openHistory()">Open Permanent Record</button>
         <button class="btn btn-cancel" onclick="exportXanderLocalBackups()">Export Local Backup</button>
