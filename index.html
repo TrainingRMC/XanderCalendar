@@ -3271,6 +3271,44 @@ function hidePinError() {
   if (err) err.style.display = 'none';
 }
 
+function firebaseAuthHelpersReady(){
+  return typeof window._fbSignIn === 'function' && typeof window._fbResetPassword === 'function';
+}
+
+function updateFirebaseAuthButtonState(){
+  const btn = document.getElementById('auth-login-btn');
+  const status = document.getElementById('auth-status');
+  if (!btn) return;
+  const ready = firebaseAuthHelpersReady();
+  btn.disabled = !ready;
+  btn.textContent = ready ? 'Sign In' : 'Loading secure sign-in...';
+  if (status && !ready) status.textContent = 'Secure sign-in is loading. If this stays here, refresh and check your connection.';
+  if (status && ready && status.textContent.includes('Secure sign-in is loading')) status.textContent = '';
+}
+
+function waitForFirebaseAuthHelpers(timeoutMs){
+  if (firebaseAuthHelpersReady()) return Promise.resolve(true);
+  return new Promise(resolve => {
+    const started = Date.now();
+    const done = (ok) => {
+      window.removeEventListener('fbReady', onEvent);
+      window.removeEventListener('fbAuthChanged', onEvent);
+      clearInterval(timer);
+      updateFirebaseAuthButtonState();
+      resolve(ok);
+    };
+    const onEvent = () => {
+      if (firebaseAuthHelpersReady()) done(true);
+    };
+    window.addEventListener('fbReady', onEvent);
+    window.addEventListener('fbAuthChanged', onEvent);
+    const timer = setInterval(() => {
+      if (firebaseAuthHelpersReady()) done(true);
+      else if (Date.now() - started > (timeoutMs || 8000)) done(false);
+    }, 120);
+  });
+}
+
 function renderPinGate() {
   const title = document.getElementById('pin-title');
   const sub = document.getElementById('pin-sub');
@@ -3302,6 +3340,7 @@ function renderPinGate() {
     authLogin.style.display = 'grid';
     const remember = document.getElementById('auth-remember');
     if (remember) remember.checked = localStorage.getItem('xander_cal_remember_auth') !== 'false';
+    updateFirebaseAuthButtonState();
     setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
     return true;
   }
@@ -3358,6 +3397,11 @@ async function signInFirebaseAccount() {
     btn.textContent = 'Signing in...';
   }
   try {
+    const ready = await waitForFirebaseAuthHelpers(9000);
+    if (!ready) {
+      showPinError('Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
+      return;
+    }
     const cred = await window._fbSignIn(email, password, rememberDevice);
     const parent = cred && cred.user ? AUTH_PARENT_BY_UID[cred.user.uid] : null;
     if (!parent) {
@@ -3374,8 +3418,7 @@ async function signInFirebaseAccount() {
     showPinError('Sign-in failed: ' + (err.code || err.message));
   } finally {
     if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
+      updateFirebaseAuthButtonState();
     }
   }
 }
@@ -3388,6 +3431,11 @@ async function sendFirebasePasswordReset() {
     return;
   }
   try {
+    const ready = await waitForFirebaseAuthHelpers(9000);
+    if (!ready) {
+      showPinError('Secure sign-in is still loading. Refresh the app and check your internet connection, then try again.');
+      return;
+    }
     await window._fbResetPassword(email);
     showToast('Password reset email sent');
     const status = document.getElementById('auth-status');
@@ -3484,6 +3532,7 @@ function resetParentPins() {
 }
 
 window.addEventListener('fbAuthChanged', (e) => {
+  updateFirebaseAuthButtonState();
   firebaseAuthUser = e.detail && e.detail.user ? e.detail.user : null;
   if (firebaseAuthUser && AUTH_PARENT_BY_UID[firebaseAuthUser.uid]) {
     setUser(AUTH_PARENT_BY_UID[firebaseAuthUser.uid]);
@@ -3498,6 +3547,7 @@ window.addEventListener('fbAuthChanged', (e) => {
   updateUserBadge();
   showWhoPickerIfNeeded(true);
 });
+window.addEventListener('fbReady', updateFirebaseAuthButtonState);
 
 // ═══════════════════════════════════════════════════════
 //  SWAP REQUEST WORKFLOW
