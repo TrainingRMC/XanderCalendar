@@ -3532,6 +3532,27 @@ setTimeout(() => {
   }
 }, 6500);
 
+setTimeout(() => {
+  if (firebaseAuthHelpersReady() || isLocalWebPreview() || isLocalFilePreview()) return;
+  _v33FirebaseBootTimedOut = true;
+  const btn = document.getElementById('auth-login-btn');
+  const status = document.getElementById('auth-status');
+  const err = document.getElementById('pin-error');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Secure Sign-In Blocked';
+  }
+  const message = 'Secure sign-in could not load. Refresh the page, or check whether a browser content blocker is blocking Firebase.';
+  if (status) status.textContent = message;
+  if (err && document.body.classList.contains('auth-locked')) {
+    err.textContent = message;
+    err.style.display = 'block';
+  }
+  if (typeof _setSyncStatus === 'function') {
+    _setSyncStatus('error', 'Secure sign-in blocked - refresh or check browser content blocker');
+  }
+}, 8500);
+
 function selectPinParent(name) {
   setupPinParent = name === 'Brittany' ? 'Brittany' : 'Justin';
   const j = document.getElementById('pin-person-justin');
