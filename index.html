@@ -1343,6 +1343,8 @@ body.drawer-open{overflow:hidden}
 .expense-action-btn.danger{color:#dc2626;background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
 .expense-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:.76em;color:var(--muted);line-height:1.4;margin:0 0 10px}
 .receipt-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;margin:0 0 10px}
+.receipt-guidelines{display:grid;gap:4px;margin:0 0 9px;padding:9px 10px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border-subtle);font-size:.73em;color:var(--muted);line-height:1.35}
+.receipt-guidelines b{color:var(--text)}
 .receipt-storage-status{margin-top:8px;font-size:.74em;color:var(--muted);line-height:1.35;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:9px;padding:7px 9px}
 .receipt-storage-status.ready{color:#047857;background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25)}
 .receipt-storage-status.warn{color:#92400e;background:var(--gold-soft);border-color:rgba(245,158,11,.28)}
@@ -2074,13 +2076,17 @@ body.drawer-open{overflow:hidden}
 
         <div class="field-lbl">Notes</div>
         <textarea class="ta" id="xp-notes" placeholder="Optional context. Keep payment details out of here." oninput="updateExpensePreview()"></textarea>
-        <div class="field-lbl">Receipt</div>
+        <div class="field-lbl">Receipt Optional</div>
         <div class="receipt-panel">
+          <div class="receipt-guidelines">
+            <div><b>Optional:</b> attach a receipt only when it helps the record.</div>
+            <div>Images or PDFs under 5 MB. Crop out card numbers, account details, and unrelated personal info.</div>
+          </div>
           <div id="receipt-preview"></div>
           <input class="receipt-input" type="file" id="xp-receipt" accept="image/*,application/pdf" onchange="handleReceiptFile(this.files && this.files[0])">
           <div class="receipt-actions">
-            <button class="receipt-btn primary" onclick="document.getElementById('xp-receipt').click()">Attach / Replace</button>
-            <button class="receipt-btn danger" onclick="removeReceiptDraft()">Remove</button>
+            <button class="receipt-btn primary" onclick="document.getElementById('xp-receipt').click()">Attach Receipt</button>
+            <button class="receipt-btn danger" onclick="removeReceiptDraft()">Remove Receipt</button>
           </div>
           <div id="receipt-storage-status" class="receipt-storage-status"></div>
         </div>
@@ -10116,6 +10122,7 @@ let pendingPaidExpenseId = null;
 let expenseReceiptDraft = null;
 let receiptViewObjectUrl = '';
 const RECEIPT_DB_FALLBACK_LIMIT = 650 * 1024;
+const RECEIPT_UPLOAD_LIMIT = 5 * 1024 * 1024;
 
 function formatMoney(value){
   const n = Number(value) || 0;
@@ -10179,7 +10186,7 @@ function renderReceiptStorageStatus(){
   } else if (expenseReceiptDraft && isStoredReceipt(expenseReceiptDraft)) {
     setReceiptStorageStatus('ready', 'Receipt saved securely in Firebase Storage.');
   } else {
-    setReceiptStorageStatus('ready', 'Attach images or PDFs under 5 MB. On Spark, smaller receipts save inside the protected calendar record.');
+    setReceiptStorageStatus('ready', 'Receipt is optional. Images/PDFs under 5 MB; small cropped images can use Spark-safe protected record storage.');
   }
 }
 
@@ -10192,7 +10199,7 @@ function renderReceiptDraft(){
       <div class="receipt-thumb">🧾</div>
       <div style="flex:1">
         <div class="receipt-name">No receipt attached</div>
-        <div class="receipt-meta">Attach a clear image or PDF. Crop out card and account details first.</div>
+        <div class="receipt-meta">You can save the expense without one. Attach only if it helps the record.</div>
       </div>
     </div>`;
     renderReceiptStorageStatus();
@@ -10202,7 +10209,8 @@ function renderReceiptDraft(){
   const thumb = r.type && r.type.startsWith('image/') && src
     ? `<img src="${src}" alt="">`
     : 'PDF';
-  const status = r._newFile ? 'ready to upload securely' : (isStoredReceipt(r) ? 'saved securely' : 'ready to save');
+  const mode = isDatabaseReceipt(r) ? 'protected record' : isStoredReceipt(r) ? 'Firebase Storage' : 'expense record';
+  const status = r._newFile ? 'ready to save' : `saved in ${mode}`;
   el.innerHTML = `<div class="receipt-row">
     <div class="receipt-thumb">${thumb}</div>
     <div style="flex:1;min-width:0">
@@ -10214,6 +10222,10 @@ function renderReceiptDraft(){
 }
 
 function removeReceiptDraft(){
+  if (expenseReceiptDraft && !expenseReceiptDraft._newFile) {
+    const ok = confirm('Remove the saved receipt from this expense when you save changes?');
+    if (!ok) return;
+  }
   if (expenseReceiptDraft && expenseReceiptDraft.previewUrl) {
     URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
   }
@@ -10263,6 +10275,15 @@ function isStorageBillingOrQuotaError(err){
     text.includes('403') ||
     text.includes('unauthorized') ||
     text.includes('permission');
+}
+
+function friendlyReceiptError(err){
+  const text = `${err?.code || ''} ${err?.message || ''}`.toLowerCase();
+  if (text.includes('quota')) return 'Firebase Storage quota is full. Remove the receipt, try a smaller cropped image, or save the expense without a receipt.';
+  if (text.includes('permission') || text.includes('unauthorized') || text.includes('403')) return 'Receipt storage permission was denied. The expense was not saved with this receipt.';
+  if (text.includes('network') || text.includes('failed') || text.includes('timeout')) return 'Receipt upload could not reach Firebase. Check connection, then try again.';
+  if (text.includes('billing') || text.includes('spark') || text.includes('402')) return 'Firebase Storage is not available on the current plan. Small receipts can save inside the protected calendar record.';
+  return err?.message || 'Receipt upload failed. Try a smaller file or save without the receipt.';
 }
 
 async function receiptDraftToDatabaseRecord(draft, paidBy){
@@ -10316,7 +10337,7 @@ async function handleReceiptFile(file){
       alert('Attach an image or PDF receipt.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > RECEIPT_UPLOAD_LIMIT) {
       alert('That receipt is too large. Please use an image or PDF under 5 MB.');
       return;
     }
@@ -10324,7 +10345,7 @@ async function handleReceiptFile(file){
     expenseReceiptDraft = isImage
       ? await compressReceiptImage(file)
       : { name:file.name, type:'application/pdf', size:file.size, blob:file, previewUrl:'', _newFile:true };
-    if (expenseReceiptDraft.size > 5 * 1024 * 1024) {
+    if (expenseReceiptDraft.size > RECEIPT_UPLOAD_LIMIT) {
       if (expenseReceiptDraft.previewUrl) URL.revokeObjectURL(expenseReceiptDraft.previewUrl);
       expenseReceiptDraft = null;
       alert('That receipt is still too large after processing. Please use a smaller image or PDF under 5 MB.');
@@ -10336,7 +10357,7 @@ async function handleReceiptFile(file){
     showToast('Receipt attached');
   } catch(err) {
     console.error(err);
-    alert('Could not attach that receipt. Try a clear photo or smaller file.');
+    alert(friendlyReceiptError(err));
   }
 }
 
@@ -10478,7 +10499,7 @@ function renderExpenses(){
     const title = _v13EscapeHtml(exp.description || exp.category || 'Expense');
     const note = exp.notes ? `<div class="expense-item-meta"><b>Note:</b> ${_v13EscapeHtml(exp.notes)}</div>` : '';
     const receiptChip = exp.receipt
-      ? `<button class="receipt-chip" onclick="viewExpenseReceipt('${exp.id}')">🧾 Receipt attached</button>`
+      ? `<button class="receipt-chip" onclick="viewExpenseReceipt('${exp.id}')">🧾 Receipt attached${isDatabaseReceipt(exp.receipt) ? ' · protected record' : ''}</button>`
       : '';
     const paidLine = c.settled && exp.paidDate
       ? `<div class="expense-item-meta"><b>Paid:</b> ${fmtDate(exp.paidDate)}${exp.paidMarkedBy ? ` · marked by ${_v13EscapeHtml(exp.paidMarkedBy)}` : ''}</div>`
@@ -10540,9 +10561,10 @@ async function saveExpense(){
         setReceiptStorageStatus('warn', 'Storage is unavailable on Spark. Saving small receipt in the protected calendar record...');
         receiptForRecord = await receiptDraftToDatabaseRecord(expenseReceiptDraft, paidBy);
       } catch(fallbackErr) {
-        setExpenseSaveStatus('error', fallbackErr.message);
-        setReceiptStorageStatus('error', fallbackErr.message);
-        alert(fallbackErr.message);
+        const friendly = friendlyReceiptError(fallbackErr);
+        setExpenseSaveStatus('error', friendly);
+        setReceiptStorageStatus('error', friendly);
+        alert(friendly);
         saveBtns.forEach(btn => {
           btn.disabled = false;
           btn.textContent = btn.dataset.originalText || 'Save Expense';
@@ -10583,9 +10605,10 @@ async function saveExpense(){
             setReceiptStorageStatus('warn', 'Firebase Storage is blocked by the Spark plan. Saving small receipt in the protected calendar record...');
             receiptForRecord = await receiptDraftToDatabaseRecord(expenseReceiptDraft, paidBy);
           } catch(fallbackErr) {
-            setExpenseSaveStatus('error', fallbackErr.message);
-            setReceiptStorageStatus('error', fallbackErr.message);
-            alert(fallbackErr.message);
+            const friendly = friendlyReceiptError(fallbackErr);
+            setExpenseSaveStatus('error', friendly);
+            setReceiptStorageStatus('error', friendly);
+            alert(friendly);
             saveBtns.forEach(btn => {
               btn.disabled = false;
               btn.textContent = btn.dataset.originalText || 'Save Expense';
@@ -10593,9 +10616,10 @@ async function saveExpense(){
             return;
           }
         } else {
-          setExpenseSaveStatus('error', 'Receipt upload failed. Nothing was saved yet.');
-          setReceiptStorageStatus('error', 'Receipt upload failed. Try again or save without the receipt.');
-          alert('Receipt did not upload: ' + (err.code || err.message));
+          const friendly = friendlyReceiptError(err);
+          setExpenseSaveStatus('error', `${friendly} Nothing was saved yet.`);
+          setReceiptStorageStatus('error', `${friendly} Remove the receipt to save without it.`);
+          alert(friendly);
           saveBtns.forEach(btn => {
             btn.disabled = false;
             btn.textContent = btn.dataset.originalText || 'Save Expense';
@@ -10786,7 +10810,7 @@ async function viewExpenseReceipt(id){
     }
   } catch(err) {
     console.error('Receipt load failed', err);
-    body.innerHTML = `<div class="inbox-empty">Could not load receipt.<br><span style="font-size:.86em">${_v13EscapeHtml(err.code || err.message || 'Try again in a moment.')}</span></div>`;
+    body.innerHTML = `<div class="inbox-empty">Could not load receipt.<br><span style="font-size:.86em">${_v13EscapeHtml(friendlyReceiptError(err))}</span></div>`;
   }
 }
 
