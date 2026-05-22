@@ -503,6 +503,10 @@ body.auth-unlocked #who-gate{display:none}
 .pin-person.active.b{background:var(--b-l);border-color:var(--b);color:var(--b-d)}
 .pin-profile-name{font-weight:900;color:var(--text);font-family:'Nunito',sans-serif;margin-bottom:8px}
 .auth-login{display:grid;gap:10px;text-align:left;margin-top:4px}
+.auth-login.local-preview-auth .pin-row,
+.auth-login.local-preview-auth .remember-device-row,
+.auth-login.local-preview-auth .pin-secondary,
+.auth-login.local-preview-auth #local-preview-btn{display:none!important}
 .auth-note{font-size:.72em;color:#64748b;line-height:1.4;text-align:center;margin-top:8px}
 .auth-status{font-size:.74em;color:var(--muted);font-weight:800;text-align:center;margin-top:7px}
 .auth-loading{display:none;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:12px;padding:12px;font-size:.84em;font-weight:800;line-height:1.4}
@@ -3285,8 +3289,8 @@ function updateFirebaseAuthButtonState(){
   if (!btn) return;
   const ready = firebaseAuthHelpersReady();
   const localPreview = isLocalFilePreview();
-  btn.disabled = !ready;
-  btn.textContent = ready ? 'Sign In' : (localPreview ? 'Use Live Site to Sign In' : 'Loading secure sign-in...');
+  btn.disabled = !ready && !localPreview;
+  btn.textContent = ready ? 'Sign In' : (localPreview ? 'Preview Locally' : 'Loading secure sign-in...');
   if (status && !ready) {
     status.textContent = localPreview
       ? 'This local file preview may not load Firebase sign-in. Use the live GitHub Pages app for real sign-in and saving.'
@@ -3345,15 +3349,19 @@ function renderPinGate() {
     return true;
   }
   if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
-    title.textContent = 'Welcome back';
-    sub.textContent = 'Sign in to open the shared calendar and keep both homes aligned.';
+    const localPreview = isLocalFilePreview();
+    title.textContent = localPreview ? 'Local preview' : 'Welcome back';
+    sub.textContent = localPreview
+      ? 'Open the app layout on this computer. Real sign-in and saving happen on the live site.'
+      : 'Sign in to open the shared calendar and keep both homes aligned.';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'grid';
     const remember = document.getElementById('auth-remember');
     if (remember) remember.checked = localStorage.getItem('xander_cal_remember_auth') !== 'false';
+    authLogin.classList.toggle('local-preview-auth', localPreview);
     const previewBtn = document.getElementById('local-preview-btn');
-    if (previewBtn) previewBtn.style.display = isLocalFilePreview() ? 'block' : 'none';
+    if (previewBtn) previewBtn.style.display = localPreview ? 'block' : 'none';
     updateFirebaseAuthButtonState();
     setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
     return true;
@@ -3398,6 +3406,10 @@ function renderPinGate() {
 
 async function signInFirebaseAccount() {
   hidePinError();
+  if (isLocalFilePreview() && !firebaseAuthHelpersReady()) {
+    enterLocalPreviewMode();
+    return;
+  }
   const email = document.getElementById('auth-email')?.value.trim();
   const password = document.getElementById('auth-password')?.value;
   const rememberDevice = document.getElementById('auth-remember')?.checked !== false;
