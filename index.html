@@ -940,6 +940,12 @@ body.auth-unlocked #who-gate{display:none}
 :root[data-theme="dark"] .settings-profile-badge{color:#6ee7b7}
 :root[data-theme="dark"] .settings-readiness-item{background:var(--bg-2)}
 .settings-field-note{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:-6px;margin-bottom:8px}
+.release-note-list{display:grid;gap:7px}
+.release-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;box-shadow:var(--shadow-sm)}
+.release-note-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.release-note-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.86em;line-height:1.15}
+.release-note-version{font-family:'Nunito',sans-serif;font-weight:900;color:var(--j);font-size:.72em;white-space:nowrap}
+.release-note-text{font-size:.75em;color:var(--muted);line-height:1.35;margin-top:4px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -2703,6 +2709,17 @@ function isFirebaseAuthSettled() {
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
+const APP_BUILD = {
+  version: '0.34.0',
+  name: 'Launch Readiness',
+  date: '2026-05-22',
+  channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
+};
+const RELEASE_NOTES = [
+  { version:'0.34.0', date:'2026-05-22', title:'Launch readiness settings', text:'Adds app-style Settings structure, family profile readiness, and build visibility.' },
+  { version:'0.33.0', date:'2026-05-22', title:'Family profile foundation', text:'Adds reusable family, child, parent, state, and calendar naming fields for future multi-family support.' },
+  { version:'0.32.0', date:'2026-05-21', title:'Calendar polish', text:'Refines the month calendar with cleaner tiles, stronger today highlighting, and better mobile spacing.' }
+];
 let appSettings = {
   familyName: "Xander's Family",
   calendarName: "Xander's Parenting Calendar",
@@ -2930,6 +2947,26 @@ function systemCheckAccountInfo(){
   return { tone:'err', title:'Signed out', text:'Sign in again before making shared changes.' };
 }
 
+function systemCheckBuildInfo(){
+  return {
+    tone: 'ok',
+    title: `Build ${APP_BUILD.version}`,
+    text: `${APP_BUILD.name} · ${APP_BUILD.channel} · ${APP_BUILD.date}`
+  };
+}
+
+function renderReleaseNotes(limit){
+  return RELEASE_NOTES.slice(0, limit || RELEASE_NOTES.length).map(note => `
+    <div class="release-note">
+      <div class="release-note-top">
+        <div class="release-note-title">${_v13EscapeHtml(note.title)}</div>
+        <div class="release-note-version">v${_v13EscapeHtml(note.version)}</div>
+      </div>
+      <div class="release-note-text">${_v13EscapeHtml(note.date)} · ${_v13EscapeHtml(note.text)}</div>
+    </div>
+  `).join('');
+}
+
 async function retrySystemBackup(){
   if (typeof _v27RetryLocalBackupSave === 'function') await _v27RetryLocalBackupSave();
   renderSystemCheck();
@@ -2944,6 +2981,7 @@ function renderSystemCheck(){
   const saved = systemCheckLastSaved();
   const receipts = systemCheckReceiptInfo();
   const mode = systemCheckModeInfo();
+  const build = systemCheckBuildInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedCard = loaded
     ? systemCheckCard('ok', '📡', 'Shared calendar loaded', `Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.`)
@@ -2958,6 +2996,11 @@ function renderSystemCheck(){
       ${systemCheckCard(backup.tone, '🛟', backup.title, backup.text)}
       ${systemCheckCard(receipts.tone, '🧾', receipts.title, receipts.text)}
       ${systemCheckCard(mode.tone, '🌐', mode.title, mode.text)}
+      ${systemCheckCard(build.tone, '🏷️', build.title, build.text)}
+    </div>
+    <div class="settings-section data" style="margin-top:11px">
+      <div class="settings-section-title"><span>Release Notes</span></div>
+      <div class="release-note-list">${renderReleaseNotes(3)}</div>
     </div>
     <div class="system-check-actions">
       <button class="btn btn-cancel" onclick="location.reload()">Refresh Shared Calendar</button>
@@ -3003,6 +3046,10 @@ function renderSettings(){
         <div class="settings-readiness-item">
           <div class="settings-readiness-label">Sync</div>
           <div class="settings-readiness-value">${syncReady ? 'Healthy' : 'Check'}</div>
+        </div>
+        <div class="settings-readiness-item">
+          <div class="settings-readiness-label">Build</div>
+          <div class="settings-readiness-value">v${_v13EscapeHtml(APP_BUILD.version)}</div>
         </div>
       </div>
     </div>
@@ -3092,6 +3139,11 @@ function renderSettings(){
         <button class="btn btn-cancel" onclick="closeSettings();openHistory()">Open Permanent Record</button>
         <button class="btn btn-cancel" onclick="exportXanderLocalBackups()">Export Local Backup</button>
       </div>
+    </div>
+    <div class="settings-section data">
+      <div class="settings-section-title"><span>Version & Release Notes</span></div>
+      <div class="settings-status premium" style="margin-bottom:9px"><b>v${_v13EscapeHtml(APP_BUILD.version)} · ${_v13EscapeHtml(APP_BUILD.name)}</b><br>${_v13EscapeHtml(APP_BUILD.channel)} · ${_v13EscapeHtml(APP_BUILD.date)}</div>
+      <div class="release-note-list">${renderReleaseNotes(3)}</div>
     </div>
   `;
 }
