@@ -944,6 +944,14 @@ body.auth-unlocked #who-gate{display:none}
 :root[data-theme="dark"] .settings-profile-badge{color:#6ee7b7}
 :root[data-theme="dark"] .settings-readiness-item{background:var(--bg-2)}
 .settings-field-note{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:-6px;margin-bottom:8px}
+.settings-select,.settings-textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:600}
+.settings-textarea{min-height:78px;resize:vertical;line-height:1.4}
+.agreement-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;margin-top:10px;box-shadow:var(--shadow-sm)}
+.agreement-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.agreement-card-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.9em}
+.agreement-card-text{font-size:.76em;color:var(--muted);line-height:1.45}
+.agreement-pill{display:inline-flex;align-items:center;border-radius:999px;padding:4px 9px;background:var(--j-soft);color:var(--j-d);font-family:'Nunito',sans-serif;font-weight:900;font-size:.68em;white-space:nowrap}
+:root[data-theme="dark"] .agreement-pill{color:#93c5fd}
 .release-note-list{display:grid;gap:7px}
 .release-note{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px;box-shadow:var(--shadow-sm)}
 .release-note-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
@@ -2763,12 +2771,13 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 const APP_BUILD = {
-  version: '0.34.0',
-  name: 'Launch Readiness',
-  date: '2026-05-22',
+  version: '0.35.0',
+  name: 'Agreement Center Foundation',
+  date: '2026-05-28',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.35.0', date:'2026-05-28', title:'Agreement Center foundation', text:'Adds rules-source and agreement reference fields while keeping Indiana IPG active for this family.' },
   { version:'0.34.0', date:'2026-05-22', title:'Launch readiness settings', text:'Adds app-style Settings structure, family profile readiness, and build visibility.' },
   { version:'0.33.0', date:'2026-05-22', title:'Family profile foundation', text:'Adds reusable family, child, parent, state, and calendar naming fields for future multi-family support.' },
   { version:'0.32.0', date:'2026-05-21', title:'Calendar polish', text:'Refines the month calendar with cleaner tiles, stronger today highlighting, and better mobile spacing.' }
@@ -2780,6 +2789,12 @@ let appSettings = {
   childBirthday: '2012-05-27',
   schoolName: 'Center Grove Schools',
   guidelineName: 'Indiana Parenting Time Guidelines',
+  rulesSourceType: 'indiana-ipg',
+  agreementTitle: 'Indiana Parenting Time Guidelines',
+  agreementFileName: '',
+  agreementUploadedAt: '',
+  agreementNotes: 'Indiana IPG schedule basis remains active for this calendar.',
+  agreementTags: 'April 1 summer notice; custodial/noncustodial roles preserved',
   homeState: 'Indiana',
   timeZone: 'America/Indiana/Indianapolis',
   justinDisplay: 'Justin',
@@ -2798,6 +2813,12 @@ function getAppSettings(){
     childBirthday: '2012-05-27',
     schoolName: 'Center Grove Schools',
     guidelineName: 'Indiana Parenting Time Guidelines',
+    rulesSourceType: 'indiana-ipg',
+    agreementTitle: 'Indiana Parenting Time Guidelines',
+    agreementFileName: '',
+    agreementUploadedAt: '',
+    agreementNotes: 'Indiana IPG schedule basis remains active for this calendar.',
+    agreementTags: 'April 1 summer notice; custodial/noncustodial roles preserved',
     homeState: 'Indiana',
     timeZone: 'America/Indiana/Indianapolis',
     justinDisplay: 'Justin',
@@ -2815,6 +2836,31 @@ function appChildName(){
 function appCalendarName(){
   const s = getAppSettings();
   return s.calendarName || `${appChildName()}'s Parenting Calendar`;
+}
+
+function rulesSourceLabel(type){
+  const labels = {
+    'indiana-ipg': 'Indiana IPG',
+    'custom-agreement': 'Custom agreement',
+    'other-state-guidelines': 'Other state guidelines'
+  };
+  return labels[type] || labels['indiana-ipg'];
+}
+
+function agreementStatusText(settings){
+  const s = settings || getAppSettings();
+  if (s.rulesSourceType === 'indiana-ipg') {
+    return 'Indiana IPG remains the active schedule engine for this family. Custom agreement fields are reference notes only.';
+  }
+  if (s.rulesSourceType === 'custom-agreement') {
+    return 'Custom agreement mode is for reference and recordkeeping. The app will not reinterpret legal text automatically.';
+  }
+  return 'Other-state guideline mode is for future families and reference notes. Indiana IPG logic remains active unless the schedule engine is intentionally changed.';
+}
+
+function agreementReferenceTitle(){
+  const s = getAppSettings();
+  return s.agreementTitle || s.guidelineName || 'Parenting agreement';
 }
 
 function getParentEmails(){
@@ -3148,8 +3194,38 @@ function renderSettings(){
         ${settingsField('set-child-bday', 'Birthday', s.childBirthday, 'date')}
         ${settingsField('set-school-name', 'School / District', s.schoolName)}
         ${settingsField('set-guideline-name', 'Guideline basis', s.guidelineName)}
+        <div>
+          <div class="field-lbl">Rules source</div>
+          <select class="settings-select" id="set-rules-source">
+            <option value="indiana-ipg" ${s.rulesSourceType === 'indiana-ipg' ? 'selected' : ''}>Indiana Parenting Time Guidelines</option>
+            <option value="custom-agreement" ${s.rulesSourceType === 'custom-agreement' ? 'selected' : ''}>Custom parenting agreement</option>
+            <option value="other-state-guidelines" ${s.rulesSourceType === 'other-state-guidelines' ? 'selected' : ''}>Other state guidelines</option>
+          </select>
+        </div>
+        ${settingsField('set-agreement-title', 'Agreement / guideline title', s.agreementTitle || s.guidelineName)}
       </div>
-      <div class="settings-field-note">This describes the schedule basis. The existing custodial/noncustodial engine remains active for IPG calculations.</div>
+      <div class="agreement-card">
+        <div class="agreement-card-top">
+          <div>
+            <div class="agreement-card-title">${_v13EscapeHtml(agreementReferenceTitle())}</div>
+            <div class="agreement-card-text">${_v13EscapeHtml(agreementStatusText(s))}</div>
+          </div>
+          <span class="agreement-pill">${_v13EscapeHtml(rulesSourceLabel(s.rulesSourceType))}</span>
+        </div>
+        <div class="settings-grid">
+          ${settingsField('set-agreement-file', 'Reference file name or link label', s.agreementFileName)}
+          ${settingsField('set-agreement-uploaded', 'Reference date', s.agreementUploadedAt, 'date')}
+        </div>
+        <div style="margin-top:9px">
+          <div class="field-lbl">Key rule notes</div>
+          <textarea class="settings-textarea" id="set-agreement-notes" placeholder="Summarize important rules, exceptions, or agreement notes...">${_v13EscapeHtml(s.agreementNotes || '')}</textarea>
+        </div>
+        <div style="margin-top:9px">
+          <div class="field-lbl">Important tags / deadlines</div>
+          <textarea class="settings-textarea" id="set-agreement-tags" placeholder="e.g. April 1 summer notice; alternating holidays; school breaks...">${_v13EscapeHtml(s.agreementTags || '')}</textarea>
+        </div>
+      </div>
+      <div class="settings-field-note" style="margin-top:8px">This is a reference layer for future flexibility. Your current calendar still uses the existing Indiana IPG custodial/noncustodial logic unless we deliberately change the schedule engine later.</div>
     </div>
     <div class="settings-section parents">
       <div class="settings-section-title"><span>Parents</span></div>
@@ -3209,6 +3285,12 @@ async function saveSettings(){
     childBirthday: document.getElementById('set-child-bday')?.value || '2012-05-27',
     schoolName: document.getElementById('set-school-name')?.value.trim() || 'Center Grove Schools',
     guidelineName: document.getElementById('set-guideline-name')?.value.trim() || 'Indiana Parenting Time Guidelines',
+    rulesSourceType: document.getElementById('set-rules-source')?.value || 'indiana-ipg',
+    agreementTitle: document.getElementById('set-agreement-title')?.value.trim() || document.getElementById('set-guideline-name')?.value.trim() || 'Indiana Parenting Time Guidelines',
+    agreementFileName: document.getElementById('set-agreement-file')?.value.trim() || '',
+    agreementUploadedAt: document.getElementById('set-agreement-uploaded')?.value || '',
+    agreementNotes: document.getElementById('set-agreement-notes')?.value.trim() || '',
+    agreementTags: document.getElementById('set-agreement-tags')?.value.trim() || '',
     homeState: document.getElementById('set-home-state')?.value.trim() || 'Indiana',
     timeZone: document.getElementById('set-time-zone')?.value.trim() || 'America/Indiana/Indianapolis',
     justinDisplay: document.getElementById('set-justin-name')?.value.trim() || 'Justin',
@@ -7777,6 +7859,7 @@ function _v19BuildPrintableRecordHtml(autoPrint){
   const settings = getAppSettings();
   const calendarName = appCalendarName();
   const familyLine = settings.familyName ? `${settings.familyName} · ` : '';
+  const rulesLine = `${rulesSourceLabel(settings.rulesSourceType)} · ${agreementReferenceTitle()}`;
   return `<!doctype html>
 <html>
 <head>
@@ -7818,7 +7901,7 @@ function _v19BuildPrintableRecordHtml(autoPrint){
     <h2>Permanent Record</h2>
     ${historyHtml}
   </section>
-  <footer>Shared family calendar record. IPG logic and custodial/noncustodial roles remain active in the calendar data.</footer>
+  <footer>Shared family calendar record. Rules reference: ${_v13EscapeHtml(rulesLine)}. IPG logic and custodial/noncustodial roles remain active in the calendar data.</footer>
   ${autoPrint ? '<script>setTimeout(() => window.print(), 350);<\\/script>' : ''}
 </body>
 </html>`;

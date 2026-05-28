@@ -34,6 +34,7 @@ The file has grown in layered feature blocks. Keep new work close to the related
 - V16: save confidence, retry, local backup safety.
 - V17-V18: date notes and summer trade assistant.
 - V20: expenses, receipts, paid-date tracking.
+- V35: Agreement Center foundation for rules-source/reference notes while preserving the active Indiana IPG engine.
 
 ## Refactor Path Toward a Real App
 
