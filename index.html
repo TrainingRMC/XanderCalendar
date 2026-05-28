@@ -1309,6 +1309,11 @@ body.drawer-open{overflow:hidden}
 .save-recovery-wrap.show{display:block}
 .save-recovery-card{max-width:980px;margin:0 auto;background:linear-gradient(135deg,rgba(245,158,11,.16),var(--card));border:1px solid rgba(245,158,11,.42);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-sm);font-size:.82em;color:var(--muted);line-height:1.35}
 .save-recovery-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.06em;font-size:.76em;margin-bottom:3px}
+.sync-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+.sync-status-pill{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
+.sync-status-pill b{display:block;font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.sync-status-pill span{display:block;color:var(--text);font-weight:800;line-height:1.2}
+@media(max-width:520px){.sync-status-grid{grid-template-columns:1fr}}
 .travel-summary{background:linear-gradient(135deg,rgba(16,185,129,.14),var(--card));border:1px solid rgba(16,185,129,.35);border-radius:12px;padding:10px 11px;margin:0 0 9px}
 .travel-summary-title{font-size:.72em;font-weight:900;color:#047857;text-transform:uppercase;letter-spacing:.07em;font-family:'Nunito',sans-serif;margin-bottom:4px}
 .travel-summary-main{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text)}
@@ -2638,6 +2643,7 @@ window._setSyncStatus = function(state,detail){
     synced:    {bg:'#4ade80',text:'✓ Synced',           c:'#166534'},
     saving:    {bg:'#60a5fa',text:'Saving…',            c:'#1e40af'},
     saved:     {bg:'#4ade80',text:'✓ Saved & Synced',   c:'#166534'},
+    pending:   {bg:'#fbbf24',text:'✓ Saved on this device - syncing…',c:'#92400e'},
     remote:    {bg:'#a78bfa',text:'📲 Updated remotely',c:'#4c1d95'},
     error:     {bg:'#f87171',text:'⚠ Sync error',       c:'#991b1b'},
   };
@@ -2646,8 +2652,8 @@ window._setSyncStatus = function(state,detail){
   msg.style.color=s.c;
   msg.textContent=detail||s.text;
   ts.textContent=now;
-  document.getElementById('sync-bar').style.background=state==='error'?'#fef2f2':'#f0fdf4';
-  document.getElementById('sync-bar').style.borderBottomColor=state==='error'?'#fecaca':'#bbf7d0';
+  document.getElementById('sync-bar').style.background=state==='error'?'#fef2f2':state==='pending'?'#fffbeb':'#f0fdf4';
+  document.getElementById('sync-bar').style.borderBottomColor=state==='error'?'#fecaca':state==='pending'?'#fde68a':'#bbf7d0';
 };
 
 function scheduleSave(){
@@ -8985,6 +8991,7 @@ let _v30SyncDetail = 'Starting secure sync...';
 let _v30SyncWatchTimer = null;
 let _v30SyncExpanded = false;
 let _v32SyncWaitCycles = 0;
+let _v34LastDeviceSaveAt = null;
 const FIREBASE_REST_URL = 'https://xander-calendar-a9a5b-default-rtdb.firebaseio.com/xander_cal.json';
 
 function _v16BuildSavePayload(){
@@ -9042,9 +9049,10 @@ function _v16LooksLikeDataLoss(nextPayload){
 
 function _v16StoreBackup(payload, status){
   try {
+    _v34LastDeviceSaveAt = new Date().toISOString();
     localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
       status,
-      savedAt: new Date().toISOString(),
+      savedAt: _v34LastDeviceSaveAt,
       payload
     }));
     const history = JSON.parse(localStorage.getItem(SAVE_BACKUP_HISTORY_KEY) || '[]');
@@ -9063,6 +9071,20 @@ function _v16StoreBackup(payload, status){
 function _v16ReadBackup(){
   try { return JSON.parse(localStorage.getItem(SAVE_BACKUP_KEY) || 'null'); }
   catch(e) { return null; }
+}
+
+function _v34FormatSaveTime(iso){
+  return iso ? formatLogTime(iso) : 'Not yet this session';
+}
+
+function _v34SyncMetaHtml(){
+  const backup = _v16ReadBackup();
+  const deviceAt = _v34LastDeviceSaveAt || (backup && backup.savedAt) || '';
+  const sharedAt = _v16LastRemoteAt || (backup && backup.status === 'synced' ? backup.savedAt : '');
+  return `<div class="sync-status-grid">
+    <div class="sync-status-pill"><b>Saved on this device</b><span>${_v13EscapeHtml(_v34FormatSaveTime(deviceAt))}</span></div>
+    <div class="sync-status-pill"><b>Shared calendar</b><span>${_v13EscapeHtml(_v34FormatSaveTime(sharedAt))}</span></div>
+  </div>`;
 }
 
 window.exportXanderLocalBackups = function(){
@@ -9262,10 +9284,12 @@ function _v27RenderRecoveryBar(forceHide){
     ? 'A save was paused because it looked like it could erase shared data.'
     : backup.status === 'held'
       ? 'A save was held while the shared calendar was still loading.'
+      : backup.status === 'pending'
+        ? 'This device has the latest change saved. Shared sync is finishing in the background.'
       : 'A local backup is waiting to be confirmed on the shared calendar.';
   bar.classList.add('show');
   bar.innerHTML = `<div class="save-recovery-card">
-    <div class="save-recovery-title">Unsaved Backup on This Device</div>
+    <div class="save-recovery-title">${backup.status === 'pending' ? 'Sync Pending' : 'Backup Protected on This Device'}</div>
     <div>${text} Last local backup: ${when}.</div>
     <div class="save-confidence-actions">
       <button class="save-confidence-btn primary" onclick="_v33RetrySyncNow(event)">Retry Sync</button>
@@ -9363,6 +9387,7 @@ window._setSyncStatus = function(state, detail){
   const msg = document.getElementById('sync-msg');
   if (msg && state === 'saved' && !detail) msg.textContent = '✓ Saved to shared calendar';
   if (msg && state === 'error' && detail) msg.textContent = detail;
+  if (msg && state === 'pending' && !detail) msg.textContent = '✓ Saved on this device - syncing to shared calendar';
   if (typeof _v29RenderSyncDetail === 'function') _v29RenderSyncDetail(state, detail);
   if (document.getElementById('system-check-overlay')?.classList.contains('open') && typeof renderSystemCheck === 'function') {
     renderSystemCheck();
@@ -9436,6 +9461,7 @@ function _v29RenderSyncDetail(state, detail){
   bar.innerHTML = `<div class="save-recovery-card">
     <div class="save-recovery-title">${_v13EscapeHtml(title)}</div>
     <div>${_v13EscapeHtml(text)}</div>
+    ${typeof _v34SyncMetaHtml === 'function' ? _v34SyncMetaHtml() : ''}
     ${actions}
   </div>`;
 }
@@ -9454,19 +9480,29 @@ function _v33RetrySyncNow(e){
     showWhoPickerIfNeeded();
     return;
   }
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  if (backup && backup.payload && ['pending','error','held','local-only'].includes(backup.status)) {
+    _v27RetryLocalBackupSave();
+    return;
+  }
   _setSyncStatus('connecting', 'Retrying shared sync...');
   if (typeof startSharedSyncAfterSecureLogin === 'function') startSharedSyncAfterSecureLogin();
   else if (typeof initFirebase === 'function') initFirebase();
 }
 
 scheduleSave = function(){
-  _setSyncStatus('saving', 'Saving to shared calendar...');
+  const firstPayload = _v16BuildSavePayload();
+  const firstStatus = isLocalPreviewOnly() ? 'local-only' : 'pending';
+  _v16StoreBackup(firstPayload, firstStatus);
+  _setSyncStatus(isLocalPreviewOnly() ? 'saved' : 'pending', isLocalPreviewOnly()
+    ? '✓ Local preview - saved on this device'
+    : '✓ Saved on this device - syncing to shared calendar');
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     const payload = _v16BuildSavePayload();
     if (isLocalPreviewOnly()) {
       _v16StoreBackup(payload, 'local-only');
-      _setSyncStatus('saved', '✓ Offline changes saved on this device');
+      _setSyncStatus('saved', '✓ Local preview - saved on this device');
       if (typeof renderDashboard === 'function') renderDashboard();
       if (document.getElementById('inbox-drawer')?.classList.contains('open')) renderInboxBody();
       showToast('Preview saved on this device');
@@ -9474,8 +9510,8 @@ scheduleSave = function(){
     }
     if (!_v16SharedDataLoaded){
       _v16StoreBackup(payload, 'held');
-      _setSyncStatus('error', 'Still loading shared calendar - save held safely on this device');
-      showToast('Still loading shared calendar. Try again in a moment.');
+      _setSyncStatus('pending', '✓ Saved on this device - waiting for shared calendar');
+      showToast('Saved on this device. Shared sync will retry.');
       return;
     }
     if (_v16LooksLikeDataLoss(payload)){
@@ -9659,6 +9695,21 @@ async function _v23WriteSharedDataViaRest(payload){
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
+
+window.addEventListener('online', () => {
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  if (!backup || !backup.payload || !['pending','error','held','local-only'].includes(backup.status)) return;
+  if (isFirebaseAuthRequired() && !isFirebaseSignedIn()) {
+    _setSyncStatus('pending', 'Back online - sign in to finish shared sync');
+    return;
+  }
+  _setSyncStatus('pending', 'Back online - syncing saved device changes...');
+  setTimeout(() => _v33RetrySyncNow(), 500);
+});
+
+window.addEventListener('offline', () => {
+  _setSyncStatus('pending', 'Offline - changes will save on this device');
+});
 
 async function _v24EnsureSharedLoaded(){
   if (_v16SharedDataLoaded) return true;
