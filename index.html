@@ -6292,10 +6292,29 @@ function openSchoolCal(yearKey){
     _activeSchoolYear = yearKey;
   }
   renderSchoolCal();
+  setSchoolSaveStatus('', '');
   document.getElementById('school-overlay').classList.add('open');
 }
 function closeSchoolCal(){
   document.getElementById('school-overlay').classList.remove('open');
+}
+
+function setSchoolSaveStatus(kind, text){
+  const el = document.getElementById('school-save-status');
+  if (!el) return;
+  el.style.display = text ? 'block' : 'none';
+  el.className = `save-confidence${kind === 'error' || kind === 'warn' ? ' warn' : ''}`;
+  const title = kind === 'saving' ? 'Saving School Calendar'
+    : kind === 'error' ? 'School Calendar Needs Attention'
+    : 'School Calendar Saved';
+  el.innerHTML = `<div class="save-confidence-title">${title}</div><div>${_v13EscapeHtml(text || '')}</div>`;
+}
+
+function schoolCalendarImpactText(yKey, summary){
+  if (!summary.missing.length) {
+    return `${yKey} saved. First day, last day, breaks, and no-school dates are now active on the calendar.`;
+  }
+  return `${yKey} saved with ${summary.missing.join(', ')} still missing. Entering those later will make school-driven IPG dates more reliable.`;
 }
 
 function summarizeSchoolCal(sc){
@@ -6451,9 +6470,15 @@ function _scRmNs(i){
   renderSchoolCal();
 }
 
-function saveSchoolCal(){
+async function saveSchoolCal(){
   const yKey = _activeSchoolYear;
   if (!schoolCalendar[yKey]) schoolCalendar[yKey] = {};
+  const saveBtn = document.getElementById('school-save-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
+  setSchoolSaveStatus('saving', 'Saving school dates to the shared calendar now.');
   // Clean empty no-school entries
   if (Array.isArray(schoolCalendar[yKey].noSchoolDays)){
     schoolCalendar[yKey].noSchoolDays = schoolCalendar[yKey].noSchoolDays.filter(x => x && x.date);
@@ -6471,10 +6496,30 @@ function saveSchoolCal(){
       `Updated school calendar for ${yKey}: first day ${schoolCalendar[yKey].firstDay ? fmtDate(schoolCalendar[yKey].firstDay) : 'missing'}, last day ${schoolCalendar[yKey].lastDay ? fmtDate(schoolCalendar[yKey].lastDay) : 'missing'}, ${summary.completeBreaks}/4 breaks, ${summary.noSchool} no-school day${summary.noSchool===1?'':'s'}`
     );
   }
-  closeSchoolCal();
   render();
-  scheduleSave();
-  showToast(`🏫 School calendar saved for ${yKey}`);
+  try {
+    if (typeof _v25PatchSharedNow === 'function') {
+      await _v25PatchSharedNow(['schoolCalendar','inboxState','activityLog'], 'school calendar');
+    } else {
+      scheduleSave();
+      await new Promise(resolve => setTimeout(resolve, 900));
+    }
+    const message = schoolCalendarImpactText(yKey, summary);
+    setSchoolSaveStatus('saved', message);
+    showToast(`🏫 School calendar saved for ${yKey}`);
+    setTimeout(() => {
+      closeSchoolCal();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 850);
+  } catch(err) {
+    setSchoolSaveStatus('error', `Could not save school dates: ${err.message}`);
+    showToast('School calendar did not save');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '✓ Save School Calendar';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6820,10 +6865,11 @@ initFirebase = function(){
       <div class="modal" style="max-width:560px;width:94%">
         <div class="modal-title">🏫 School Calendar Settings</div>
         <div class="modal-sub">Enter Center Grove dates for the school year. Calendar refreshes automatically.</div>
+        <div id="school-save-status" class="save-confidence" style="display:none;margin-bottom:10px"></div>
         <div id="school-body" style="max-height:62vh;overflow-y:auto;padding:2px"></div>
         <div style="display:flex;gap:7px;margin-top:14px">
           <button class="btn btn-cancel" onclick="closeSchoolCal()">Close</button>
-          <button class="btn btn-save" style="flex:1" onclick="saveSchoolCal()">✓ Save</button>
+          <button class="btn btn-save" id="school-save-btn" style="flex:1" onclick="saveSchoolCal()">✓ Save School Calendar</button>
         </div>
       </div>
     `;
