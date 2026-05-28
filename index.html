@@ -988,6 +988,17 @@ body.auth-unlocked #who-gate{display:none}
 .onboarding-mini-icon{width:24px;height:24px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .onboarding-mini-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.84em;line-height:1.12}
 .onboarding-mini-text{font-size:.74em;color:var(--muted);line-height:1.35;margin-top:2px}
+.qa-checklist{display:grid;gap:7px}
+.qa-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px}
+.qa-dot{width:9px;height:9px;border-radius:50%;background:var(--muted-2)}
+.qa-row.ok .qa-dot{background:var(--emerald)}
+.qa-row.warn .qa-dot{background:var(--gold)}
+.qa-main{min-width:0}
+.qa-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.84em;line-height:1.12}
+.qa-text{font-size:.73em;color:var(--muted);line-height:1.3;margin-top:2px}
+.qa-status{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap;background:var(--bg-2);border:1px solid var(--border);color:var(--muted)}
+.qa-row.ok .qa-status{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.28);color:#047857}
+.qa-row.warn .qa-status{background:#fffbeb;border-color:#f59e0b;color:#92400e}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -996,6 +1007,8 @@ body.auth-unlocked #who-gate{display:none}
   .setup-state{grid-column:2}
   .setup-actions{grid-template-columns:1fr}
   .onboarding-grid,.onboarding-actions{grid-template-columns:1fr}
+  .qa-row{grid-template-columns:auto 1fr}
+  .qa-status{grid-column:2;width:fit-content}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -1618,6 +1631,97 @@ body.drawer-open{overflow:hidden}
   .travel-item{align-items:flex-start}
   .travel-item-actions{flex-direction:column;gap:6px}
   .travel-item-btn{width:100%;padding:8px 10px}
+}
+
+/* V38: iPhone QA polish */
+@media(max-width:600px){
+  .overlay{align-items:flex-end;padding:0;background:rgba(10,14,26,.58)}
+  .modal,
+  .settings-modal,
+  .sum-modal,
+  .travel-modal,
+  .expense-modal,
+  .mydays-modal,
+  .summer-prop-modal,
+  .summer-email-modal,
+  .export-modal,
+  .notif-modal,
+  .swap-block-modal,
+  .receipt-view-modal{
+    width:100%;
+    max-width:none;
+    max-height:94dvh;
+    border-radius:20px 20px 0 0;
+    border-left:0;
+    border-right:0;
+    border-bottom:0;
+  }
+  .modal{padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .settings-hdr,
+  .expense-hdr,
+  .travel-hdr,
+  .sum-modal-hdr,
+  .mydays-hdr,
+  .summer-prop-hdr,
+  .summer-email-hdr,
+  .export-hdr,
+  .notif-hdr,
+  .swap-block-hdr{
+    padding:16px 16px 13px;
+  }
+  .settings-body,
+  .expense-body,
+  .travel-body,
+  .sum-modal-body,
+  .mydays-body,
+  .summer-prop-body,
+  .summer-email-body,
+  .export-body,
+  .notif-body,
+  .swap-block-body{
+    padding:13px 14px;
+  }
+  .settings-actions,
+  .onboarding-actions,
+  .expense-actions,
+  .summer-email-actions{
+    grid-template-columns:1fr;
+    padding:11px 14px calc(12px + env(safe-area-inset-bottom));
+  }
+  .onboarding-actions #onboarding-next-btn{order:-1}
+  .onboarding-actions #onboarding-back-btn{order:0}
+  .onboarding-actions #onboarding-skip-btn{order:1}
+  .onboarding-step{padding:12px;border-radius:12px}
+  .onboarding-step-title{font-size:1.05em}
+  .onboarding-step-text{font-size:.8em}
+  .setup-item,.qa-row{padding:9px;border-radius:10px}
+  .setup-text,.qa-text{font-size:.72em}
+  .settings-section{padding:11px;border-radius:11px}
+  .settings-profile-card{padding:12px;border-radius:13px}
+  .menu-dropdown{top:54px;right:10px;width:calc(100vw - 20px);max-height:calc(100dvh - 66px)}
+  .menu-item{padding:12px}
+  .calendar-toolbar{padding:0 8px}
+  .cal-toolbar-shell{border-radius:12px}
+  .cal-toolbar-top{grid-template-columns:auto 1fr auto auto}
+  .cal-today-btn{padding:0 9px}
+  .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:0 8px}
+  .stat{min-width:0;justify-content:flex-start;padding:8px 9px}
+  .stat-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash-tools{border-radius:12px}
+  .dash-tools-grid{grid-template-columns:repeat(5,minmax(58px,1fr));gap:4px}
+  .dash-action{min-width:0}
+}
+
+@media(max-width:390px){
+  .hdr-title{font-size:1.18em}
+  .badges{gap:5px}
+  .badge{font-size:.68em;padding:4px 9px}
+  .dash-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .month-lbl{font-size:.96em}
+  .cal-sub{display:none}
+  .cal-toolbar-top{gap:5px;padding:9px 8px}
+  .cal-icon-btn,.cal-today-btn{min-width:40px;height:40px}
 }
 
 .dash-card-main,.dash-card-sub,.inbox-item-t,.inbox-item-body,.travel-item-dates,.travel-item-label,.myday-meta{overflow-wrap:anywhere}
@@ -2851,12 +2955,13 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 const APP_BUILD = {
-  version: '0.37.0',
-  name: 'Guided Setup Flow',
+  version: '0.38.0',
+  name: 'iPhone QA Polish',
   date: '2026-05-28',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.38.0', date:'2026-05-28', title:'iPhone QA polish', text:'Adds mobile sheet-style modals, tighter small-screen spacing, and an App Health mobile QA checklist.' },
   { version:'0.37.0', date:'2026-05-28', title:'Guided setup flow', text:'Adds a first-run setup wizard for family basics, parents, school/IPG readiness, summer notice, and App Health.' },
   { version:'0.36.0', date:'2026-05-28', title:'Launch foundation setup', text:'Adds family setup readiness, cleaner App Health scoring, and product-ready setup guidance for future parent reuse.' },
   { version:'0.35.0', date:'2026-05-28', title:'Agreement Center foundation', text:'Adds rules-source and agreement reference fields while keeping Indiana IPG active for this family.' },
@@ -3294,6 +3399,61 @@ function systemCheckSetupInfo(){
   };
 }
 
+function mobileQaItems(){
+  const setup = setupChecklistSummary();
+  const authReady = !isFirebaseAuthRequired() || isFirebaseSignedIn();
+  const sharedLoaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
+  const syncHealthy = settingsSyncTone() !== 'err';
+  const currentSchoolYear = typeof getAcademicYearKey === 'function'
+    ? getAcademicYearKey(today.getFullYear(), today.getMonth())
+    : `${today.getFullYear()}-${today.getFullYear()+1}`;
+  const schoolSummary = typeof summarizeSchoolCal === 'function'
+    ? summarizeSchoolCal((schoolCalendar || {})[currentSchoolYear] || {})
+    : { missing:['school calendar'] };
+  const summerYear = today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1;
+  const summerReady = (typeof isSummerSubmitted === 'function' && isSummerSubmitted(summerYear)) ||
+    (typeof summerNoticeAlreadySent === 'function' && summerNoticeAlreadySent(summerYear)) ||
+    (Array.isArray(summerPlan) && summerPlan.some(b => b && b.start && b.start.startsWith(String(summerYear))));
+  const receiptsReady = !!(window._fbUploadReceipt && window._fbGetReceiptBlob) || authReady;
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  return [
+    { title:'Sign-in and stay signed in', text:'Secure login restores cleanly before shared data loads.', ok:authReady },
+    { title:'Shared sync', text:'Calendar data has loaded and save status is not reporting an error.', ok:sharedLoaded && syncHealthy },
+    { title:'Guided setup', text:'Family setup has a clear completion path.', ok:setup.done >= Math.min(6, setup.total) },
+    { title:'School/IPG calendar', text:`${currentSchoolYear} school dates are ready or clearly flagged.`, ok:!(schoolSummary.missing && schoolSummary.missing.length) },
+    { title:'Summer planner', text:`Summer ${summerYear} has saved ranges, sent notice, or submitted status.`, ok:summerReady },
+    { title:'Travel and inbox', text:'Travel updates are visible to both parents and can be acknowledged.', ok:typeof openTravel === 'function' && typeof acknowledgeTravel === 'function' },
+    { title:'Expenses and receipts', text:'Expenses open, and receipts have a secure upload or fallback path.', ok:typeof openExpenses === 'function' && receiptsReady },
+    { title:'Permanent record', text:'Record search/export tools are available.', ok:typeof openHistory === 'function' },
+    { title:'Device backup', text:'No unresolved backup warning is currently blocking shared confidence.', ok:!(backup && ['error','blocked','held'].includes(backup.status)) }
+  ];
+}
+
+function renderMobileQaChecklist(){
+  return `<div class="qa-checklist">
+    ${mobileQaItems().map(item => `<div class="qa-row ${item.ok ? 'ok' : 'warn'}">
+      <div class="qa-dot"></div>
+      <div class="qa-main">
+        <div class="qa-title">${_v13EscapeHtml(item.title)}</div>
+        <div class="qa-text">${_v13EscapeHtml(item.text)}</div>
+      </div>
+      <div class="qa-status">${item.ok ? 'Ready' : 'Check'}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function systemCheckMobileInfo(){
+  const items = mobileQaItems();
+  const ready = items.filter(i => i.ok).length;
+  return {
+    tone: ready === items.length ? 'ok' : 'warn',
+    title: `Mobile QA ${ready}/${items.length}`,
+    text: ready === items.length
+      ? 'The core iPhone flows look ready from the app state.'
+      : 'Open the checklist below to finish the remaining iPhone QA items.'
+  };
+}
+
 function openOnboarding(step){
   onboardingStep = typeof step === 'number' ? Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, step)) : 0;
   renderOnboarding();
@@ -3596,16 +3756,18 @@ function renderSystemCheck(){
   const summer = systemCheckSummerInfo();
   const agreement = systemCheckAgreementInfo();
   const setup = systemCheckSetupInfo();
+  const mobileQa = systemCheckMobileInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedInfo = loaded
     ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
     : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
-  const healthItems = [setup, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
+  const healthItems = [setup, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
     ${healthHero(healthItems)}
     <div class="system-check-grid">
       ${systemCheckCard(setup.tone, '🚀', setup.title, setup.text)}
+      ${systemCheckCard(mobileQa.tone, '📱', mobileQa.title, mobileQa.text)}
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
       ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
       ${systemCheckCard(loadedInfo.tone, '📡', loadedInfo.title, loadedInfo.text)}
@@ -3625,6 +3787,11 @@ function renderSystemCheck(){
         <button class="btn btn-cancel" onclick="closeSystemCheck();openSettings()">Open Full Setup</button>
         <button class="btn btn-cancel" onclick="closeSystemCheck();openSchoolCal()">School Dates</button>
       </div>
+    </div>
+    <div class="settings-section data" style="margin-top:11px">
+      <div class="settings-section-title"><span>Mobile QA Checklist</span></div>
+      <div class="settings-status premium" style="margin-bottom:9px">This keeps the iPhone experience honest as the app grows.</div>
+      ${renderMobileQaChecklist()}
     </div>
     <div class="settings-section data" style="margin-top:11px">
       <div class="settings-section-title"><span>Release Notes</span></div>
