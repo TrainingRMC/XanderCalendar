@@ -5864,9 +5864,9 @@ function acknowledgeTravel(id){
   const t = (travelEntries || []).find(x => x.id === id);
   if (!t) return;
   const key = travelAckKey(id);
-  if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
-  inboxState[currentUser].dismissed[key] = true;
-  inboxState[currentUser].read[key] = true;
+  const myState = ensureInboxUserState(currentUser);
+  myState.dismissed[key] = true;
+  myState.read[key] = true;
   if (!t.acknowledgedBy) t.acknowledgedBy = {};
   t.acknowledgedBy[currentUser] = new Date().toISOString();
   logAction(currentUser, 'travel-ack', `Acknowledged ${t.by}'s travel ${fmtDate(t.start)} → ${fmtDate(t.end)}${t.label ? ` (${t.label})` : ''}`);
@@ -6231,6 +6231,16 @@ let schoolCalendar = {};   // { "2026-2027": { firstDay, lastDay, springBreak, f
 let inboxState     = {};   // { [user]: { read:{ key:true, ... }, dismissed:{ key:true, ... } } }
 let _activeSchoolYear = null;
 
+function ensureInboxUserState(name){
+  if (!name) return { read:{}, dismissed:{} };
+  if (!inboxState || typeof inboxState !== 'object') inboxState = {};
+  const existing = inboxState[name] && typeof inboxState[name] === 'object' ? inboxState[name] : {};
+  existing.read = existing.read && typeof existing.read === 'object' ? existing.read : {};
+  existing.dismissed = existing.dismissed && typeof existing.dismissed === 'object' ? existing.dismissed : {};
+  inboxState[name] = existing;
+  return existing;
+}
+
 // ─── Academic-year helpers ───────────────────────────────────
 function getAcademicYearKey(y, m){
   // Aug-Dec → starts that year. Jan-Jul → started previous year.
@@ -6488,8 +6498,7 @@ async function saveSchoolCal(){
   const summary = summarizeSchoolCal(schoolCalendar[yKey]);
   // Mark May reminder as seen for this year
   if (currentUser){
-    if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
-    inboxState[currentUser].dismissed[`schoolReminder-${yKey}`] = true;
+    ensureInboxUserState(currentUser).dismissed[`schoolReminder-${yKey}`] = true;
   }
   if (typeof logAction === 'function'){
     logAction(currentUser || 'unknown', 'school-cal',
@@ -6535,7 +6544,7 @@ function getInboxItems(){
   if (!currentUser) return [];
   const me = currentUser;
   const otherP = me === 'Justin' ? 'Brittany' : 'Justin';
-  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const myState = ensureInboxUserState(me);
   const items = [];
 
   // 1. Pending swap proposals from the other parent
@@ -6626,11 +6635,11 @@ function openInbox(){
   // Mark all as read on open (after a beat so user sees the unread state briefly)
   setTimeout(() => {
     if (!currentUser) return;
-    if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
+    const myState = ensureInboxUserState(currentUser);
     let changed = false;
     getInboxItems().forEach(i => {
-      if (!inboxState[currentUser].read[i.id]){
-        inboxState[currentUser].read[i.id] = true;
+      if (!myState.read[i.id]){
+        myState.read[i.id] = true;
         changed = true;
       }
     });
@@ -6727,9 +6736,9 @@ function renderInboxItem(item){
 
 function dismissInboxItem(itemId){
   if (!currentUser) return;
-  if (!inboxState[currentUser]) inboxState[currentUser] = { read:{}, dismissed:{} };
-  inboxState[currentUser].dismissed[itemId] = true;
-  inboxState[currentUser].read[itemId] = true;
+  const myState = ensureInboxUserState(currentUser);
+  myState.dismissed[itemId] = true;
+  myState.read[itemId] = true;
   renderInboxBody();
   renderInboxBadge();
   scheduleSave();
@@ -6946,7 +6955,7 @@ getInboxItems = function(){
   const items = _v121_origGetInboxItems();
   if (!currentUser) return items;
   const me = currentUser;
-  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const myState = ensureInboxUserState(me);
   const t = today;
 
   // Relevant summer year — current summer if before August, else next year
@@ -7354,7 +7363,7 @@ getInboxItems = function(){
   const items = _v123_origGetInboxItems().filter(i => i.type !== 'summer-plan');
   if (!currentUser) return items;
   const me = currentUser;
-  const myState = inboxState[me] || { read:{}, dismissed:{} };
+  const myState = ensureInboxUserState(me);
   const t = today;
   const cur = t.getFullYear();
   const yr = t.getMonth() < 7 ? cur : cur + 1;
@@ -11249,7 +11258,7 @@ const _v20OrigGetInboxItems = getInboxItems;
 getInboxItems = function(){
   const items = _v20OrigGetInboxItems();
   if (!currentUser) return items;
-  const myState = inboxState[currentUser] || { read:{}, dismissed:{} };
+  const myState = ensureInboxUserState(currentUser);
   (expenseEntries || []).forEach(exp => {
     if (!exp || !exp.id) return;
     const c = expenseComputed(exp);
