@@ -970,6 +970,24 @@ body.auth-unlocked #who-gate{display:none}
 .setup-state.done{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.28);color:#047857}
 .setup-state.todo{background:#fffbeb;border:1px solid #f59e0b;color:#92400e}
 .setup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.onboarding-modal{max-width:620px}
+.onboarding-progress{display:flex;gap:5px;margin:10px 0 2px}
+.onboarding-dot{height:5px;flex:1;border-radius:999px;background:rgba(255,255,255,.28)}
+.onboarding-dot.active{background:#fff}
+.onboarding-dot.done{background:rgba(16,185,129,.9)}
+.onboarding-step{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow-sm)}
+.onboarding-step-kicker{font-family:'Nunito',sans-serif;font-size:.7em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px}
+.onboarding-step-title{font-family:'Nunito',sans-serif;font-size:1.15em;font-weight:900;color:var(--text);line-height:1.12}
+.onboarding-step-text{font-size:.84em;color:var(--muted);line-height:1.45;margin-top:6px}
+.onboarding-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.onboarding-callout{background:linear-gradient(135deg,var(--j-soft),var(--card));border:1px solid rgba(59,130,246,.26);border-radius:12px;padding:10px 11px;margin-top:12px;font-size:.78em;color:var(--text-2);line-height:1.4}
+.onboarding-actions{display:grid;grid-template-columns:auto 1fr auto;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card-elev)}
+.onboarding-actions .btn-save{min-width:150px}
+.onboarding-mini-list{display:grid;gap:7px;margin-top:12px}
+.onboarding-mini-item{display:flex;gap:9px;align-items:flex-start;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:9px 10px}
+.onboarding-mini-icon{width:24px;height:24px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.onboarding-mini-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.84em;line-height:1.12}
+.onboarding-mini-text{font-size:.74em;color:var(--muted);line-height:1.35;margin-top:2px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -977,6 +995,7 @@ body.auth-unlocked #who-gate{display:none}
   .setup-item{grid-template-columns:auto 1fr}
   .setup-state{grid-column:2}
   .setup-actions{grid-template-columns:1fr}
+  .onboarding-grid,.onboarding-actions{grid-template-columns:1fr}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -1793,6 +1812,13 @@ body.drawer-open{overflow:hidden}
         <div class="menu-hint">Sync, IPG, receipts, backup</div>
       </div>
     </button>
+    <button class="menu-item" onclick="closeMenu();openOnboarding()">
+      <span class="menu-icon">🚀</span>
+      <div class="menu-text">
+        <div class="menu-label">Guided Setup</div>
+        <div class="menu-hint">Walk through the launch checklist</div>
+      </div>
+    </button>
     <button class="menu-item" onclick="closeMenu();openSettings()">
       <span class="menu-icon">⚙️</span>
       <div class="menu-text">
@@ -2029,6 +2055,23 @@ body.drawer-open{overflow:hidden}
     <div class="settings-actions">
       <button class="btn btn-cancel" onclick="closeSettings()">Close</button>
       <button class="btn btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ GUIDED SETUP MODAL ═══════════════════════ -->
+<div class="overlay" id="onboarding-overlay">
+  <div class="settings-modal onboarding-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">🚀 Guided Setup</div>
+      <div class="settings-sub" id="onboarding-sub">A clean first-run path for a launch-quality family calendar</div>
+      <div class="onboarding-progress" id="onboarding-progress"></div>
+    </div>
+    <div class="settings-body" id="onboarding-body"></div>
+    <div class="onboarding-actions">
+      <button class="btn btn-cancel" id="onboarding-skip-btn" onclick="closeOnboarding(true)">Not Now</button>
+      <button class="btn btn-cancel" id="onboarding-back-btn" onclick="prevOnboardingStep()">Back</button>
+      <button class="btn btn-save" id="onboarding-next-btn" onclick="nextOnboardingStep()">Continue</button>
     </div>
   </div>
 </div>
@@ -2787,11 +2830,14 @@ function showToast(msg){
 const USER_KEY = 'xander_cal_user';
 const PIN_KEY = 'xander_cal_parent_pins_v1';
 const PARENT_EMAIL_KEY = 'xander_cal_parent_emails_v1';
+const ONBOARDING_KEY = 'xander_cal_onboarding_seen_v1';
 const AUTH_PARENT_BY_UID = {
   AVTqawxYzSQh9xgqUL9aSRigTwk2: 'Justin',
   eBi4fVGfY7P8WvxXJXdjk6QkDV43: 'Brittany'
 };
 let setupPinParent = 'Justin';
+let onboardingStep = 0;
+const ONBOARDING_STEPS = ['Welcome','Family','Parents','School','Summer','Ready'];
 function isFirebaseAuthRequired() {
   return window._fbAuthRequired !== false;
 }
@@ -2805,12 +2851,13 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 const APP_BUILD = {
-  version: '0.36.0',
-  name: 'Launch Foundation Setup',
+  version: '0.37.0',
+  name: 'Guided Setup Flow',
   date: '2026-05-28',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.37.0', date:'2026-05-28', title:'Guided setup flow', text:'Adds a first-run setup wizard for family basics, parents, school/IPG readiness, summer notice, and App Health.' },
   { version:'0.36.0', date:'2026-05-28', title:'Launch foundation setup', text:'Adds family setup readiness, cleaner App Health scoring, and product-ready setup guidance for future parent reuse.' },
   { version:'0.35.0', date:'2026-05-28', title:'Agreement Center foundation', text:'Adds rules-source and agreement reference fields while keeping Indiana IPG active for this family.' },
   { version:'0.34.0', date:'2026-05-22', title:'Launch readiness settings', text:'Adds app-style Settings structure, family profile readiness, and build visibility.' },
@@ -3247,6 +3294,245 @@ function systemCheckSetupInfo(){
   };
 }
 
+function openOnboarding(step){
+  onboardingStep = typeof step === 'number' ? Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, step)) : 0;
+  renderOnboarding();
+  document.getElementById('onboarding-overlay').classList.add('open');
+}
+
+function closeOnboarding(markSeen){
+  document.getElementById('onboarding-overlay').classList.remove('open');
+  if (markSeen) {
+    try { localStorage.setItem(ONBOARDING_KEY, new Date().toISOString()); } catch(e) {}
+  }
+}
+
+document.getElementById('onboarding-overlay').addEventListener('click', function(e){
+  if (e.target === this) closeOnboarding(true);
+});
+
+function onboardingProgressHtml(){
+  return ONBOARDING_STEPS.map((_, i) => `<div class="onboarding-dot ${i === onboardingStep ? 'active' : i < onboardingStep ? 'done' : ''}"></div>`).join('');
+}
+
+function onboardingStepShell(kicker, title, text, inner){
+  return `<div class="onboarding-step">
+    <div class="onboarding-step-kicker">${_v13EscapeHtml(kicker)}</div>
+    <div class="onboarding-step-title">${_v13EscapeHtml(title)}</div>
+    <div class="onboarding-step-text">${_v13EscapeHtml(text)}</div>
+    ${inner || ''}
+  </div>`;
+}
+
+function onboardingField(id, label, value, type){
+  return `<div>
+    <div class="field-lbl">${_v13EscapeHtml(label)}</div>
+    <input class="inp" id="${id}" type="${type || 'text'}" value="${_v13EscapeHtml(value || '')}">
+  </div>`;
+}
+
+function renderOnboarding(){
+  const body = document.getElementById('onboarding-body');
+  const sub = document.getElementById('onboarding-sub');
+  const progress = document.getElementById('onboarding-progress');
+  const back = document.getElementById('onboarding-back-btn');
+  const next = document.getElementById('onboarding-next-btn');
+  const skip = document.getElementById('onboarding-skip-btn');
+  if (!body) return;
+  const s = getAppSettings();
+  const emails = getParentEmails();
+  const setup = setupChecklistSummary();
+  const schoolYear = typeof getAcademicYearKey === 'function' ? getAcademicYearKey(today.getFullYear(), today.getMonth()) : `${today.getFullYear()}-${today.getFullYear()+1}`;
+  const schoolInfo = systemCheckSchoolInfo();
+  const summerInfo = systemCheckSummerInfo();
+  if (sub) sub.textContent = `${setup.done}/${setup.total} launch items ready`;
+  if (progress) progress.innerHTML = onboardingProgressHtml();
+  if (back) back.style.visibility = onboardingStep === 0 ? 'hidden' : 'visible';
+  if (skip) skip.textContent = onboardingStep === ONBOARDING_STEPS.length - 1 ? 'Close' : 'Not Now';
+  if (next) next.textContent = onboardingStep === ONBOARDING_STEPS.length - 1 ? 'Finish Setup' : (onboardingStep === 1 || onboardingStep === 2 ? 'Save & Continue' : 'Continue');
+
+  if (onboardingStep === 0) {
+    body.innerHTML = onboardingStepShell(
+      'Start Here',
+      'Make the calendar launch-ready',
+      'This guided setup keeps the app clean for your family now and gives us the structure needed if this becomes a full app for other parents later.',
+      `<div class="onboarding-callout"><b>${setup.done}/${setup.total} items ready.</b> You can finish these in order, or jump out to the exact tool whenever needed.</div>
+      ${renderSetupChecklist(4)}
+      <div class="onboarding-mini-list">
+        <div class="onboarding-mini-item"><div class="onboarding-mini-icon">🔒</div><div><div class="onboarding-mini-title">No reinstall-sensitive changes</div><div class="onboarding-mini-text">This setup only changes app data and screens, not the installed iPhone app shell.</div></div></div>
+        <div class="onboarding-mini-item"><div class="onboarding-mini-icon">📘</div><div><div class="onboarding-mini-title">IPG logic stays intact</div><div class="onboarding-mini-text">Display wording can be polished while the custodial/noncustodial schedule basis remains preserved.</div></div></div>
+      </div>`
+    );
+    return;
+  }
+
+  if (onboardingStep === 1) {
+    body.innerHTML = onboardingStepShell(
+      'Step 1 of 5',
+      'Family basics',
+      'These are the reusable app-level details: child, calendar name, state, and rules source.',
+      `<div class="onboarding-grid">
+        ${onboardingField('ob-family-name', 'Family name', s.familyName)}
+        ${onboardingField('ob-calendar-name', 'Calendar name', s.calendarName)}
+        ${onboardingField('ob-child-name', 'Child name', s.childName)}
+        ${onboardingField('ob-child-bday', 'Birthday', s.childBirthday, 'date')}
+        ${onboardingField('ob-school-name', 'School / District', s.schoolName)}
+        ${onboardingField('ob-home-state', 'State', s.homeState)}
+        <div>
+          <div class="field-lbl">Rules source</div>
+          <select class="settings-select" id="ob-rules-source">
+            <option value="indiana-ipg" ${s.rulesSourceType === 'indiana-ipg' ? 'selected' : ''}>Indiana Parenting Time Guidelines</option>
+            <option value="custom-agreement" ${s.rulesSourceType === 'custom-agreement' ? 'selected' : ''}>Custom parenting agreement</option>
+            <option value="other-state-guidelines" ${s.rulesSourceType === 'other-state-guidelines' ? 'selected' : ''}>Other state guidelines</option>
+          </select>
+        </div>
+        ${onboardingField('ob-agreement-title', 'Agreement / guideline title', s.agreementTitle || s.guidelineName)}
+      </div>
+      <div class="onboarding-callout">For your calendar, Indiana IPG remains the active logic. Other agreement fields are reference and future-product setup unless we intentionally change the schedule engine.</div>`
+    );
+    return;
+  }
+
+  if (onboardingStep === 2) {
+    body.innerHTML = onboardingStepShell(
+      'Step 2 of 5',
+      'Parent profiles',
+      'These fields make the app feel personal while keeping the internal IPG roles stable.',
+      `<div class="onboarding-grid">
+        ${onboardingField('ob-justin-name', 'Justin display name', s.justinDisplay)}
+        ${onboardingField('ob-brittany-name', 'Brittany display name', s.brittanyDisplay)}
+        ${onboardingField('ob-justin-email', 'Justin email', emails.Justin || '', 'email')}
+        ${onboardingField('ob-brittany-email', 'Brittany email', emails.Brittany || '', 'email')}
+        ${onboardingField('ob-justin-role', 'Justin visible role', s.justinRole)}
+        ${onboardingField('ob-brittany-role', 'Brittany visible role', s.brittanyRole)}
+      </div>
+      <div class="onboarding-callout">Emails power the summer notice draft today and give the app a clean path for future reminders and setup flows.</div>`
+    );
+    return;
+  }
+
+  if (onboardingStep === 3) {
+    body.innerHTML = onboardingStepShell(
+      'Step 3 of 5',
+      'School calendar and IPG context',
+      'School dates help the app explain breaks, holidays, and IPG-related calendar context more clearly.',
+      `<div class="system-check-grid">
+        ${systemCheckCard(schoolInfo.tone, '🏫', schoolInfo.title, schoolInfo.text)}
+      </div>
+      <div class="onboarding-callout">Current academic year: <b>${_v13EscapeHtml(schoolYear)}</b>. First day, last day, and school breaks are the key items.</div>
+      <div class="setup-actions">
+        <button class="btn btn-save" onclick="closeOnboarding(false);openSchoolCal('${schoolYear}')">Open School Calendar</button>
+        <button class="btn btn-cancel" onclick="openOnboarding(4)">Skip For Now</button>
+      </div>`
+    );
+    return;
+  }
+
+  if (onboardingStep === 4) {
+    body.innerHTML = onboardingStepShell(
+      'Step 4 of 5',
+      'Summer planning',
+      'Summer dates, fairness totals, and the April 1 email summary are part of the app’s premium workflow.',
+      `<div class="system-check-grid">
+        ${systemCheckCard(summerInfo.tone, '☀️', summerInfo.title, summerInfo.text)}
+      </div>
+      <div class="onboarding-callout">Use the Summer Planner to add flexible day ranges, check totals, and prepare or mark the April 1 notice sent.</div>
+      <div class="setup-actions">
+        <button class="btn btn-save" onclick="closeOnboarding(false);openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">Open Summer Planner</button>
+        <button class="btn btn-cancel" onclick="openOnboarding(5)">Skip For Now</button>
+      </div>`
+    );
+    return;
+  }
+
+  body.innerHTML = onboardingStepShell(
+    'Ready',
+    setup.done === setup.total ? 'Everything important is ready' : 'You have a clear path from here',
+    setup.done === setup.total
+      ? 'The launch foundation is set. You can keep using the calendar normally.'
+      : 'A few items still need attention, but they are now organized in one place.',
+    `${renderSetupChecklist()}
+    <div class="setup-actions">
+      <button class="btn btn-save" onclick="closeOnboarding(true);openSystemCheck()">Open App Health</button>
+      <button class="btn btn-cancel" onclick="closeOnboarding(true);openSettings()">Family Setup</button>
+    </div>`
+  );
+}
+
+function collectOnboardingStep(){
+  if (onboardingStep === 1) {
+    const current = getAppSettings();
+    appSettings = Object.assign({}, current, {
+      familyName: document.getElementById('ob-family-name')?.value.trim() || current.familyName,
+      calendarName: document.getElementById('ob-calendar-name')?.value.trim() || current.calendarName,
+      childName: document.getElementById('ob-child-name')?.value.trim() || current.childName,
+      childBirthday: document.getElementById('ob-child-bday')?.value || current.childBirthday,
+      schoolName: document.getElementById('ob-school-name')?.value.trim() || current.schoolName,
+      homeState: document.getElementById('ob-home-state')?.value.trim() || current.homeState,
+      rulesSourceType: document.getElementById('ob-rules-source')?.value || current.rulesSourceType,
+      agreementTitle: document.getElementById('ob-agreement-title')?.value.trim() || current.agreementTitle || current.guidelineName
+    });
+    applyAppSettings();
+    return ['appSettings'];
+  }
+  if (onboardingStep === 2) {
+    const current = getAppSettings();
+    appSettings = Object.assign({}, current, {
+      justinDisplay: document.getElementById('ob-justin-name')?.value.trim() || current.justinDisplay,
+      brittanyDisplay: document.getElementById('ob-brittany-name')?.value.trim() || current.brittanyDisplay,
+      justinRole: document.getElementById('ob-justin-role')?.value.trim() || current.justinRole,
+      brittanyRole: document.getElementById('ob-brittany-role')?.value.trim() || current.brittanyRole
+    });
+    setParentEmail('Justin', document.getElementById('ob-justin-email')?.value.trim() || '', false);
+    setParentEmail('Brittany', document.getElementById('ob-brittany-email')?.value.trim() || '', false);
+    applyAppSettings();
+    return ['appSettings','parentEmails'];
+  }
+  return [];
+}
+
+async function persistOnboardingStep(keys){
+  if (!keys.length) return;
+  if (typeof _v25PatchSharedNow !== 'function' || isLocalPreviewOnly()) {
+    render();
+    return;
+  }
+  try {
+    await _v25PatchSharedNow(keys, 'guided setup');
+  } catch(err) {
+    showToast('Setup saved here. Shared sync will retry.');
+  }
+}
+
+async function nextOnboardingStep(){
+  const keys = collectOnboardingStep();
+  await persistOnboardingStep(keys);
+  if (onboardingStep >= ONBOARDING_STEPS.length - 1) {
+    closeOnboarding(true);
+    showToast('Guided setup saved');
+    return;
+  }
+  onboardingStep++;
+  renderOnboarding();
+}
+
+function prevOnboardingStep(){
+  onboardingStep = Math.max(0, onboardingStep - 1);
+  renderOnboarding();
+}
+
+function maybeShowOnboarding(){
+  if (!currentUser || document.body.classList.contains('auth-locked')) return;
+  let seen = '';
+  try { seen = localStorage.getItem(ONBOARDING_KEY) || ''; } catch(e) {}
+  const setup = setupChecklistSummary();
+  if (seen || setup.done === setup.total) return;
+  setTimeout(() => {
+    if (!currentUser || document.getElementById('onboarding-overlay')?.classList.contains('open')) return;
+    openOnboarding(0);
+  }, 900);
+}
+
 function healthTone(items){
   if (items.some(i => i.tone === 'err')) return 'err';
   if (items.some(i => i.tone === 'warn')) return 'warn';
@@ -3576,6 +3862,7 @@ function setUser(name) {
   document.body.classList.add('auth-unlocked');
   document.body.style.overflow = '';
   updateUserBadge();
+  maybeShowOnboarding();
   const logToggle = document.getElementById('log-toggle');
   if (logToggle) logToggle.style.display = 'flex';
 }
@@ -11893,6 +12180,7 @@ applyAppSettings();
 render();
 _v27RenderRecoveryBar();
 _v27RenderScopedSaveStatuses();
+setTimeout(maybeShowOnboarding, 1400);
 showWhoPickerIfNeeded();
 // If user already known from sessionStorage, run blocking + summer checks
 setTimeout(() => {
