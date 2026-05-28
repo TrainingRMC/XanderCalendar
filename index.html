@@ -972,6 +972,15 @@ body.auth-unlocked #who-gate{display:none}
 .system-check-icon{width:32px;height:32px;border-radius:10px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.05em}
 .system-check-title{font-family:'Nunito',sans-serif;font-size:.9em;font-weight:900;color:var(--text);line-height:1.15}
 .system-check-text{font-size:.78em;color:var(--muted);line-height:1.4;margin-top:3px}
+.health-hero{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:11px;box-shadow:var(--shadow-sm)}
+.health-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.health-score{font-family:'Nunito',sans-serif;font-size:1.55em;font-weight:900;color:var(--text);line-height:1}
+.health-title{font-family:'Nunito',sans-serif;font-size:1.02em;font-weight:900;color:var(--text);line-height:1.15}
+.health-sub{font-size:.78em;color:var(--muted);line-height:1.4;margin-top:4px}
+.health-pill{border-radius:999px;padding:5px 10px;font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;white-space:nowrap}
+.health-pill.ok{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.32);color:#047857}
+.health-pill.warn{background:var(--gold-soft);border:1px solid rgba(245,158,11,.38);color:#92400e}
+.health-pill.err{background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.32);color:#991b1b}
 .system-check-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
 .system-check-actions .btn{padding:9px 10px}
 
@@ -1766,8 +1775,8 @@ body.drawer-open{overflow:hidden}
     <button class="menu-item" onclick="closeMenu();openSystemCheck()">
       <span class="menu-icon">✅</span>
       <div class="menu-text">
-        <div class="menu-label">System Check</div>
-        <div class="menu-hint">Sync, save, receipts, backup</div>
+        <div class="menu-label">App Health</div>
+        <div class="menu-hint">Sync, IPG, receipts, backup</div>
       </div>
     </button>
     <button class="menu-item" onclick="closeMenu();openSettings()">
@@ -2015,8 +2024,8 @@ body.drawer-open{overflow:hidden}
 <div class="overlay" id="system-check-overlay">
   <div class="settings-modal">
     <div class="settings-hdr">
-      <div class="settings-title">✅ System Check</div>
-      <div class="settings-sub">Save, sync, receipts, backup, and account health</div>
+      <div class="settings-title">✅ App Health</div>
+      <div class="settings-sub">Sync, IPG readiness, receipts, backup, and account health</div>
     </div>
     <div class="settings-body" id="system-check-body"></div>
     <div class="settings-actions">
@@ -3065,6 +3074,78 @@ function systemCheckBuildInfo(){
   };
 }
 
+function systemCheckSchoolInfo(){
+  const yr = getAcademicYearKey(today.getFullYear(), today.getMonth());
+  const sc = (schoolCalendar || {})[yr] || {};
+  const summary = summarizeSchoolCal(sc);
+  const ready = schoolReadinessLabel(summary);
+  if (!summary.missing.length) {
+    return { tone:'ok', title:`School calendar ready`, text:`${yr} is ready for IPG use. Breaks and school dates explain themselves on the calendar.` };
+  }
+  return { tone:'warn', title:`School calendar ${ready.toLowerCase()}`, text:`${yr} is missing ${summary.missing.join(', ')}. Add these dates for stronger IPG school-break context.` };
+}
+
+function systemCheckSummerInfo(){
+  const yr = today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1;
+  if (typeof isSummerSubmitted === 'function' && isSummerSubmitted(yr)) {
+    return { tone:'ok', title:`Summer ${yr} submitted`, text:'Summer plan is marked submitted for the current planning year.' };
+  }
+  if (typeof summerNoticeAlreadySent === 'function' && summerNoticeAlreadySent(yr)) {
+    return { tone:'ok', title:`Summer ${yr} notice sent`, text:'April 1 email notice is marked sent for this year.' };
+  }
+  const deadline = new Date(yr, 3, 1);
+  const overdue = today > deadline;
+  return {
+    tone: overdue ? 'warn' : 'ok',
+    title: overdue ? `Summer ${yr} needs review` : `Summer ${yr} planning ready`,
+    text: overdue ? 'April 1 has passed. Mark the notice sent or submit/save the plan if it is already handled.' : 'Summer planning is available before the April 1 notice date.'
+  };
+}
+
+function systemCheckAgreementInfo(){
+  const s = getAppSettings();
+  const source = rulesSourceLabel(s.rulesSourceType);
+  return {
+    tone: s.rulesSourceType === 'indiana-ipg' ? 'ok' : 'warn',
+    title: `${source} active`,
+    text: s.rulesSourceType === 'indiana-ipg'
+      ? 'Indiana IPG remains the active schedule basis for this family.'
+      : 'Custom agreement details are saved as reference notes. They do not automatically rewrite schedule logic.'
+  };
+}
+
+function healthTone(items){
+  if (items.some(i => i.tone === 'err')) return 'err';
+  if (items.some(i => i.tone === 'warn')) return 'warn';
+  return 'ok';
+}
+
+function healthScore(items){
+  const ok = items.filter(i => i.tone === 'ok').length;
+  return `${ok}/${items.length}`;
+}
+
+function healthHero(items){
+  const tone = healthTone(items);
+  const title = tone === 'ok' ? 'Everything important looks ready'
+    : tone === 'err' ? 'App health needs attention'
+    : 'A few items need a look';
+  const sub = tone === 'ok'
+    ? 'Sign-in, sync, IPG readiness, records, and backups are reporting healthy from this device.'
+    : 'Use the cards below to see what is healthy, what is waiting, and what needs action.';
+  const pill = tone === 'ok' ? 'Healthy' : tone === 'err' ? 'Needs action' : 'Review';
+  return `<div class="health-hero">
+    <div class="health-hero-top">
+      <div>
+        <div class="health-score">${_v13EscapeHtml(healthScore(items))}</div>
+        <div class="health-title">${_v13EscapeHtml(title)}</div>
+        <div class="health-sub">${_v13EscapeHtml(sub)}</div>
+      </div>
+      <div class="health-pill ${tone}">${_v13EscapeHtml(pill)}</div>
+    </div>
+  </div>`;
+}
+
 function renderReleaseNotes(limit){
   return RELEASE_NOTES.slice(0, limit || RELEASE_NOTES.length).map(note => `
     <div class="release-note">
@@ -3092,19 +3173,27 @@ function renderSystemCheck(){
   const receipts = systemCheckReceiptInfo();
   const mode = systemCheckModeInfo();
   const build = systemCheckBuildInfo();
+  const school = systemCheckSchoolInfo();
+  const summer = systemCheckSummerInfo();
+  const agreement = systemCheckAgreementInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
-  const loadedCard = loaded
-    ? systemCheckCard('ok', '📡', 'Shared calendar loaded', `Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.`)
-    : systemCheckCard('warn', '📡', 'Shared calendar loading', 'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.');
+  const loadedInfo = loaded
+    ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
+    : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
+  const healthItems = [account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
+    ${healthHero(healthItems)}
     <div class="system-check-grid">
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
       ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
-      ${loadedCard}
+      ${systemCheckCard(loadedInfo.tone, '📡', loadedInfo.title, loadedInfo.text)}
       ${systemCheckCard(saved.tone, '💾', saved.title, saved.text)}
       ${systemCheckCard(backup.tone, '🛟', backup.title, backup.text)}
+      ${systemCheckCard(school.tone, '🏫', school.title, school.text)}
+      ${systemCheckCard(summer.tone, '☀️', summer.title, summer.text)}
       ${systemCheckCard(receipts.tone, '🧾', receipts.title, receipts.text)}
+      ${systemCheckCard(agreement.tone, '📘', agreement.title, agreement.text)}
       ${systemCheckCard(mode.tone, '🌐', mode.title, mode.text)}
       ${systemCheckCard(build.tone, '🏷️', build.title, build.text)}
     </div>
@@ -3114,6 +3203,8 @@ function renderSystemCheck(){
     </div>
     <div class="system-check-actions">
       <button class="btn btn-cancel" onclick="location.reload()">Refresh Shared Calendar</button>
+      <button class="btn btn-cancel" onclick="closeSystemCheck();openSchoolCal()">School Calendar</button>
+      <button class="btn btn-cancel" onclick="closeSystemCheck();openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)">Summer Planner</button>
       <button class="btn btn-cancel" onclick="retrySystemBackup()">Retry Backup Save</button>
       <button class="btn btn-cancel" onclick="exportXanderLocalBackups()">Export Backup</button>
       <button class="btn btn-cancel" onclick="closeSystemCheck();secureSignOut()">Log Out</button>
