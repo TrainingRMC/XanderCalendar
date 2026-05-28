@@ -959,10 +959,24 @@ body.auth-unlocked #who-gate{display:none}
 .release-note-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.86em;line-height:1.15}
 .release-note-version{font-family:'Nunito',sans-serif;font-weight:900;color:var(--j);font-size:.72em;white-space:nowrap}
 .release-note-text{font-size:.75em;color:var(--muted);line-height:1.35;margin-top:4px}
+.setup-checklist{display:grid;gap:8px}
+.setup-item{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 11px;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:flex-start;box-shadow:var(--shadow-sm)}
+.setup-item.done{border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,rgba(16,185,129,.08),var(--card))}
+.setup-item.todo{border-color:rgba(245,158,11,.32);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.setup-icon{width:26px;height:26px;border-radius:9px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:.9em;flex-shrink:0}
+.setup-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.88em;line-height:1.12}
+.setup-text{font-size:.75em;color:var(--muted);line-height:1.35;margin-top:3px}
+.setup-state{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.setup-state.done{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.28);color:#047857}
+.setup-state.todo{background:#fffbeb;border:1px solid #f59e0b;color:#92400e}
+.setup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
   .settings-readiness{grid-template-columns:1fr}
+  .setup-item{grid-template-columns:auto 1fr}
+  .setup-state{grid-column:2}
+  .setup-actions{grid-template-columns:1fr}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -1782,8 +1796,8 @@ body.drawer-open{overflow:hidden}
     <button class="menu-item" onclick="closeMenu();openSettings()">
       <span class="menu-icon">⚙️</span>
       <div class="menu-text">
-        <div class="menu-label">Settings</div>
-        <div class="menu-hint">Family details, emails, sync, backup</div>
+        <div class="menu-label">Family Setup</div>
+        <div class="menu-hint">Profile, parents, rules, and launch checklist</div>
       </div>
     </button>
     <button class="menu-item" onclick="closeMenu();openNotifs()">
@@ -2008,8 +2022,8 @@ body.drawer-open{overflow:hidden}
 <div class="overlay" id="settings-overlay">
   <div class="settings-modal">
     <div class="settings-hdr">
-      <div class="settings-title">⚙️ Settings</div>
-      <div class="settings-sub">Family details, contact info, sync, and records</div>
+      <div class="settings-title">⚙️ Family Setup</div>
+      <div class="settings-sub">Profile, parents, rules, school/IPG readiness, security, and records</div>
     </div>
     <div class="settings-body" id="settings-body"></div>
     <div class="settings-actions">
@@ -2025,7 +2039,7 @@ body.drawer-open{overflow:hidden}
   <div class="settings-modal">
     <div class="settings-hdr">
       <div class="settings-title">✅ App Health</div>
-      <div class="settings-sub">Sync, IPG readiness, receipts, backup, and account health</div>
+      <div class="settings-sub">Launch readiness, sync, IPG context, receipts, backup, and account health</div>
     </div>
     <div class="settings-body" id="system-check-body"></div>
     <div class="settings-actions">
@@ -2791,12 +2805,13 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 const APP_BUILD = {
-  version: '0.35.0',
-  name: 'Agreement Center Foundation',
+  version: '0.36.0',
+  name: 'Launch Foundation Setup',
   date: '2026-05-28',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.36.0', date:'2026-05-28', title:'Launch foundation setup', text:'Adds family setup readiness, cleaner App Health scoring, and product-ready setup guidance for future parent reuse.' },
   { version:'0.35.0', date:'2026-05-28', title:'Agreement Center foundation', text:'Adds rules-source and agreement reference fields while keeping Indiana IPG active for this family.' },
   { version:'0.34.0', date:'2026-05-22', title:'Launch readiness settings', text:'Adds app-style Settings structure, family profile readiness, and build visibility.' },
   { version:'0.33.0', date:'2026-05-22', title:'Family profile foundation', text:'Adds reusable family, child, parent, state, and calendar naming fields for future multi-family support.' },
@@ -3114,6 +3129,124 @@ function systemCheckAgreementInfo(){
   };
 }
 
+function setupChecklistItems(){
+  const s = getAppSettings();
+  const emails = getParentEmails();
+  const currentSchoolYear = typeof getAcademicYearKey === 'function'
+    ? getAcademicYearKey(today.getFullYear(), today.getMonth())
+    : `${today.getFullYear()}-${today.getFullYear()+1}`;
+  const schoolSummary = typeof summarizeSchoolCal === 'function'
+    ? summarizeSchoolCal((schoolCalendar || {})[currentSchoolYear] || {})
+    : { missing:['school calendar'] };
+  const summerYear = today.getMonth() < 7 ? today.getFullYear() : today.getFullYear() + 1;
+  const summerHandled = (typeof isSummerSubmitted === 'function' && isSummerSubmitted(summerYear)) ||
+    (typeof summerNoticeAlreadySent === 'function' && summerNoticeAlreadySent(summerYear));
+  const sharedLoaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
+  const backup = typeof _v16ReadBackup === 'function' ? _v16ReadBackup() : null;
+  const receiptReady = !!(window._fbUploadReceipt && window._fbGetReceiptBlob) || !!isFirebaseSignedIn();
+  return [
+    {
+      id:'profile',
+      icon:'👨‍👩‍👦',
+      title:'Family profile',
+      text:'Calendar name, child details, school, state, and time zone are ready.',
+      done: !!(s.familyName && s.calendarName && s.childName && s.childBirthday && s.schoolName && s.homeState)
+    },
+    {
+      id:'parents',
+      icon:'📇',
+      title:'Parent contacts',
+      text:'Parent emails are saved for summer notice drafts, reminders, and future reusable setup.',
+      done: !!(emails.Justin && emails.Brittany)
+    },
+    {
+      id:'auth',
+      icon:'🔐',
+      title:'Secure account access',
+      text:'Firebase sign-in is active so private family data is protected.',
+      done: !isFirebaseAuthRequired() || isFirebaseSignedIn()
+    },
+    {
+      id:'sync',
+      icon:'🔄',
+      title:'Shared calendar sync',
+      text:'The shared calendar has loaded on this device and changes can be saved safely.',
+      done: sharedLoaded && settingsSyncTone() !== 'err'
+    },
+    {
+      id:'school',
+      icon:'🏫',
+      title:'School calendar drives IPG context',
+      text: schoolSummary.missing && schoolSummary.missing.length
+        ? `${currentSchoolYear} still needs: ${schoolSummary.missing.join(', ')}.`
+        : `${currentSchoolYear} has the key school dates needed for calendar context.`,
+      done: !(schoolSummary.missing && schoolSummary.missing.length)
+    },
+    {
+      id:'summer',
+      icon:'☀️',
+      title:'Summer notice handled',
+      text: `Summer ${summerYear} is either submitted or the April 1 email notice is marked sent.`,
+      done: summerHandled
+    },
+    {
+      id:'receipts',
+      icon:'🧾',
+      title:'Receipt storage path',
+      text:'Receipt uploads or protected fallback storage are available after secure sign-in.',
+      done: receiptReady
+    },
+    {
+      id:'agreement',
+      icon:'📘',
+      title:'Rules source documented',
+      text:`${rulesSourceLabel(s.rulesSourceType)} is documented. Indiana IPG logic remains preserved for this calendar.`,
+      done: !!(s.rulesSourceType && s.agreementTitle)
+    },
+    {
+      id:'backup',
+      icon:'🛟',
+      title:'Device backup safety',
+      text: backup && ['pending','error','held','blocked','local-only'].includes(backup.status)
+        ? 'A local backup is waiting for attention, but the change is protected on this device.'
+        : 'Local backup safety is ready for slow or interrupted sync.',
+      done: !(backup && ['pending','error','held','blocked'].includes(backup.status))
+    }
+  ];
+}
+
+function setupChecklistSummary(){
+  const items = setupChecklistItems();
+  const done = items.filter(i => i.done).length;
+  return { items, done, total: items.length, tone: done === items.length ? 'ok' : 'warn' };
+}
+
+function renderSetupChecklist(limit){
+  const summary = setupChecklistSummary();
+  const items = typeof limit === 'number' ? summary.items.slice(0, limit) : summary.items;
+  return `<div class="setup-checklist">
+    ${items.map(item => `<div class="setup-item ${item.done ? 'done' : 'todo'}">
+      <div class="setup-icon">${item.icon}</div>
+      <div>
+        <div class="setup-title">${_v13EscapeHtml(item.title)}</div>
+        <div class="setup-text">${_v13EscapeHtml(item.text)}</div>
+      </div>
+      <div class="setup-state ${item.done ? 'done' : 'todo'}">${item.done ? 'Ready' : 'Needs Setup'}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function systemCheckSetupInfo(){
+  const summary = setupChecklistSummary();
+  return {
+    tone: summary.tone,
+    title: `Setup ${summary.done}/${summary.total} ready`,
+    text: summary.done === summary.total
+      ? 'Family profile, security, sync, school/IPG context, summer notice, receipts, and backup are ready.'
+      : 'Open Settings to finish the remaining launch-readiness items.'
+  };
+}
+
 function healthTone(items){
   if (items.some(i => i.tone === 'err')) return 'err';
   if (items.some(i => i.tone === 'warn')) return 'warn';
@@ -3176,15 +3309,17 @@ function renderSystemCheck(){
   const school = systemCheckSchoolInfo();
   const summer = systemCheckSummerInfo();
   const agreement = systemCheckAgreementInfo();
+  const setup = systemCheckSetupInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedInfo = loaded
     ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
     : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
-  const healthItems = [account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
+  const healthItems = [setup, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
     ${healthHero(healthItems)}
     <div class="system-check-grid">
+      ${systemCheckCard(setup.tone, '🚀', setup.title, setup.text)}
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
       ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
       ${systemCheckCard(loadedInfo.tone, '📡', loadedInfo.title, loadedInfo.text)}
@@ -3196,6 +3331,14 @@ function renderSystemCheck(){
       ${systemCheckCard(agreement.tone, '📘', agreement.title, agreement.text)}
       ${systemCheckCard(mode.tone, '🌐', mode.title, mode.text)}
       ${systemCheckCard(build.tone, '🏷️', build.title, build.text)}
+    </div>
+    <div class="settings-section data" style="margin-top:11px">
+      <div class="settings-section-title"><span>Launch Checklist</span></div>
+      ${renderSetupChecklist(5)}
+      <div class="setup-actions">
+        <button class="btn btn-cancel" onclick="closeSystemCheck();openSettings()">Open Full Setup</button>
+        <button class="btn btn-cancel" onclick="closeSystemCheck();openSchoolCal()">School Dates</button>
+      </div>
     </div>
     <div class="settings-section data" style="margin-top:11px">
       <div class="settings-section-title"><span>Release Notes</span></div>
@@ -3225,15 +3368,16 @@ function renderSettings(){
   const profileReady = s.familyName && s.calendarName && s.childName && s.schoolName;
   const contactsReady = !!(emails.Justin && emails.Brittany);
   const syncReady = settingsSyncTone() === 'ok';
+  const setupSummary = setupChecklistSummary();
   body.innerHTML = `
     <div class="settings-profile-card">
       <div class="settings-profile-top">
         <div>
-          <div class="settings-profile-kicker">Family Profile</div>
+          <div class="settings-profile-kicker">Family App Setup</div>
           <div class="settings-profile-title">${_v13EscapeHtml(s.calendarName || appCalendarName())}</div>
           <div class="settings-profile-sub">${_v13EscapeHtml(s.familyName || 'Shared family')} · ${_v13EscapeHtml(s.schoolName || 'School not set')} · ${_v13EscapeHtml(s.guidelineName || 'Guidelines not set')}</div>
         </div>
-        <div class="settings-profile-badge">${profileReady ? 'Profile Ready' : 'Needs Info'}</div>
+        <div class="settings-profile-badge">${setupSummary.done}/${setupSummary.total} Ready</div>
       </div>
       <div class="settings-readiness">
         <div class="settings-readiness-item">
@@ -3252,6 +3396,15 @@ function renderSettings(){
           <div class="settings-readiness-label">Build</div>
           <div class="settings-readiness-value">v${_v13EscapeHtml(APP_BUILD.version)}</div>
         </div>
+      </div>
+    </div>
+    <div class="settings-section family">
+      <div class="settings-section-title"><span>Setup Checklist</span></div>
+      <div class="settings-status premium" style="margin-bottom:9px">This is the launch-readiness checklist for your family now, and the foundation for a future version other parents could set up for themselves.</div>
+      ${renderSetupChecklist()}
+      <div class="setup-actions">
+        <button class="btn btn-cancel" onclick="closeSettings();openSystemCheck()">Open App Health</button>
+        <button class="btn btn-cancel" onclick="closeSettings();openSchoolCal()">Finish School Dates</button>
       </div>
     </div>
     <div class="settings-section family">
@@ -3583,7 +3736,7 @@ function renderPinGate() {
   if (loading) loading.classList.remove('show');
   if (isFirebaseAuthRequired() && !isFirebaseAuthSettled()) {
     title.textContent = 'Welcome';
-    sub.textContent = 'Checking whether this device is already signed in.';
+    sub.textContent = 'Checking secure access for this family calendar.';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'none';
@@ -3595,7 +3748,7 @@ function renderPinGate() {
     title.textContent = localPreview ? 'Local preview' : 'Welcome back';
     sub.textContent = localPreview
       ? 'Open the app layout on this computer. Real sign-in and saving happen on the live site.'
-      : 'Sign in to open the shared calendar and keep both homes aligned.';
+      : 'Sign in to open the protected family calendar, records, and receipts.';
     setup.style.display = 'none';
     login.style.display = 'none';
     authLogin.style.display = 'grid';
