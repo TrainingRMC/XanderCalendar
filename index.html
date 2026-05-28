@@ -6499,7 +6499,11 @@ async function saveSchoolCal(){
   render();
   try {
     if (typeof _v25PatchSharedNow === 'function') {
-      await _v25PatchSharedNow(['schoolCalendar','inboxState','activityLog'], 'school calendar');
+      await _v35PromiseWithTimeout(
+        _v25PatchSharedNow(['schoolCalendar','inboxState','activityLog'], 'school calendar'),
+        12000,
+        'School calendar save took too long. Your changes are protected on this device; check sync and try again.'
+      );
     } else {
       scheduleSave();
       await new Promise(resolve => setTimeout(resolve, 900));
@@ -9984,10 +9988,22 @@ async function _v26EnsureSharedDataBeforeTravelSave(){
   _v16SharedDataLoaded = true;
 }
 
+function _v35PromiseWithTimeout(promise, ms, message){
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message || 'Request timed out')), ms || 9000);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function _v28AuthedFirebaseUrl(url){
   if (!isFirebaseAuthRequired()) return url;
   if (!window._fbAuthToken) throw new Error('Secure sign-in is still loading');
-  const token = await window._fbAuthToken();
+  const token = await _v35PromiseWithTimeout(
+    window._fbAuthToken(),
+    7000,
+    'Secure sign-in took too long. Sign out and back in, then try again.'
+  );
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}auth=${encodeURIComponent(token)}`;
 }
