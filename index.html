@@ -330,6 +330,7 @@ body.auth-locked > *:not(#who-gate):not(#pw-gate){visibility:hidden}
 .day-detail-chip.gold{background:var(--gold-l);border-color:rgba(245,158,11,.35);color:#92400e}
 .day-detail-chip.green{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#047857}
 .day-detail-chip.purple{background:rgba(167,139,250,.14);border-color:rgba(167,139,250,.32);color:#7c3aed}
+.day-detail-chip.school{background:rgba(167,139,250,.16);border-color:rgba(167,139,250,.42);color:#6d28d9}
 .field-lbl{font-size:.7em;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .sel,.inp,.ta{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.93em;font-family:'DM Sans',sans-serif;margin-bottom:12px;transition:all .2s ease;background:var(--input-bg);color:var(--text);font-weight:500}
 .sel:focus,.inp:focus,.ta:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
@@ -1037,6 +1038,12 @@ body.drawer-open{overflow:hidden}
 .sc-chip.ok{border-color:rgba(16,185,129,.35);color:#047857;background:rgba(16,185,129,.12)}
 .sc-chip.warn{border-color:#f59e0b;color:#92400e;background:#fffbeb}
 .sc-warning{background:#fffbeb;border:1px solid #f59e0b;color:#92400e;border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:.78em;line-height:1.35}
+.sc-readiness{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.sc-readiness-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 10px}
+.sc-readiness-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.sc-readiness-value{font-family:'Nunito',sans-serif;font-size:.92em;font-weight:900;color:var(--text);margin-top:2px;line-height:1.15}
+.sc-readiness-note{font-size:.73em;color:var(--muted);line-height:1.3;margin-top:3px}
+.sc-impact-note{background:linear-gradient(135deg,rgba(167,139,250,.14),var(--card));border:1px solid rgba(167,139,250,.28);border-radius:10px;padding:9px 10px;margin-bottom:10px;font-size:.78em;color:var(--text-2);line-height:1.4}
 .sc-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
 .sc-row:last-child{margin-bottom:0}
 .sc-row-lbl{font-size:.86em;font-weight:700;color:var(--text);min-width:170px;flex-shrink:0}
@@ -2445,7 +2452,9 @@ function renderDayDetailPanel(y,m,d,info){
   const dateKey = dk(y,m,d);
   const owner = info && info.owner ? info.owner : 'Brittany';
   const timeStr = buildTimeStr(info.timeFrom, info.timeTo, info.timeMode);
+  const school = typeof getSchoolOverrideDetail === 'function' ? getSchoolOverrideDetail(y,m,d) : null;
   const chips = [];
+  if (school) chips.push(`<span class="day-detail-chip school">🏫 ${_v13EscapeHtml(school.label)}</span>`);
   if (info.event) chips.push(`<span class="day-detail-chip gold">${_v13EscapeHtml(info.event)}</span>`);
   if (info.is_bday) chips.push('<span class="day-detail-chip gold">Xander birthday</span>');
   if (info.parent_bday) chips.push(`<span class="day-detail-chip gold">${_v13EscapeHtml(info.parent_bday)} birthday</span>`);
@@ -2459,7 +2468,9 @@ function renderDayDetailPanel(y,m,d,info){
   if (info.note) chips.push('<span class="day-detail-chip purple">Has note</span>');
   const sub = info.note
     ? _v13EscapeHtml(info.note)
-    : travel.length
+    : school
+      ? _v13EscapeHtml(school.ipgImpact)
+      : travel.length
       ? _v13EscapeHtml(travel.map(t => t.label || 'Travel').join(', '))
       : 'Use the fields below for notes, schedule details, or a proposed change.';
   el.innerHTML = `<div class="day-detail-top">
@@ -4224,7 +4235,9 @@ function buildIpgConfidence(y,m,d){
   const base = (DEFAULT[dataKey(y,m)] || {})[String(d)] || {};
   const ov = overrides[key] || null;
   const info = getInfo(y,m,d) || {};
-  const school = typeof getSchoolOverride === 'function' ? getSchoolOverride(y,m,d) : null;
+  const school = typeof getSchoolOverrideDetail === 'function'
+    ? getSchoolOverrideDetail(y,m,d)
+    : (typeof getSchoolOverride === 'function' ? getSchoolOverride(y,m,d) : null);
   const pending = Object.values(pendingSwaps || {}).filter(s => s && s.date === key);
   const travel = (travelEntries || []).filter(t => t && key >= t.start && key <= t.end);
   const reasons = [];
@@ -4234,7 +4247,7 @@ function buildIpgConfidence(y,m,d){
     reasons.push({ label: ov._summer ? 'Summer plan applied' : 'Shared calendar change', strong:true });
     main = `${info.owner || ov.owner} is shown because a shared calendar update is active for this day.`;
   }
-  if (school) reasons.push({ label:'School calendar date', strong:true });
+  if (school) reasons.push({ label:`School calendar: ${school.label || school.event || 'school date'}`, strong:true });
   if (base.is_bday) reasons.push({ label:"Xander's birthday", strong:true });
   if (base.parent_bday) reasons.push({ label:`${base.parent_bday}'s birthday`, strong:true });
   if (base.is_holiday && base.event) reasons.push({ label:'Holiday / special day', strong:true });
@@ -4252,7 +4265,7 @@ function buildIpgConfidence(y,m,d){
       ? 'This day was written from the summer planner.'
       : 'This day is using a shared-calendar update instead of the default schedule.');
   } else if (school) {
-    detail.push(`School calendar marks this as ${school.event || 'a school date'}.`);
+    detail.push(school.ipgImpact || `School calendar marks this as ${school.event || 'a school date'}.`);
   } else if (base.event) {
     detail.push(`Default calendar label: ${base.event}.`);
   } else {
@@ -6284,6 +6297,60 @@ function getSchoolOverride(y, m, d){
   return null;
 }
 
+function getSchoolOverrideDetail(y, m, d){
+  if (!schoolCalendar) return null;
+  const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  for (const yKey in schoolCalendar){
+    const sc = schoolCalendar[yKey];
+    if (!sc) continue;
+    const breaks = [
+      { key:'thanksgivingBreak', label:'Thanksgiving Break', icon:'🦃' },
+      { key:'winterBreak',       label:'Winter Break',       icon:'❄️' },
+      { key:'springBreak',       label:'Spring Break',       icon:'🌸' },
+      { key:'fallBreak',         label:'Fall Break',         icon:'🍂' }
+    ];
+    for (const br of breaks){
+      const range = sc[br.key];
+      if (range && range.start && range.end && dateStr >= range.start && dateStr <= range.end){
+        return {
+          event: `${br.icon} ${br.label}`,
+          label: br.label,
+          type: 'break',
+          yearKey: yKey,
+          rangeStart: range.start,
+          rangeEnd: range.end,
+          ipgImpact: `${br.label} comes from the ${yKey} school calendar and can affect IPG school-break handling.`
+        };
+      }
+    }
+    if (sc.firstDay === dateStr) return {
+      event: '🎒 First Day of School',
+      label: 'First Day of School',
+      type: 'first-day',
+      yearKey: yKey,
+      ipgImpact: `First day of school anchors the ${yKey} school year for school-year planning.`
+    };
+    if (sc.lastDay === dateStr) return {
+      event: '🎓 Last Day of School',
+      label: 'Last Day of School',
+      type: 'last-day',
+      yearKey: yKey,
+      ipgImpact: `Last day of school helps define the start of summer planning for IPG timing.`
+    };
+    if (Array.isArray(sc.noSchoolDays)){
+      const ns = sc.noSchoolDays.find(x => x && x.date === dateStr);
+      if (ns) return {
+        event: ns.label || '📚 No School',
+        label: ns.label || 'No School',
+        type: 'no-school',
+        yearKey: yKey,
+        ipgImpact: `This no-school day comes from the ${yKey} school calendar for visibility and shared planning.`
+      };
+    }
+  }
+  return null;
+}
+
 // Wrap getInfo so school overrides apply *after* base/manual edits
 const _v12_origGetInfo = getInfo;
 getInfo = function(y, m, d){
@@ -6338,11 +6405,24 @@ function summarizeSchoolCal(sc){
   return { completeBreaks, noSchool, missing };
 }
 
+function schoolReadinessLabel(summary){
+  if (!summary.missing.length) return 'Ready for IPG use';
+  if (summary.missing.length <= 2) return 'Nearly ready';
+  return 'Needs dates';
+}
+
+function schoolReadinessTone(summary){
+  if (!summary.missing.length) return 'ok';
+  return 'warn';
+}
+
 function renderSchoolCal(){
   const yKey = _activeSchoolYear;
   const sc = schoolCalendar[yKey] || {};
   const [y1, y2] = yKey.split('-').map(Number);
   const summary = summarizeSchoolCal(sc);
+  const readyLabel = schoolReadinessLabel(summary);
+  const readyTone = schoolReadinessTone(summary);
 
   // Year picker buttons (cur, next, prev)
   const cur = today.getFullYear();
@@ -6403,10 +6483,24 @@ function renderSchoolCal(){
         <span class="sc-chip ${sc.lastDay?'ok':'warn'}">Last day ${sc.lastDay?'set':'missing'}</span>
         <span class="sc-chip ${summary.completeBreaks===4?'ok':'warn'}">${summary.completeBreaks}/4 breaks</span>
         <span class="sc-chip ${summary.noSchool?'ok':''}">${summary.noSchool} no-school day${summary.noSchool===1?'':'s'}</span>
+        <span class="sc-chip ${readyTone}">${readyLabel}</span>
+      </div>
+      <div class="sc-readiness">
+        <div class="sc-readiness-card">
+          <div class="sc-readiness-label">IPG Readiness</div>
+          <div class="sc-readiness-value">${readyLabel}</div>
+          <div class="sc-readiness-note">${summary.missing.length ? `Missing ${summary.missing.join(', ')}.` : 'School calendar is complete enough for break and school-year visibility.'}</div>
+        </div>
+        <div class="sc-readiness-card">
+          <div class="sc-readiness-label">Calendar Impact</div>
+          <div class="sc-readiness-value">${summary.completeBreaks} breaks active</div>
+          <div class="sc-readiness-note">Saved breaks and school dates appear directly on the month calendar and day explanations.</div>
+        </div>
       </div>
     </div>
 
     ${summary.missing.length ? `<div class="sc-warning">⚠️ Missing ${summary.missing.join(', ')}. You can still save, but the calendar is most reliable when these are filled in.</div>` : ''}
+    <div class="sc-impact-note"><b>How this works:</b> these school dates are not just notes. Once saved, they show on the calendar and explain school-break or school-year context when you tap a date.</div>
 
     <div class="sc-section">
       <div class="sc-section-t">📅 School Year Bookends</div>
