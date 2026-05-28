@@ -999,6 +999,25 @@ body.auth-unlocked #who-gate{display:none}
 .qa-status{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap;background:var(--bg-2);border:1px solid var(--border);color:var(--muted)}
 .qa-row.ok .qa-status{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.28);color:#047857}
 .qa-row.warn .qa-status{background:#fffbeb;border-color:#f59e0b;color:#92400e}
+.beta-summary{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:11px;box-shadow:var(--shadow-sm)}
+.beta-summary-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.beta-score{font-family:'Nunito',sans-serif;font-size:1.45em;font-weight:900;color:var(--text);line-height:1}
+.beta-title{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text);line-height:1.15}
+.beta-sub{font-size:.78em;color:var(--muted);line-height:1.4;margin-top:4px}
+.beta-pill{border-radius:999px;padding:5px 10px;font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;white-space:nowrap;background:var(--gold-soft);border:1px solid rgba(245,158,11,.38);color:#92400e}
+.beta-pill.ok{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.32);color:#047857}
+.beta-list{display:grid;gap:9px}
+.beta-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;box-shadow:var(--shadow-sm)}
+.beta-item.ready{border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,rgba(16,185,129,.08),var(--card))}
+.beta-item-top{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start}
+.beta-item-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.9em;line-height:1.15}
+.beta-item-text{font-size:.76em;color:var(--muted);line-height:1.4;margin-top:3px}
+.beta-parent-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.beta-parent{border:1px solid var(--border);border-radius:10px;padding:8px 9px;background:var(--bg-2);font-size:.76em;color:var(--muted);line-height:1.35}
+.beta-parent.done{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#047857}
+.beta-parent b{font-family:'Nunito',sans-serif;color:var(--text);font-size:1.02em}
+.beta-item-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.beta-note{width:100%;min-height:68px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-top:9px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -1009,6 +1028,8 @@ body.auth-unlocked #who-gate{display:none}
   .onboarding-grid,.onboarding-actions{grid-template-columns:1fr}
   .qa-row{grid-template-columns:auto 1fr}
   .qa-status{grid-column:2;width:fit-content}
+  .beta-summary-top{flex-direction:column}
+  .beta-parent-row,.beta-item-actions{grid-template-columns:1fr}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -1916,6 +1937,13 @@ body.drawer-open{overflow:hidden}
         <div class="menu-hint">Sync, IPG, receipts, backup</div>
       </div>
     </button>
+    <button class="menu-item" onclick="closeMenu();openBetaTest()">
+      <span class="menu-icon">🧪</span>
+      <div class="menu-text">
+        <div class="menu-label">Beta Test</div>
+        <div class="menu-hint">Real-world test checklist for both parents</div>
+      </div>
+    </button>
     <button class="menu-item" onclick="closeMenu();openOnboarding()">
       <span class="menu-icon">🚀</span>
       <div class="menu-text">
@@ -2192,6 +2220,21 @@ body.drawer-open{overflow:hidden}
     <div class="settings-actions">
       <button class="btn btn-cancel" onclick="closeSystemCheck()">Close</button>
       <button class="btn btn-save" onclick="renderSystemCheck()">Refresh Check</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ BETA TEST MODAL ═══════════════════════ -->
+<div class="overlay" id="beta-test-overlay">
+  <div class="settings-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">🧪 Real-World Beta Test</div>
+      <div class="settings-sub">A practical test board for Justin and Brittany before this becomes a full app</div>
+    </div>
+    <div class="settings-body" id="beta-test-body"></div>
+    <div class="settings-actions">
+      <button class="btn btn-cancel" onclick="closeBetaTest()">Close</button>
+      <button class="btn btn-save" onclick="saveBetaTestNotes()">Save Notes</button>
     </div>
   </div>
 </div>
@@ -2954,13 +2997,15 @@ function isFirebaseAuthSettled() {
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
+let betaTestState = { items:{}, notes:'' };
 const APP_BUILD = {
-  version: '0.38.0',
-  name: 'iPhone QA Polish',
+  version: '0.39.0',
+  name: 'Real-World Beta Test',
   date: '2026-05-28',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.39.0', date:'2026-05-28', title:'Real-world beta test board', text:'Adds a shared parent-facing beta checklist for testing sign-in, saving, travel, expenses, school dates, summer planning, and records before launch.' },
   { version:'0.38.0', date:'2026-05-28', title:'iPhone QA polish', text:'Adds mobile sheet-style modals, tighter small-screen spacing, and an App Health mobile QA checklist.' },
   { version:'0.37.0', date:'2026-05-28', title:'Guided setup flow', text:'Adds a first-run setup wizard for family basics, parents, school/IPG readiness, summer notice, and App Health.' },
   { version:'0.36.0', date:'2026-05-28', title:'Launch foundation setup', text:'Adds family setup readiness, cleaner App Health scoring, and product-ready setup guidance for future parent reuse.' },
@@ -3452,6 +3497,204 @@ function systemCheckMobileInfo(){
       ? 'The core iPhone flows look ready from the app state.'
       : 'Open the checklist below to finish the remaining iPhone QA items.'
   };
+}
+
+function betaTestItems(){
+  const child = appChildName();
+  return [
+    {
+      id:'signin',
+      title:'Sign in and stay signed in',
+      text:'Each parent can open the app on their iPhone, sign in, close it, and come back without confusion.',
+      action:'openSystemCheck()',
+      actionLabel:'Check Sign-In'
+    },
+    {
+      id:'calendar-save',
+      title:'Calendar changes save after refresh',
+      text:`Add or edit one harmless note on a ${child} day, refresh, and confirm it is still there.`,
+      action:'scrollToCalendar()',
+      actionLabel:'Open Calendar'
+    },
+    {
+      id:'travel',
+      title:'Travel is shared and acknowledged',
+      text:'One parent adds a trip, the other sees it in Inbox, acknowledges it, and the record stays visible.',
+      action:'openTravel()',
+      actionLabel:'Test Travel'
+    },
+    {
+      id:'school',
+      title:'School dates drive the calendar',
+      text:'Save school dates, return to the dashboard, and confirm breaks or key school dates show correctly.',
+      action:'openSchoolCal()',
+      actionLabel:'School Dates'
+    },
+    {
+      id:'summer',
+      title:'Summer planning feels fair',
+      text:'Add flexible summer day ranges, verify Justin/Brittany totals, and confirm the April 1 email summary is easy to find.',
+      action:'openSummer(today.getMonth()<7?today.getFullYear():today.getFullYear()+1)',
+      actionLabel:'Test Summer'
+    },
+    {
+      id:'expenses',
+      title:'Expenses and receipts work safely',
+      text:'Add an expense, mark it paid with a paid date, attach or note a receipt, and verify the other parent can see it.',
+      action:'openExpenses()',
+      actionLabel:'Test Expenses'
+    },
+    {
+      id:'inbox',
+      title:'Inbox only shows real action',
+      text:'New travel, expense, or schedule items appear when action is needed, then clear after being handled.',
+      action:'openInbox()',
+      actionLabel:'Open Inbox'
+    },
+    {
+      id:'records',
+      title:'Permanent record answers questions',
+      text:'Search for travel, expenses, summer, and schedule changes. Confirm the export/report feels useful.',
+      action:'openHistory()',
+      actionLabel:'Open Records'
+    }
+  ];
+}
+
+function betaEntry(id){
+  if (!betaTestState || typeof betaTestState !== 'object') betaTestState = { items:{}, notes:'' };
+  if (!betaTestState.items) betaTestState.items = {};
+  if (!betaTestState.items[id]) betaTestState.items[id] = {};
+  return betaTestState.items[id];
+}
+
+function betaParentDone(id, parent){
+  const entry = betaEntry(id);
+  return !!(entry[parent] && entry[parent].done);
+}
+
+function betaItemReady(id){
+  return betaParentDone(id, 'Justin') && betaParentDone(id, 'Brittany');
+}
+
+function betaProgress(){
+  const items = betaTestItems();
+  const parentChecks = items.length * 2;
+  const doneChecks = items.reduce((sum, item) => sum + (betaParentDone(item.id, 'Justin') ? 1 : 0) + (betaParentDone(item.id, 'Brittany') ? 1 : 0), 0);
+  const completeItems = items.filter(item => betaItemReady(item.id)).length;
+  return { doneChecks, parentChecks, completeItems, totalItems: items.length };
+}
+
+function betaParentHtml(id, parent){
+  const done = betaParentDone(id, parent);
+  const entry = betaEntry(id)[parent] || {};
+  return `<div class="beta-parent ${done ? 'done' : ''}">
+    <b>${done ? '✓' : '○'} ${_v13EscapeHtml(parent)}</b><br>
+    ${done ? `Tested ${_v13EscapeHtml(settingsTimeLabel(entry.at, 'recently'))}` : 'Not marked yet'}
+  </div>`;
+}
+
+function renderBetaTest(){
+  const body = document.getElementById('beta-test-body');
+  if (!body) return;
+  const progress = betaProgress();
+  const ready = progress.completeItems === progress.totalItems;
+  const current = currentUser || 'this parent';
+  const markLabel = currentUser ? `Mark ${current} Tested` : 'Sign In To Mark Tested';
+  body.innerHTML = `
+    <div class="beta-summary">
+      <div class="beta-summary-top">
+        <div>
+          <div class="beta-score">${progress.doneChecks}/${progress.parentChecks}</div>
+          <div class="beta-title">${ready ? 'Ready for a deeper beta' : 'Testing in progress'}</div>
+          <div class="beta-sub">Use this with Brittany as a real couple test. Each parent marks only their own side after trying the flow on their phone.</div>
+        </div>
+        <div class="beta-pill ${ready ? 'ok' : ''}">${ready ? 'Complete' : `${progress.completeItems}/${progress.totalItems} flows`}</div>
+      </div>
+    </div>
+    <div class="beta-list">
+      ${betaTestItems().map(item => `<div class="beta-item ${betaItemReady(item.id) ? 'ready' : ''}">
+        <div class="beta-item-top">
+          <div>
+            <div class="beta-item-title">${_v13EscapeHtml(item.title)}</div>
+            <div class="beta-item-text">${_v13EscapeHtml(item.text)}</div>
+          </div>
+          <div class="qa-status">${betaItemReady(item.id) ? 'Both tested' : 'Testing'}</div>
+        </div>
+        <div class="beta-parent-row">
+          ${betaParentHtml(item.id, 'Justin')}
+          ${betaParentHtml(item.id, 'Brittany')}
+        </div>
+        <div class="beta-item-actions">
+          <button class="btn btn-cancel" onclick="closeBetaTest();${item.action}">${_v13EscapeHtml(item.actionLabel)}</button>
+          <button class="btn btn-save" onclick="toggleBetaTestItem('${item.id}')">${betaParentDone(item.id, currentUser) ? `Unmark ${_v13EscapeHtml(current)}` : _v13EscapeHtml(markLabel)}</button>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="settings-section data" style="margin-top:11px">
+      <div class="settings-section-title"><span>Beta Notes</span></div>
+      <div class="settings-status premium">Use this for real-world issues you notice while testing together. Keep it plain: what happened, where, and whether it repeated.</div>
+      <textarea class="beta-note" id="beta-test-notes" placeholder="Example: Brittany acknowledged travel on iPhone and it cleared after refresh...">${_v13EscapeHtml(betaTestState.notes || '')}</textarea>
+    </div>
+  `;
+}
+
+function openBetaTest(){
+  renderBetaTest();
+  document.getElementById('beta-test-overlay').classList.add('open');
+}
+
+function closeBetaTest(){
+  document.getElementById('beta-test-overlay').classList.remove('open');
+}
+
+async function persistBetaTest(label){
+  if (typeof _v25PatchSharedNow !== 'function' || isLocalPreviewOnly()) {
+    render();
+    return;
+  }
+  await _v25PatchSharedNow(['betaTestState'], label || 'beta test');
+}
+
+async function toggleBetaTestItem(id){
+  if (!currentUser) {
+    alert('Sign in first so the app knows which parent tested this.');
+    return;
+  }
+  const entry = betaEntry(id);
+  const wasDone = !!(entry[currentUser] && entry[currentUser].done);
+  entry[currentUser] = {
+    done: !wasDone,
+    at: new Date().toISOString()
+  };
+  renderBetaTest();
+  try {
+    await persistBetaTest('beta test');
+    showToast(wasDone ? 'Beta test item unmarked' : 'Beta test item marked');
+  } catch(err) {
+    alert('Beta test update did not save: ' + err.message);
+  }
+}
+
+async function saveBetaTestNotes(){
+  if (!betaTestState || typeof betaTestState !== 'object') betaTestState = { items:{}, notes:'' };
+  betaTestState.notes = document.getElementById('beta-test-notes')?.value || '';
+  try {
+    await persistBetaTest('beta notes');
+    showToast('Beta notes saved');
+    closeBetaTest();
+  } catch(err) {
+    alert('Beta notes did not save: ' + err.message);
+  }
+}
+
+document.getElementById('beta-test-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeBetaTest();
+});
+
+function scrollToCalendar(){
+  const target = document.querySelector('.calendar-toolbar') || document.getElementById('grid');
+  if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 function openOnboarding(step){
@@ -10123,6 +10366,7 @@ function _v16BuildSavePayload(){
     summerNoticeSent:  summerNoticeSent || {},
     parentEmails:      parentEmails || {},
     appSettings:       getAppSettings(),
+    betaTestState:     betaTestState || { items:{}, notes:'' },
     updatedAt:         new Date().toISOString(),
     updatedBy:         currentUser || 'unknown'
   };
@@ -10239,6 +10483,7 @@ function _v16ApplyPayload(data){
   if (data.inboxState)        inboxState        = data.inboxState;
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
   if (data.summerNoticeSent)  summerNoticeSent  = data.summerNoticeSent;
+  if (data.betaTestState)     betaTestState     = data.betaTestState;
   if (data.appSettings)       appSettings       = Object.assign(getAppSettings(), data.appSettings);
   if (data.parentEmails) {
     parentEmails = data.parentEmails;
@@ -10894,7 +11139,8 @@ function _v25PatchValueForKey(key){
     summerSubmitted: summerSubmitted || {},
     summerNoticeSent: summerNoticeSent || {},
     parentEmails: parentEmails || {},
-    appSettings: getAppSettings()
+    appSettings: getAppSettings(),
+    betaTestState: betaTestState || { items:{}, notes:'' }
   };
   return _v25Clone(values[key]);
 }
