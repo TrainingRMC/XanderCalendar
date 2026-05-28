@@ -1289,10 +1289,32 @@ body.drawer-open{overflow:hidden}
 .history-filter.active{background:var(--text);border-color:var(--text);color:var(--card)}
 .history-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
 .history-sort{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:6px 9px;font-size:.76em;font-weight:900;font-family:'Nunito',sans-serif}
-.history-export-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
+.history-export-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 9px}
 .history-export-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 8px;font-size:.78em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow-sm)}
 .history-export-btn.primary{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff}
 .history-export-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.records-hero{background:linear-gradient(135deg,var(--card),var(--bg-2));border:1px solid var(--border);border-radius:16px;padding:14px;margin:0 0 12px;box-shadow:var(--shadow-sm)}
+.records-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
+.records-kicker{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.records-title{font-family:'Nunito',sans-serif;font-size:1.14em;font-weight:900;color:var(--text);letter-spacing:-.2px;line-height:1.12;margin-top:2px}
+.records-sub{font-size:.78em;color:var(--muted);line-height:1.4;margin-top:4px}
+.records-badge{flex-shrink:0;background:var(--j-soft);border:1px solid var(--j-m);color:var(--j);border-radius:999px;padding:5px 9px;font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900}
+.records-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
+.records-metric{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 10px;min-width:0}
+.records-metric-label{font-family:'Nunito',sans-serif;font-size:.66em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.records-metric-value{font-family:'Nunito',sans-serif;font-size:1.08em;font-weight:900;color:var(--text);margin-top:3px}
+.records-metric.travel .records-metric-value{color:#047857}
+.records-metric.expense .records-metric-value{color:#0d9488}
+.records-metric.summer .records-metric-value{color:var(--gold)}
+.records-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.records-action{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:8px 7px;font-size:.74em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:var(--shadow-sm)}
+.records-action.primary{background:linear-gradient(135deg,var(--j-d),var(--j));border-color:transparent;color:#fff}
+.records-action:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+@media(max-width:620px){
+  .records-hero-top{flex-direction:column;gap:8px}
+  .records-metrics{grid-template-columns:repeat(2,1fr)}
+  .records-actions{grid-template-columns:repeat(2,1fr)}
+}
 .history-search-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px;margin:0 0 9px;display:grid;gap:7px}
 .history-search-input{width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:10px;padding:9px 11px;font-family:'DM Sans',sans-serif;font-size:.86em;font-weight:600}
 .history-search-input:focus,.history-date-input:focus{outline:none;border-color:var(--j);box-shadow:0 0 0 3px var(--j-soft)}
@@ -1712,8 +1734,8 @@ body.drawer-open{overflow:hidden}
     <button class="menu-item" onclick="closeMenu();openHistory()">
       <span class="menu-icon">📜</span>
       <div class="menu-text">
-        <div class="menu-label">Record</div>
-        <div class="menu-hint">Search history, dates, notes, travel</div>
+        <div class="menu-label">Records & Reports</div>
+        <div class="menu-hint">Search, filter, export, and summarize</div>
       </div>
     </button>
     <button class="menu-item" onclick="closeMenu();openExport()">
@@ -7512,6 +7534,24 @@ function clearHistorySearch(e){
   renderInboxBody();
 }
 
+function setRecordsQuickView(kind, e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyQuery = '';
+  historyMonth = '';
+  historyDate = '';
+  historyFilter = kind || 'all';
+  renderInboxBody();
+}
+
+function setRecordsCurrentMonth(e){
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  historyQuery = '';
+  historyDate = '';
+  historyFilter = 'all';
+  historyMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  renderInboxBody();
+}
+
 function openHistory(e){
   if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   inboxViewMode = 'history';
@@ -7665,6 +7705,7 @@ function _v19RecordTitle(){
 function _v19BuildPrintableRecordHtml(autoPrint){
   const history = _v19FilteredHistory();
   const trips = _v19FilteredTravel();
+  const expenses = _v34FilteredExpenses();
   const generated = new Date().toLocaleString('en-US', { month:'long', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
   const title = _v19RecordTitle();
   const counts = history.reduce((acc, e) => {
@@ -7676,7 +7717,8 @@ function _v19BuildPrintableRecordHtml(autoPrint){
   const countLine = [
     `${history.length} record item${history.length===1?'':'s'}`,
     `${trips.length} travel item${trips.length===1?'':'s'}`,
-    `${travelDays} travel day${travelDays===1?'':'s'}`
+    `${travelDays} travel day${travelDays===1?'':'s'}`,
+    `${expenses.length} expense${expenses.length===1?'':'s'}`
   ].join(' · ');
   const chipHtml = ['schedule','note','travel','expense','summer','school','system']
     .filter(k => counts[k])
@@ -7692,6 +7734,18 @@ function _v19BuildPrintableRecordHtml(autoPrint){
           ${t.notes ? `<em>${_v13EscapeHtml(t.notes)}</em>` : ''}
         </div>
       `).join('')}</div>
+    </section>` : '';
+  const expenseHtml = expenses.length ? `
+    <section>
+      <h2>Expense Summary</h2>
+      <div class="summary">${expenses.map(exp => {
+        const c = expenseComputed(exp);
+        return `<div class="summary-row">
+          <b>${_v13EscapeHtml(exp.description || 'Expense')} · $${Number(exp.amount || 0).toFixed(2)}</b>
+          <span>${fmtDate(exp.date)} · paid by ${_v13EscapeHtml(exp.paidBy || 'Parent')} · ${c.settled ? 'Paid' : `${_v13EscapeHtml(c.owedBy)} owes ${_v13EscapeHtml(c.owedTo)}`}</span>
+          ${exp.notes ? `<em>${_v13EscapeHtml(exp.notes)}</em>` : ''}
+        </div>`;
+      }).join('')}</div>
     </section>` : '';
   const historyHtml = history.length ? history.map(e => {
     const kind = _v13HistoryKind(e.type);
@@ -7744,6 +7798,7 @@ function _v19BuildPrintableRecordHtml(autoPrint){
     <div class="chips">${chipHtml || '<span class="chip">No category filters</span>'}</div>
   </header>
   ${travelHtml}
+  ${expenseHtml}
   <section>
     <h2>Permanent Record</h2>
     ${historyHtml}
@@ -7778,6 +7833,111 @@ function downloadRecordHtml(){
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function _v34CsvCell(value){
+  const text = String(value == null ? '' : value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadRecordCsv(){
+  const rows = [['Type','Date','Parent','Title','Details','Amount','Status']];
+  _v19FilteredHistory().forEach(e => {
+    rows.push([
+      _v13HistoryLabel(_v13HistoryKind(e.type)),
+      e.ts || '',
+      e.by || 'System',
+      e.type || '',
+      e.msg || '',
+      '',
+      ''
+    ]);
+  });
+  _v19FilteredTravel().forEach(t => {
+    rows.push([
+      'Travel',
+      `${t.start || ''}${t.end && t.end !== t.start ? ' to ' + t.end : ''}`,
+      t.by || '',
+      t.label || 'Travel',
+      t.notes || '',
+      '',
+      isTravelAcknowledged(t) ? 'Acknowledged' : 'Awaiting acknowledgement'
+    ]);
+  });
+  _v34FilteredExpenses().forEach(exp => {
+    const c = expenseComputed(exp);
+    rows.push([
+      'Expense',
+      exp.date || '',
+      exp.paidBy || '',
+      exp.description || 'Expense',
+      exp.notes || '',
+      Number(exp.amount || 0).toFixed(2),
+      c.settled ? `Paid ${exp.paidDate || ''}`.trim() : `Open - ${c.owedBy} owes ${c.owedTo}`
+    ]);
+  });
+  const csv = rows.map(row => row.map(_v34CsvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `xander-calendar-record-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function _v34ExpenseMatchesSearch(exp){
+  if (!exp) return false;
+  const q = historyQuery.trim().toLowerCase();
+  const entryDay = exp.date || '';
+  if (historyDate && entryDay !== historyDate) return false;
+  if (historyMonth && entryDay.slice(0,7) !== historyMonth) return false;
+  if (!q) return true;
+  const parsed = parseSearchDate(q);
+  if (parsed && entryDay === parsed.dateKey) return true;
+  const haystack = `${exp.description || ''} ${exp.category || ''} ${exp.paidBy || ''} ${exp.notes || ''} ${exp.amount || ''}`.toLowerCase();
+  return haystack.includes(q);
+}
+
+function _v34FilteredExpenses(){
+  if (historyFilter !== 'all' && historyFilter !== 'expense') return [];
+  return (expenseEntries || [])
+    .filter(_v34ExpenseMatchesSearch)
+    .sort((a,b) => (b.date || '').localeCompare(a.date || ''));
+}
+
+function _v34RecordCenterHtml(filteredHistory, allHistory){
+  const trips = _v19FilteredTravel();
+  const expenses = _v34FilteredExpenses();
+  const summerCount = allHistory.filter(e => _v13HistoryKind(e.type) === 'summer').length;
+  const travelDays = trips.reduce((sum, t) => sum + _v13TravelCountDays(t), 0);
+  const openExpenseCount = expenses.filter(e => !expenseComputed(e).settled).length;
+  const activeLabel = _v19RecordTitle();
+  return `<div class="records-hero">
+    <div class="records-hero-top">
+      <div>
+        <div class="records-kicker">Records Center</div>
+        <div class="records-title">Everything important, searchable and exportable.</div>
+        <div class="records-sub">${_v13EscapeHtml(activeLabel)} · Includes calendar notes, travel, expenses, summer notices, and saved activity.</div>
+      </div>
+      <div class="records-badge">${filteredHistory.length} shown</div>
+    </div>
+    <div class="records-metrics">
+      <div class="records-metric"><div class="records-metric-label">Record Items</div><div class="records-metric-value">${allHistory.length}</div></div>
+      <div class="records-metric travel"><div class="records-metric-label">Travel Days</div><div class="records-metric-value">${travelDays}</div></div>
+      <div class="records-metric expense"><div class="records-metric-label">Open Expenses</div><div class="records-metric-value">${openExpenseCount}</div></div>
+      <div class="records-metric summer"><div class="records-metric-label">Summer Items</div><div class="records-metric-value">${summerCount}</div></div>
+    </div>
+    <div class="records-actions">
+      <button class="records-action primary" onclick="exportRecordPdf()">PDF Summary</button>
+      <button class="records-action" onclick="downloadRecordCsv()">CSV Export</button>
+      <button class="records-action" onclick="setRecordsCurrentMonth(event)">This Month</button>
+      <button class="records-action" onclick="clearHistorySearch(event)">Reset View</button>
+    </div>
+  </div>`;
 }
 
 function _v13CalendarRecordMatches(){
@@ -8148,7 +8308,7 @@ renderInboxBody = function(){
   const body = document.getElementById('inbox-body');
   if (!body) return;
   const title = document.querySelector('.inbox-title');
-  if (title) title.textContent = inboxViewMode === 'history' ? '📜 Record' : '📥 Inbox';
+  if (title) title.textContent = inboxViewMode === 'history' ? '📜 Records' : '📥 Inbox';
   const items = getInboxItems();
   const actionHtml = items.length
     ? items.map(i => renderInboxItem(i)).join('')
@@ -8189,17 +8349,19 @@ renderInboxBody = function(){
   </div>`;
   const exportHtml = `<div class="history-export-actions">
     <button class="history-export-btn primary" onclick="exportRecordPdf()">Print / Save PDF</button>
-    <button class="history-export-btn" onclick="downloadRecordHtml()">Download Record</button>
+    <button class="history-export-btn" onclick="downloadRecordCsv()">Download CSV</button>
+    <button class="history-export-btn" onclick="downloadRecordHtml()">Download HTML</button>
   </div>`;
   const travelSummaryHtml = (historyFilter === 'all' || historyFilter === 'travel' || historyQuery || historyMonth || historyDate)
     ? _v13BuildTravelSummary()
     : '';
   const saveStatusHtml = typeof _v16SaveDetailHtml === 'function' ? _v16SaveDetailHtml() : '';
   const calendarMatchesHtml = _v13CalendarRecordMatches();
+  const recordsCenterHtml = _v34RecordCenterHtml(filteredHistory, allHistory);
   const historyTop = inboxViewMode === 'history' ? '0' : '18px';
   const historyHtml = history.length
-    ? `<div class="inbox-section-head" style="margin-top:${historyTop}">
-        <div class="inbox-history-title" style="margin:0">Permanent Record</div>
+    ? `${recordsCenterHtml}<div class="inbox-section-head" style="margin-top:${historyTop}">
+        <div class="inbox-history-title" style="margin:0">Record Timeline</div>
         <div class="inbox-section-count">${filteredHistory.length} shown · ${allHistory.length} total</div>
       </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${exportHtml}${travelSummaryHtml}${calendarMatchesHtml}` + history.map(e => {
         const cls = e.by === 'Justin' ? 'j' : (e.by === 'Brittany' ? 'b' : '');
@@ -8212,8 +8374,8 @@ renderInboxBody = function(){
           <div class="inbox-history-when">${formatLogTime(e.ts)}</div>
         </div>`;
       }).join('')
-    : `<div class="inbox-section-head" style="margin-top:${historyTop}">
-        <div class="inbox-history-title" style="margin:0">Permanent Record</div>
+    : `${recordsCenterHtml}<div class="inbox-section-head" style="margin-top:${historyTop}">
+        <div class="inbox-history-title" style="margin:0">Record Timeline</div>
         <div class="inbox-section-count">0 shown · ${allHistory.length} total</div>
       </div>${saveStatusHtml}${searchHtml}${filterHtml}${sortHtml}${exportHtml}${travelSummaryHtml}${calendarMatchesHtml}<div class="inbox-empty" style="padding:18px 10px">No matching activity recorded yet.</div>`;
 
