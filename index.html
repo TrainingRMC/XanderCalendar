@@ -1009,14 +1009,16 @@ body.auth-unlocked #who-gate{display:none}
 .beta-list{display:grid;gap:9px}
 .beta-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;box-shadow:var(--shadow-sm)}
 .beta-item.ready{border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,rgba(16,185,129,.08),var(--card))}
+.beta-item.issue{border-color:rgba(220,38,38,.34);background:linear-gradient(135deg,rgba(220,38,38,.08),var(--card))}
 .beta-item-top{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start}
 .beta-item-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.9em;line-height:1.15}
 .beta-item-text{font-size:.76em;color:var(--muted);line-height:1.4;margin-top:3px}
-.beta-parent-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
-.beta-parent{border:1px solid var(--border);border-radius:10px;padding:8px 9px;background:var(--bg-2);font-size:.76em;color:var(--muted);line-height:1.35}
-.beta-parent.done{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#047857}
-.beta-parent b{font-family:'Nunito',sans-serif;color:var(--text);font-size:1.02em}
-.beta-item-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.beta-result{border:1px solid var(--border);border-radius:10px;padding:8px 9px;background:var(--bg-2);font-size:.76em;color:var(--muted);line-height:1.35;margin-top:10px}
+.beta-result.pass{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#047857}
+.beta-result.issue{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.25);color:#991b1b}
+.beta-result b{font-family:'Nunito',sans-serif;color:var(--text);font-size:1.02em}
+.beta-item-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}
+.beta-item-note{width:100%;min-height:48px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:8px 9px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82em;margin-top:8px}
 .beta-note{width:100%;min-height:68px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-top:9px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
@@ -1029,7 +1031,7 @@ body.auth-unlocked #who-gate{display:none}
   .qa-row{grid-template-columns:auto 1fr}
   .qa-status{grid-column:2;width:fit-content}
   .beta-summary-top{flex-direction:column}
-  .beta-parent-row,.beta-item-actions{grid-template-columns:1fr}
+  .beta-item-actions{grid-template-columns:1fr}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -2999,12 +3001,13 @@ let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 let betaTestState = { items:{}, notes:'' };
 const APP_BUILD = {
-  version: '0.39.0',
-  name: 'Real-World Beta Test',
-  date: '2026-05-28',
+  version: '0.40.0',
+  name: 'Solo Beta Tracker',
+  date: '2026-05-29',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.40.0', date:'2026-05-29', title:'Solo beta tracker', text:'Refines Beta Test for Justin-led real-use testing with Passed, Issue Found, per-flow notes, and a cleaner launch-readiness score.' },
   { version:'0.39.0', date:'2026-05-28', title:'Real-world beta test board', text:'Adds a shared parent-facing beta checklist for testing sign-in, saving, travel, expenses, school dates, summer planning, and records before launch.' },
   { version:'0.38.0', date:'2026-05-28', title:'iPhone QA polish', text:'Adds mobile sheet-style modals, tighter small-screen spacing, and an App Health mobile QA checklist.' },
   { version:'0.37.0', date:'2026-05-28', title:'Guided setup flow', text:'Adds a first-run setup wizard for family basics, parents, school/IPG readiness, summer notice, and App Health.' },
@@ -3568,29 +3571,51 @@ function betaEntry(id){
   return betaTestState.items[id];
 }
 
-function betaParentDone(id, parent){
+function betaNormalizeEntry(entry){
+  if (!entry || typeof entry !== 'object') return { status:'untested', at:'', by:'', note:'' };
+  if (entry.status) return entry;
+  if (entry.Justin && entry.Justin.done) return { status:'pass', at:entry.Justin.at || '', by:'Justin', note:entry.note || '' };
+  if (entry.Brittany && entry.Brittany.done) return { status:'pass', at:entry.Brittany.at || '', by:'Brittany', note:entry.note || '' };
+  return Object.assign({ status:'untested', at:'', by:'', note:'' }, entry);
+}
+
+function betaStatus(id){
+  return betaNormalizeEntry(betaEntry(id)).status || 'untested';
+}
+
+function betaItemReady(id){
+  return betaStatus(id) === 'pass';
+}
+
+function betaItemIssue(id){
+  return betaStatus(id) === 'issue';
+}
+
+function betaLegacyParentDone(id, parent){
   const entry = betaEntry(id);
   return !!(entry[parent] && entry[parent].done);
 }
 
-function betaItemReady(id){
-  return betaParentDone(id, 'Justin') && betaParentDone(id, 'Brittany');
-}
-
 function betaProgress(){
   const items = betaTestItems();
-  const parentChecks = items.length * 2;
-  const doneChecks = items.reduce((sum, item) => sum + (betaParentDone(item.id, 'Justin') ? 1 : 0) + (betaParentDone(item.id, 'Brittany') ? 1 : 0), 0);
-  const completeItems = items.filter(item => betaItemReady(item.id)).length;
-  return { doneChecks, parentChecks, completeItems, totalItems: items.length };
+  const passed = items.filter(item => betaItemReady(item.id)).length;
+  const issues = items.filter(item => betaItemIssue(item.id)).length;
+  const untested = items.length - passed - issues;
+  return { passed, issues, untested, totalItems: items.length };
 }
 
-function betaParentHtml(id, parent){
-  const done = betaParentDone(id, parent);
-  const entry = betaEntry(id)[parent] || {};
-  return `<div class="beta-parent ${done ? 'done' : ''}">
-    <b>${done ? '✓' : '○'} ${_v13EscapeHtml(parent)}</b><br>
-    ${done ? `Tested ${_v13EscapeHtml(settingsTimeLabel(entry.at, 'recently'))}` : 'Not marked yet'}
+function betaStatusHtml(id){
+  const entry = betaNormalizeEntry(betaEntry(id));
+  const status = entry.status || 'untested';
+  const cls = status === 'pass' ? 'pass' : status === 'issue' ? 'issue' : '';
+  const title = status === 'pass' ? '✓ Passed'
+    : status === 'issue' ? '⚠ Issue found'
+    : '○ Not tested yet';
+  const detail = status === 'untested'
+    ? 'Run this flow when it naturally comes up, then mark the result.'
+    : `${entry.by || 'You'} marked this ${_v13EscapeHtml(settingsTimeLabel(entry.at, 'recently'))}`;
+  return `<div class="beta-result ${cls}">
+    <b>${title}</b><br>${detail}
   </div>`;
 }
 
@@ -3598,42 +3623,43 @@ function renderBetaTest(){
   const body = document.getElementById('beta-test-body');
   if (!body) return;
   const progress = betaProgress();
-  const ready = progress.completeItems === progress.totalItems;
-  const current = currentUser || 'this parent';
-  const markLabel = currentUser ? `Mark ${current} Tested` : 'Sign In To Mark Tested';
+  const ready = progress.passed === progress.totalItems;
+  const hasIssues = progress.issues > 0;
   body.innerHTML = `
     <div class="beta-summary">
       <div class="beta-summary-top">
         <div>
-          <div class="beta-score">${progress.doneChecks}/${progress.parentChecks}</div>
-          <div class="beta-title">${ready ? 'Ready for a deeper beta' : 'Testing in progress'}</div>
-          <div class="beta-sub">Use this with Brittany as a real couple test. Each parent marks only their own side after trying the flow on their phone.</div>
+          <div class="beta-score">${progress.passed}/${progress.totalItems}</div>
+          <div class="beta-title">${ready ? 'Ready for a deeper beta' : hasIssues ? 'Issues need a look' : 'Justin-led testing in progress'}</div>
+          <div class="beta-sub">Use this as your real-use testing tracker. Brittany does not need to run a checklist; mark a flow passed when you confirm it works in normal use.</div>
         </div>
-        <div class="beta-pill ${ready ? 'ok' : ''}">${ready ? 'Complete' : `${progress.completeItems}/${progress.totalItems} flows`}</div>
+        <div class="beta-pill ${ready ? 'ok' : ''}">${hasIssues ? `${progress.issues} issue${progress.issues===1?'':'s'}` : ready ? 'Complete' : `${progress.untested} left`}</div>
       </div>
     </div>
     <div class="beta-list">
-      ${betaTestItems().map(item => `<div class="beta-item ${betaItemReady(item.id) ? 'ready' : ''}">
+      ${betaTestItems().map(item => {
+        const entry = betaNormalizeEntry(betaEntry(item.id));
+        return `<div class="beta-item ${betaItemReady(item.id) ? 'ready' : betaItemIssue(item.id) ? 'issue' : ''}">
         <div class="beta-item-top">
           <div>
             <div class="beta-item-title">${_v13EscapeHtml(item.title)}</div>
             <div class="beta-item-text">${_v13EscapeHtml(item.text)}</div>
           </div>
-          <div class="qa-status">${betaItemReady(item.id) ? 'Both tested' : 'Testing'}</div>
+          <div class="qa-status">${betaItemReady(item.id) ? 'Passed' : betaItemIssue(item.id) ? 'Issue' : 'Untested'}</div>
         </div>
-        <div class="beta-parent-row">
-          ${betaParentHtml(item.id, 'Justin')}
-          ${betaParentHtml(item.id, 'Brittany')}
-        </div>
+        ${betaStatusHtml(item.id)}
+        <textarea class="beta-item-note" id="beta-note-${item.id}" placeholder="Optional note for this test">${_v13EscapeHtml(entry.note || '')}</textarea>
         <div class="beta-item-actions">
           <button class="btn btn-cancel" onclick="closeBetaTest();${item.action}">${_v13EscapeHtml(item.actionLabel)}</button>
-          <button class="btn btn-save" onclick="toggleBetaTestItem('${item.id}')">${betaParentDone(item.id, currentUser) ? `Unmark ${_v13EscapeHtml(current)}` : _v13EscapeHtml(markLabel)}</button>
+          <button class="btn btn-save" onclick="markBetaTestItem('${item.id}','pass')">Passed</button>
+          <button class="btn btn-reset" onclick="markBetaTestItem('${item.id}','issue')">Issue Found</button>
         </div>
-      </div>`).join('')}
+      </div>`;
+      }).join('')}
     </div>
     <div class="settings-section data" style="margin-top:11px">
       <div class="settings-section-title"><span>Beta Notes</span></div>
-      <div class="settings-status premium">Use this for real-world issues you notice while testing together. Keep it plain: what happened, where, and whether it repeated.</div>
+      <div class="settings-status premium">Use this for bigger product notes: what confused you, what felt premium, and what should be fixed before asking anyone else to use it.</div>
       <textarea class="beta-note" id="beta-test-notes" placeholder="Example: Brittany acknowledged travel on iPhone and it cleared after refresh...">${_v13EscapeHtml(betaTestState.notes || '')}</textarea>
     </div>
   `;
@@ -3656,21 +3682,23 @@ async function persistBetaTest(label){
   await _v25PatchSharedNow(['betaTestState'], label || 'beta test');
 }
 
-async function toggleBetaTestItem(id){
+async function markBetaTestItem(id, status){
   if (!currentUser) {
-    alert('Sign in first so the app knows which parent tested this.');
+    alert('Sign in first so the app can save who tested this.');
     return;
   }
   const entry = betaEntry(id);
-  const wasDone = !!(entry[currentUser] && entry[currentUser].done);
-  entry[currentUser] = {
-    done: !wasDone,
-    at: new Date().toISOString()
+  const noteEl = document.getElementById(`beta-note-${id}`);
+  betaTestState.items[id] = {
+    status: status,
+    by: currentUser,
+    at: new Date().toISOString(),
+    note: noteEl ? noteEl.value.trim() : (entry.note || '')
   };
   renderBetaTest();
   try {
     await persistBetaTest('beta test');
-    showToast(wasDone ? 'Beta test item unmarked' : 'Beta test item marked');
+    showToast(status === 'pass' ? 'Marked passed' : 'Issue noted');
   } catch(err) {
     alert('Beta test update did not save: ' + err.message);
   }
