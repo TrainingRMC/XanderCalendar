@@ -1031,6 +1031,23 @@ body.auth-unlocked #who-gate{display:none}
 .issue-body{font-size:.78em;color:var(--text-2);line-height:1.42;margin-top:7px;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:9px;padding:8px 9px}
 .issue-status{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap;background:var(--bg-2);border:1px solid var(--border);color:var(--muted)}
 .issue-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
+.launch-roadmap{display:grid;gap:10px}
+.launch-stage{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:var(--shadow-sm)}
+.launch-stage.ready{border-color:rgba(16,185,129,.3);background:linear-gradient(135deg,rgba(16,185,129,.08),var(--card))}
+.launch-stage.active{border-color:rgba(59,130,246,.32);background:linear-gradient(135deg,var(--j-soft),var(--card))}
+.launch-stage.blocked{border-color:rgba(245,158,11,.42);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.launch-stage-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.launch-stage-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.95em;line-height:1.15}
+.launch-stage-meta{font-size:.74em;color:var(--muted);line-height:1.35;margin-top:3px}
+.launch-stage-pill{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap;background:var(--bg-2);border:1px solid var(--border);color:var(--muted)}
+.launch-stage.ready .launch-stage-pill{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.28);color:#047857}
+.launch-stage.active .launch-stage-pill{background:var(--j-soft);border-color:rgba(59,130,246,.32);color:var(--j-d)}
+.launch-stage.blocked .launch-stage-pill{background:#fffbeb;border-color:#f59e0b;color:#92400e}
+.launch-stage-text{font-size:.78em;color:var(--text-2);line-height:1.42;margin-top:8px}
+.launch-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.launch-metric{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;box-shadow:var(--shadow-sm)}
+.launch-metric-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.launch-metric-value{font-family:'Nunito',sans-serif;font-size:1em;font-weight:900;color:var(--text);margin-top:3px;line-height:1.1}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -1038,6 +1055,8 @@ body.auth-unlocked #who-gate{display:none}
   .setup-item{grid-template-columns:auto 1fr}
   .setup-state{grid-column:2}
   .setup-actions{grid-template-columns:1fr}
+  .launch-stage-top{flex-direction:column;gap:7px}
+  .launch-metrics{grid-template-columns:1fr}
   .onboarding-grid,.onboarding-actions{grid-template-columns:1fr}
   .qa-row{grid-template-columns:auto 1fr}
   .qa-status{grid-column:2;width:fit-content}
@@ -1961,7 +1980,14 @@ body.drawer-open{overflow:hidden}
       <span class="menu-icon">⚠️</span>
       <div class="menu-text">
         <div class="menu-label">Report Issue</div>
-        <div class="menu-hint">Capture bugs, confusion, or lost-data risks</div>
+        <div class="menu-hint">Capture problems, confusion, or lost-data risks</div>
+      </div>
+    </button>
+    <button class="menu-item" onclick="closeMenu();openLaunchRoadmap()">
+      <span class="menu-icon">🗺️</span>
+      <div class="menu-text">
+        <div class="menu-label">Launch Roadmap</div>
+        <div class="menu-hint">Private beta to App Store path</div>
       </div>
     </button>
     <button class="menu-item" onclick="closeMenu();openOnboarding()">
@@ -2270,6 +2296,21 @@ body.drawer-open{overflow:hidden}
     <div class="settings-actions">
       <button class="btn btn-cancel" onclick="closeIssueReport()">Close</button>
       <button class="btn btn-save" onclick="saveIssueReport()">Save Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ LAUNCH ROADMAP MODAL ═══════════════════════ -->
+<div class="overlay" id="launch-roadmap-overlay">
+  <div class="settings-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">🗺️ Launch Roadmap</div>
+      <div class="settings-sub">Private beta, product readiness, App Store path, and monetization checkpoints</div>
+    </div>
+    <div class="settings-body" id="launch-roadmap-body"></div>
+    <div class="settings-actions">
+      <button class="btn btn-cancel" onclick="closeLaunchRoadmap()">Close</button>
+      <button class="btn btn-save" onclick="closeLaunchRoadmap();openBetaTest()">Open Beta Test</button>
     </div>
   </div>
 </div>
@@ -3036,12 +3077,13 @@ let betaTestState = { items:{}, notes:'' };
 let issueReports = [];
 let familyProfile = null;
 const APP_BUILD = {
-  version: '0.42.0',
-  name: 'Issue Reporting',
+  version: '0.43.0',
+  name: 'Launch Roadmap',
   date: '2026-05-29',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.43.0', date:'2026-05-29', title:'Launch roadmap', text:'Adds a private-beta-to-App-Store roadmap view with readiness checkpoints for productization and monetization planning.' },
   { version:'0.42.0', date:'2026-05-29', title:'Issue reporting', text:'Adds an in-app issue report flow for real beta hardening with area, impact, status, and permanent-record logging.' },
   { version:'0.41.0', date:'2026-05-29', title:'Product data foundation', text:'Adds a normalized family profile layer for future multi-family/app-store readiness while keeping Justin, Brittany, Xander, and Indiana IPG behavior intact.' },
   { version:'0.40.0', date:'2026-05-29', title:'Solo beta tracker', text:'Refines Beta Test for Justin-led real-use testing with Passed, Issue Found, per-flow notes, and a cleaner launch-readiness score.' },
@@ -3419,6 +3461,26 @@ function systemCheckIssueInfo(){
     return { tone:'warn', title:`${open} open issue${open===1?'':'s'}`, text:'Open or retest issues are being tracked for the real beta.' };
   }
   return { tone:'ok', title:'No open issues', text:'No active beta issues are currently reported.' };
+}
+
+function systemCheckRoadmapInfo(){
+  const metrics = typeof launchRoadmapMetrics === 'function' ? launchRoadmapMetrics() : null;
+  if (!metrics) return { tone:'warn', title:'Launch roadmap loading', text:'Roadmap readiness is still calculating.' };
+  if (metrics.openDataRisk) {
+    return {
+      tone:'err',
+      title:'Launch roadmap blocked',
+      text:`${metrics.openDataRisk} data-risk issue${metrics.openDataRisk===1?'':'s'} should be resolved before broader beta or App Store packaging.`
+    };
+  }
+  if (!metrics.syncOk || metrics.openIssues) {
+    return {
+      tone:'warn',
+      title:'Launch roadmap in beta',
+      text:'Private beta is active. Resolve open issues and confirm sync before treating the app as launch-ready.'
+    };
+  }
+  return { tone:'ok', title:'Launch roadmap on track', text:'Private beta and product foundation checks are moving in the right direction.' };
 }
 
 function systemCheckSchoolInfo(){
@@ -3861,6 +3923,143 @@ async function updateIssueStatus(id, status){
 
 document.getElementById('issue-report-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeIssueReport();
+});
+
+function launchRoadmapMetrics(){
+  const issues = issueReportList ? issueReportList() : [];
+  const openIssues = issues.filter(i => !['fixed','closed'].includes(i.status || 'open'));
+  const openDataRisk = openIssues.filter(i => i.impact === 'data').length;
+  const beta = typeof betaProgress === 'function' ? betaProgress() : { passed:0, totalItems:0, issues:0 };
+  const syncInfo = typeof systemCheckSyncInfo === 'function' ? systemCheckSyncInfo() : { tone:'warn' };
+  const profile = typeof setupChecklistSummary === 'function' ? setupChecklistSummary() : { done:0, total:1 };
+  const school = typeof systemCheckSchoolInfo === 'function' ? systemCheckSchoolInfo() : { tone:'warn' };
+  const receipts = typeof systemCheckReceiptInfo === 'function' ? systemCheckReceiptInfo() : { tone:'warn' };
+  const product = typeof systemCheckProductInfo === 'function' ? systemCheckProductInfo() : { tone:'warn' };
+  const agreement = typeof systemCheckAgreementInfo === 'function' ? systemCheckAgreementInfo() : { tone:'warn' };
+  return {
+    openIssues: openIssues.length,
+    openDataRisk,
+    betaPassed: beta.passed || 0,
+    betaTotal: beta.totalItems || 0,
+    betaIssues: beta.issues || 0,
+    syncOk: syncInfo.tone === 'ok',
+    profileOk: profile.done === profile.total,
+    schoolOk: school.tone === 'ok',
+    receiptsOk: receipts.tone === 'ok',
+    productOk: product.tone === 'ok',
+    agreementOk: agreement.tone === 'ok'
+  };
+}
+
+function launchRoadmapStages(){
+  const m = launchRoadmapMetrics();
+  const betaDone = m.betaTotal > 0 && m.betaPassed === m.betaTotal && m.betaIssues === 0;
+  const reliabilityDone = m.syncOk && m.openDataRisk === 0 && m.openIssues === 0;
+  const foundationDone = m.profileOk && m.schoolOk && m.receiptsOk && m.productOk && m.agreementOk;
+  return [
+    {
+      title:'Private beta',
+      meta:`${m.betaPassed}/${m.betaTotal || 0} real-use checks passed`,
+      state: betaDone ? 'ready' : 'active',
+      pill: betaDone ? 'Ready' : 'Testing',
+      text:'Use the app as a real co-parenting couple, mark core flows as passed, and log anything confusing before showing it to other families.',
+      action:'closeLaunchRoadmap();openBetaTest()',
+      actionLabel:'Open Beta Test'
+    },
+    {
+      title:'Core reliability',
+      meta:m.openIssues ? `${m.openIssues} open issue${m.openIssues===1?'':'s'} to review` : 'No open issues recorded',
+      state: reliabilityDone ? 'ready' : m.openDataRisk ? 'blocked' : 'active',
+      pill: reliabilityDone ? 'Stable' : m.openDataRisk ? 'Blocked' : 'Review',
+      text:'Before a wider pilot, saving, sync, auth, receipt storage, and permanent records need to feel boringly reliable.',
+      action:'closeLaunchRoadmap();openIssueReport()',
+      actionLabel:'Review Issues'
+    },
+    {
+      title:'Product foundation',
+      meta:foundationDone ? 'Family, rules, school, and receipts are configured' : 'Profile and setup still need review',
+      state: foundationDone ? 'ready' : 'active',
+      pill: foundationDone ? 'Set' : 'Build',
+      text:'This keeps your Indiana IPG setup working now while making the app flexible enough for other states and custom agreements later.',
+      action:'closeLaunchRoadmap();openSystemCheck()',
+      actionLabel:'Open App Health'
+    },
+    {
+      title:'App Store package',
+      meta:'Next: native wrapper, screenshots, privacy copy, support flow',
+      state:(betaDone && reliabilityDone && foundationDone) ? 'active' : 'blocked',
+      pill:(betaDone && reliabilityDone && foundationDone) ? 'Next' : 'Waiting',
+      text:'Once the web app is solid, package the same experience for iPhone and Android without disturbing the current home-screen install.',
+      action:'closeLaunchRoadmap();openOnboarding()',
+      actionLabel:'Review Setup'
+    },
+    {
+      title:'Monetization readiness',
+      meta:'Next: pricing, trial flow, family onboarding, legal review',
+      state:'blocked',
+      pill:'Later',
+      text:'This comes after the private beta proves the app is dependable, simple, and valuable enough for parents outside this family.',
+      action:'closeLaunchRoadmap();openHistory()',
+      actionLabel:'Open Records'
+    }
+  ];
+}
+
+function renderLaunchRoadmap(){
+  const body = document.getElementById('launch-roadmap-body');
+  if (!body) return;
+  const m = launchRoadmapMetrics();
+  const stages = launchRoadmapStages();
+  body.innerHTML = `
+    <div class="settings-section data">
+      <div class="settings-section-title"><span>Launch Snapshot</span></div>
+      <div class="launch-metrics">
+        <div class="launch-metric">
+          <div class="launch-metric-label">Beta Checks</div>
+          <div class="launch-metric-value">${m.betaPassed}/${m.betaTotal || 0}</div>
+        </div>
+        <div class="launch-metric">
+          <div class="launch-metric-label">Open Issues</div>
+          <div class="launch-metric-value">${m.openIssues}</div>
+        </div>
+        <div class="launch-metric">
+          <div class="launch-metric-label">Sync</div>
+          <div class="launch-metric-value">${m.syncOk ? 'Ready' : 'Review'}</div>
+        </div>
+      </div>
+      <div class="settings-status premium">This roadmap is intentionally practical: first prove it works for you and Brittany, then package the reliable parts for other parents.</div>
+    </div>
+    <div class="launch-roadmap">
+      ${stages.map(stage => `
+        <div class="launch-stage ${stage.state}">
+          <div class="launch-stage-top">
+            <div>
+              <div class="launch-stage-title">${_v13EscapeHtml(stage.title)}</div>
+              <div class="launch-stage-meta">${_v13EscapeHtml(stage.meta)}</div>
+            </div>
+            <div class="launch-stage-pill">${_v13EscapeHtml(stage.pill)}</div>
+          </div>
+          <div class="launch-stage-text">${_v13EscapeHtml(stage.text)}</div>
+          <div class="setup-actions">
+            <button class="btn btn-cancel" onclick="${stage.action}">${_v13EscapeHtml(stage.actionLabel)}</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openLaunchRoadmap(){
+  renderLaunchRoadmap();
+  document.getElementById('launch-roadmap-overlay').classList.add('open');
+}
+
+function closeLaunchRoadmap(){
+  document.getElementById('launch-roadmap-overlay').classList.remove('open');
+}
+
+document.getElementById('launch-roadmap-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeLaunchRoadmap();
 });
 
 function betaEntry(id){
@@ -4333,17 +4532,19 @@ function renderSystemCheck(){
   const mobileQa = systemCheckMobileInfo();
   const product = systemCheckProductInfo();
   const issues = systemCheckIssueInfo();
+  const roadmap = systemCheckRoadmapInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedInfo = loaded
     ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
     : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
-  const healthItems = [setup, product, issues, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
+  const healthItems = [setup, product, roadmap, issues, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
     ${healthHero(healthItems)}
     <div class="system-check-grid">
       ${systemCheckCard(setup.tone, '🚀', setup.title, setup.text)}
       ${systemCheckCard(product.tone, '🏗️', product.title, product.text)}
+      ${systemCheckCard(roadmap.tone, '🗺️', roadmap.title, roadmap.text)}
       ${systemCheckCard(issues.tone, '⚠️', issues.title, issues.text)}
       ${systemCheckCard(mobileQa.tone, '📱', mobileQa.title, mobileQa.text)}
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
