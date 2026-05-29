@@ -3000,13 +3000,15 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 let betaTestState = { items:{}, notes:'' };
+let familyProfile = null;
 const APP_BUILD = {
-  version: '0.40.0',
-  name: 'Solo Beta Tracker',
+  version: '0.41.0',
+  name: 'Product Data Foundation',
   date: '2026-05-29',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.41.0', date:'2026-05-29', title:'Product data foundation', text:'Adds a normalized family profile layer for future multi-family/app-store readiness while keeping Justin, Brittany, Xander, and Indiana IPG behavior intact.' },
   { version:'0.40.0', date:'2026-05-29', title:'Solo beta tracker', text:'Refines Beta Test for Justin-led real-use testing with Passed, Issue Found, per-flow notes, and a cleaner launch-readiness score.' },
   { version:'0.39.0', date:'2026-05-28', title:'Real-world beta test board', text:'Adds a shared parent-facing beta checklist for testing sign-in, saving, travel, expenses, school dates, summer planning, and records before launch.' },
   { version:'0.38.0', date:'2026-05-28', title:'iPhone QA polish', text:'Adds mobile sheet-style modals, tighter small-screen spacing, and an App Health mobile QA checklist.' },
@@ -3105,6 +3107,73 @@ function getParentEmails(){
   return Object.assign({}, parentEmails || {}, local || {});
 }
 
+function buildFamilyProfile(settings, emails, existing){
+  const s = settings || getAppSettings();
+  const e = emails || getParentEmails();
+  const prior = existing && typeof existing === 'object' ? existing : {};
+  return Object.assign({}, prior, {
+    schemaVersion: 1,
+    familyId: prior.familyId || 'xander-family',
+    mode: 'single-family-beta',
+    displayName: s.familyName || "Xander's Family",
+    calendarName: s.calendarName || appCalendarName(),
+    timeZone: s.timeZone || 'America/Indiana/Indianapolis',
+    children: Object.assign({}, prior.children || {}, {
+      primary: Object.assign({}, prior.children && prior.children.primary ? prior.children.primary : {}, {
+        id: 'xander',
+        displayName: s.childName || 'Xander',
+        birthday: s.childBirthday || '2012-05-27',
+        schoolName: s.schoolName || 'Center Grove Schools'
+      })
+    }),
+    parents: Object.assign({}, prior.parents || {}, {
+      Justin: Object.assign({}, prior.parents && prior.parents.Justin ? prior.parents.Justin : {}, {
+        id: 'parent_justin',
+        displayName: s.justinDisplay || 'Justin',
+        roleLabel: s.justinRole || 'Father',
+        scheduleRole: 'noncustodial',
+        authUid: AUTH_PARENT_BY_UID ? Object.keys(AUTH_PARENT_BY_UID).find(uid => AUTH_PARENT_BY_UID[uid] === 'Justin') || '' : '',
+        email: e.Justin || ''
+      }),
+      Brittany: Object.assign({}, prior.parents && prior.parents.Brittany ? prior.parents.Brittany : {}, {
+        id: 'parent_brittany',
+        displayName: s.brittanyDisplay || 'Brittany',
+        roleLabel: s.brittanyRole || 'Mother',
+        scheduleRole: 'custodial',
+        authUid: AUTH_PARENT_BY_UID ? Object.keys(AUTH_PARENT_BY_UID).find(uid => AUTH_PARENT_BY_UID[uid] === 'Brittany') || '' : '',
+        email: e.Brittany || ''
+      })
+    }),
+    rules: Object.assign({}, prior.rules || {}, {
+      jurisdiction: s.homeState || 'Indiana',
+      sourceType: s.rulesSourceType || 'indiana-ipg',
+      activeEngine: 'indiana-ipg',
+      title: s.agreementTitle || s.guidelineName || 'Indiana Parenting Time Guidelines',
+      referenceFileName: s.agreementFileName || '',
+      referenceUploadedAt: s.agreementUploadedAt || '',
+      notes: s.agreementNotes || '',
+      tags: s.agreementTags || ''
+    }),
+    product: Object.assign({}, prior.product || {}, {
+      reusableProfileReady: true,
+      currentOwnerKeys: ['Justin','Brittany'],
+      childKey: 'primary',
+      preservesCurrentIPGLogic: true
+    }),
+    updatedAt: prior.updatedAt || new Date().toISOString()
+  });
+}
+
+function getFamilyProfile(){
+  return buildFamilyProfile(getAppSettings(), getParentEmails(), familyProfile);
+}
+
+function refreshFamilyProfile(){
+  familyProfile = buildFamilyProfile(getAppSettings(), getParentEmails(), familyProfile);
+  familyProfile.updatedAt = new Date().toISOString();
+  return familyProfile;
+}
+
 function setParentEmail(name, email, patchNow){
   if (!name) return;
   const emails = getParentEmails();
@@ -3113,8 +3182,9 @@ function setParentEmail(name, email, patchNow){
   else delete emails[name];
   parentEmails = emails;
   localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(emails));
+  refreshFamilyProfile();
   if (patchNow !== false && typeof _v25PatchSharedNow === 'function' && typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded) {
-    _v25PatchSharedNow(['parentEmails'], 'contact email').catch(() => {});
+    _v25PatchSharedNow(['parentEmails','familyProfile'], 'contact email').catch(() => {});
   }
 }
 
@@ -3125,6 +3195,7 @@ function rememberSignedInEmail(){
 }
 
 function applyAppSettings(){
+  refreshFamilyProfile();
   const s = getAppSettings();
   const calendarName = appCalendarName();
   const title = document.querySelector('.hdr-title');
@@ -3286,6 +3357,20 @@ function systemCheckBuildInfo(){
     tone: 'ok',
     title: `Build ${APP_BUILD.version}`,
     text: `${APP_BUILD.name} · ${APP_BUILD.channel} · ${APP_BUILD.date}`
+  };
+}
+
+function systemCheckProductInfo(){
+  const fp = getFamilyProfile();
+  const hasParents = !!(fp.parents && fp.parents.Justin && fp.parents.Brittany);
+  const hasChild = !!(fp.children && fp.children.primary && fp.children.primary.displayName);
+  const ipgSafe = !!(fp.rules && fp.rules.activeEngine === 'indiana-ipg');
+  return {
+    tone: hasParents && hasChild && ipgSafe ? 'ok' : 'warn',
+    title: 'Product foundation ready',
+    text: hasParents && hasChild && ipgSafe
+      ? 'Reusable family, parent, child, and rules profile is saved alongside your current calendar. Indiana IPG logic remains preserved.'
+      : 'Family profile structure is available, but parent, child, or rules details need review.'
   };
 }
 
@@ -3904,7 +3989,7 @@ function collectOnboardingStep(){
       agreementTitle: document.getElementById('ob-agreement-title')?.value.trim() || current.agreementTitle || current.guidelineName
     });
     applyAppSettings();
-    return ['appSettings'];
+    return ['appSettings','familyProfile'];
   }
   if (onboardingStep === 2) {
     const current = getAppSettings();
@@ -3917,7 +4002,7 @@ function collectOnboardingStep(){
     setParentEmail('Justin', document.getElementById('ob-justin-email')?.value.trim() || '', false);
     setParentEmail('Brittany', document.getElementById('ob-brittany-email')?.value.trim() || '', false);
     applyAppSettings();
-    return ['appSettings','parentEmails'];
+    return ['appSettings','parentEmails','familyProfile'];
   }
   return [];
 }
@@ -4028,16 +4113,18 @@ function renderSystemCheck(){
   const agreement = systemCheckAgreementInfo();
   const setup = systemCheckSetupInfo();
   const mobileQa = systemCheckMobileInfo();
+  const product = systemCheckProductInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedInfo = loaded
     ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
     : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
-  const healthItems = [setup, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
+  const healthItems = [setup, product, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
     ${healthHero(healthItems)}
     <div class="system-check-grid">
       ${systemCheckCard(setup.tone, '🚀', setup.title, setup.text)}
+      ${systemCheckCard(product.tone, '🏗️', product.title, product.text)}
       ${systemCheckCard(mobileQa.tone, '📱', mobileQa.title, mobileQa.text)}
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
       ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
@@ -4282,7 +4369,7 @@ async function saveSettings(){
   setParentEmail('Brittany', document.getElementById('set-brittany-email')?.value.trim() || '', false);
   applyAppSettings();
   try {
-    await _v25PatchSharedNow(['appSettings','parentEmails'], 'settings');
+    await _v25PatchSharedNow(['appSettings','parentEmails','familyProfile'], 'settings');
     showToast('Settings saved');
     closeSettings();
   } catch(err) {
@@ -5957,6 +6044,7 @@ window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog, summ
       pendingSwaps: pendingSwaps || {},
       activityLog: activityLog || [],
       summerProposal: summerProposal || null,
+      familyProfile: typeof refreshFamilyProfile === 'function' ? refreshFamilyProfile() : familyProfile || null,
       updatedAt: new Date().toISOString(),
     });
   } else {
@@ -6621,13 +6709,14 @@ initFirebase = function() {
 // Add partial-write helper that preserves existing data
 window._fbDirectWritePartial = function(partial) {
   // Read current full state and merge
-  const full = {
+  const full = typeof _v16BuildSavePayload === 'function' ? _v16BuildSavePayload() : {
     overrides: overrides,
     summerPlan: summerPlan,
     pendingSwaps: pendingSwaps || {},
     activityLog: activityLog || [],
     summerProposal: summerProposal || null,
     pushSubscriptions: window._currentNotifSubs || {},
+    familyProfile: typeof refreshFamilyProfile === 'function' ? refreshFamilyProfile() : familyProfile || null,
     updatedAt: new Date().toISOString(),
   };
   Object.assign(full, partial);
@@ -10394,6 +10483,7 @@ function _v16BuildSavePayload(){
     summerNoticeSent:  summerNoticeSent || {},
     parentEmails:      parentEmails || {},
     appSettings:       getAppSettings(),
+    familyProfile:     refreshFamilyProfile(),
     betaTestState:     betaTestState || { items:{}, notes:'' },
     updatedAt:         new Date().toISOString(),
     updatedBy:         currentUser || 'unknown'
@@ -10512,11 +10602,13 @@ function _v16ApplyPayload(data){
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
   if (data.summerNoticeSent)  summerNoticeSent  = data.summerNoticeSent;
   if (data.betaTestState)     betaTestState     = data.betaTestState;
+  if (data.familyProfile)     familyProfile     = data.familyProfile;
   if (data.appSettings)       appSettings       = Object.assign(getAppSettings(), data.appSettings);
   if (data.parentEmails) {
     parentEmails = data.parentEmails;
     localStorage.setItem(PARENT_EMAIL_KEY, JSON.stringify(getParentEmails()));
   }
+  refreshFamilyProfile();
   if (typeof applyAppSettings === 'function') applyAppSettings();
   _v16LastSharedPayload = JSON.parse(JSON.stringify(data));
 }
@@ -11168,6 +11260,7 @@ function _v25PatchValueForKey(key){
     summerNoticeSent: summerNoticeSent || {},
     parentEmails: parentEmails || {},
     appSettings: getAppSettings(),
+    familyProfile: refreshFamilyProfile(),
     betaTestState: betaTestState || { items:{}, notes:'' }
   };
   return _v25Clone(values[key]);
