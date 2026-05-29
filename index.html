@@ -1020,6 +1020,17 @@ body.auth-unlocked #who-gate{display:none}
 .beta-item-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}
 .beta-item-note{width:100%;min-height:48px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:8px 9px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82em;margin-top:8px}
 .beta-note{width:100%;min-height:68px;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:var(--input-bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-top:9px}
+.issue-list{display:grid;gap:8px;margin-top:10px}
+.issue-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 11px;box-shadow:var(--shadow-sm)}
+.issue-card.open{border-color:rgba(245,158,11,.38);background:linear-gradient(135deg,var(--gold-soft),var(--card))}
+.issue-card.fixed,.issue-card.closed{border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,rgba(16,185,129,.08),var(--card))}
+.issue-card.retest{border-color:rgba(59,130,246,.28);background:linear-gradient(135deg,var(--j-soft),var(--card))}
+.issue-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.issue-title{font-family:'Nunito',sans-serif;font-weight:900;color:var(--text);font-size:.9em;line-height:1.15}
+.issue-meta{font-size:.72em;color:var(--muted);line-height:1.35;margin-top:3px}
+.issue-body{font-size:.78em;color:var(--text-2);line-height:1.42;margin-top:7px;background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:9px;padding:8px 9px}
+.issue-status{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;border-radius:999px;padding:4px 8px;white-space:nowrap;background:var(--bg-2);border:1px solid var(--border);color:var(--muted)}
+.issue-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
 @media(max-width:520px){
   .settings-profile-top{flex-direction:column;gap:8px}
   .settings-profile-badge{width:fit-content}
@@ -1031,7 +1042,7 @@ body.auth-unlocked #who-gate{display:none}
   .qa-row{grid-template-columns:auto 1fr}
   .qa-status{grid-column:2;width:fit-content}
   .beta-summary-top{flex-direction:column}
-  .beta-item-actions{grid-template-columns:1fr}
+  .beta-item-actions,.issue-actions{grid-template-columns:1fr}
 }
 .system-check-grid{display:grid;gap:9px}
 .system-check-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:var(--shadow-sm)}
@@ -1946,6 +1957,13 @@ body.drawer-open{overflow:hidden}
         <div class="menu-hint">Real-world test checklist for both parents</div>
       </div>
     </button>
+    <button class="menu-item" onclick="closeMenu();openIssueReport()">
+      <span class="menu-icon">⚠️</span>
+      <div class="menu-text">
+        <div class="menu-label">Report Issue</div>
+        <div class="menu-hint">Capture bugs, confusion, or lost-data risks</div>
+      </div>
+    </button>
     <button class="menu-item" onclick="closeMenu();openOnboarding()">
       <span class="menu-icon">🚀</span>
       <div class="menu-text">
@@ -2231,12 +2249,27 @@ body.drawer-open{overflow:hidden}
   <div class="settings-modal">
     <div class="settings-hdr">
       <div class="settings-title">🧪 Real-World Beta Test</div>
-      <div class="settings-sub">A practical test board for Justin and Brittany before this becomes a full app</div>
+      <div class="settings-sub">A practical Justin-led test board before this becomes a full app</div>
     </div>
     <div class="settings-body" id="beta-test-body"></div>
     <div class="settings-actions">
       <button class="btn btn-cancel" onclick="closeBetaTest()">Close</button>
       <button class="btn btn-save" onclick="saveBetaTestNotes()">Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ISSUE REPORT MODAL ═══════════════════════ -->
+<div class="overlay" id="issue-report-overlay">
+  <div class="settings-modal">
+    <div class="settings-hdr">
+      <div class="settings-title">⚠️ Report Issue</div>
+      <div class="settings-sub">Capture anything that breaks, confuses, or risks lost data during real use</div>
+    </div>
+    <div class="settings-body" id="issue-report-body"></div>
+    <div class="settings-actions">
+      <button class="btn btn-cancel" onclick="closeIssueReport()">Close</button>
+      <button class="btn btn-save" onclick="saveIssueReport()">Save Issue</button>
     </div>
   </div>
 </div>
@@ -3000,14 +3033,16 @@ let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
 let betaTestState = { items:{}, notes:'' };
+let issueReports = [];
 let familyProfile = null;
 const APP_BUILD = {
-  version: '0.41.0',
-  name: 'Product Data Foundation',
+  version: '0.42.0',
+  name: 'Issue Reporting',
   date: '2026-05-29',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.42.0', date:'2026-05-29', title:'Issue reporting', text:'Adds an in-app issue report flow for real beta hardening with area, impact, status, and permanent-record logging.' },
   { version:'0.41.0', date:'2026-05-29', title:'Product data foundation', text:'Adds a normalized family profile layer for future multi-family/app-store readiness while keeping Justin, Brittany, Xander, and Indiana IPG behavior intact.' },
   { version:'0.40.0', date:'2026-05-29', title:'Solo beta tracker', text:'Refines Beta Test for Justin-led real-use testing with Passed, Issue Found, per-flow notes, and a cleaner launch-readiness score.' },
   { version:'0.39.0', date:'2026-05-28', title:'Real-world beta test board', text:'Adds a shared parent-facing beta checklist for testing sign-in, saving, travel, expenses, school dates, summer planning, and records before launch.' },
@@ -3374,6 +3409,18 @@ function systemCheckProductInfo(){
   };
 }
 
+function systemCheckIssueInfo(){
+  const open = issueReportList().filter(issue => issue && ['open','retest'].includes(issue.status || 'open')).length;
+  const dataRisk = issueReportList().filter(issue => issue && issue.impact === 'data' && ['open','retest'].includes(issue.status || 'open')).length;
+  if (dataRisk) {
+    return { tone:'err', title:`${dataRisk} data-risk issue${dataRisk===1?'':'s'}`, text:'Resolve or retest data-risk reports before treating the app as production-ready.' };
+  }
+  if (open) {
+    return { tone:'warn', title:`${open} open issue${open===1?'':'s'}`, text:'Open or retest issues are being tracked for the real beta.' };
+  }
+  return { tone:'ok', title:'No open issues', text:'No active beta issues are currently reported.' };
+}
+
 function systemCheckSchoolInfo(){
   const yr = getAcademicYearKey(today.getFullYear(), today.getMonth());
   const sc = (schoolCalendar || {})[yr] || {};
@@ -3649,6 +3696,173 @@ function betaTestItems(){
   ];
 }
 
+function issueAreaOptions(){
+  return ['Calendar','Travel','Summer','Expenses','Inbox','Sign In','Sync','Receipts','School Calendar','Records','Design / Confusion','Other'];
+}
+
+function issueStatusLabel(status){
+  const labels = { open:'Open', fixed:'Fixed', retest:'Retest', closed:'Closed' };
+  return labels[status] || 'Open';
+}
+
+function issueImpactLabel(impact){
+  const labels = {
+    low:'Low - polish or wording',
+    medium:'Medium - confusing or inconvenient',
+    high:'High - blocks normal use',
+    data:'Data risk - save/lost data concern'
+  };
+  return labels[impact] || labels.medium;
+}
+
+function issueReportList(){
+  return Array.isArray(issueReports) ? issueReports : [];
+}
+
+function renderIssueCards(limit){
+  const list = issueReportList()
+    .slice()
+    .sort((a,b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
+    .slice(0, limit || 6);
+  if (!list.length) {
+    return '<div class="settings-status premium">No issues reported yet. That is exactly where we want to be.</div>';
+  }
+  return `<div class="issue-list">${list.map(issue => `
+    <div class="issue-card ${_v13EscapeHtml(issue.status || 'open')}">
+      <div class="issue-top">
+        <div>
+          <div class="issue-title">${_v13EscapeHtml(issue.area || 'Issue')} · ${_v13EscapeHtml(issue.summary || 'Untitled issue')}</div>
+          <div class="issue-meta">${_v13EscapeHtml(issueImpactLabel(issue.impact))} · reported by ${_v13EscapeHtml(issue.by || 'unknown')} · ${_v13EscapeHtml(settingsTimeLabel(issue.createdAt, 'recently'))}</div>
+        </div>
+        <div class="issue-status">${_v13EscapeHtml(issueStatusLabel(issue.status))}</div>
+      </div>
+      <div class="issue-body">${_v13EscapeHtml(issue.details || 'No details added.')}${issue.screenshotNote ? `<br><br><b>Screenshot note:</b> ${_v13EscapeHtml(issue.screenshotNote)}` : ''}</div>
+      <div class="issue-actions">
+        <button class="btn btn-cancel" onclick="updateIssueStatus('${issue.id}','fixed')">Fixed</button>
+        <button class="btn btn-cancel" onclick="updateIssueStatus('${issue.id}','retest')">Retest</button>
+        <button class="btn btn-cancel" onclick="updateIssueStatus('${issue.id}','closed')">Close</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderIssueReport(prefillArea){
+  const body = document.getElementById('issue-report-body');
+  if (!body) return;
+  const area = prefillArea || 'Calendar';
+  body.innerHTML = `
+    <div class="settings-section data">
+      <div class="settings-section-title"><span>New Issue</span></div>
+      <div class="settings-grid">
+        <div>
+          <div class="field-lbl">Area</div>
+          <select class="sel" id="issue-area">
+            ${issueAreaOptions().map(opt => `<option value="${_v13EscapeHtml(opt)}" ${opt===area?'selected':''}>${_v13EscapeHtml(opt)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div class="field-lbl">Impact</div>
+          <select class="sel" id="issue-impact">
+            <option value="medium">Medium - confusing or inconvenient</option>
+            <option value="low">Low - polish or wording</option>
+            <option value="high">High - blocks normal use</option>
+            <option value="data">Data risk - save/lost data concern</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-lbl">Short Summary</div>
+      <input class="inp" id="issue-summary" placeholder="e.g. Travel saved locally but disappeared after refresh">
+      <div class="field-lbl">What Happened?</div>
+      <textarea class="ta" id="issue-details" placeholder="Write what you tapped, what you expected, and what actually happened."></textarea>
+      <div class="field-lbl">Screenshot Note (optional)</div>
+      <input class="inp" id="issue-screenshot-note" placeholder="e.g. Screenshot saved on iPhone Photos at 2:15 PM">
+    </div>
+    <div class="settings-section data">
+      <div class="settings-section-title"><span>Recent Issues</span></div>
+      ${renderIssueCards(4)}
+    </div>
+  `;
+}
+
+function openIssueReport(area){
+  renderIssueReport(area);
+  document.getElementById('issue-report-overlay').classList.add('open');
+}
+
+function closeIssueReport(){
+  document.getElementById('issue-report-overlay').classList.remove('open');
+}
+
+async function saveIssueReport(){
+  if (!currentUser) {
+    alert('Sign in first so the issue can be attached to your account.');
+    return;
+  }
+  const area = document.getElementById('issue-area')?.value || 'Other';
+  const impact = document.getElementById('issue-impact')?.value || 'medium';
+  const summary = document.getElementById('issue-summary')?.value.trim() || '';
+  const details = document.getElementById('issue-details')?.value.trim() || '';
+  const screenshotNote = document.getElementById('issue-screenshot-note')?.value.trim() || '';
+  if (!summary && !details) {
+    alert('Add a short summary or a few details first.');
+    return;
+  }
+  const beforeIssues = _v25Clone(issueReportList());
+  const beforeActivity = _v25Clone(activityLog || []);
+  const now = new Date().toISOString();
+  const report = {
+    id: 'issue_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    area,
+    impact,
+    summary: summary || details.slice(0, 80),
+    details,
+    screenshotNote,
+    status: 'open',
+    by: currentUser,
+    createdAt: now,
+    updatedAt: now
+  };
+  issueReports = [report].concat(issueReportList()).slice(0, 200);
+  if (typeof logAction === 'function') {
+    logAction(currentUser, 'issue', `Reported ${area} issue: ${report.summary}${impact === 'data' ? ' (data risk)' : ''}`, { issueId: report.id, area, impact });
+  }
+  try {
+    await _v25PatchSharedNow(['issueReports','activityLog'], 'issue report');
+    showToast('Issue saved');
+    closeIssueReport();
+  } catch(err) {
+    issueReports = beforeIssues;
+    activityLog = beforeActivity;
+    alert('Issue did not save: ' + err.message);
+  }
+}
+
+async function updateIssueStatus(id, status){
+  const issue = issueReportList().find(item => item.id === id);
+  if (!issue) return;
+  const beforeIssues = _v25Clone(issueReportList());
+  const beforeActivity = _v25Clone(activityLog || []);
+  issue.status = status;
+  issue.updatedAt = new Date().toISOString();
+  issue.updatedBy = currentUser || 'unknown';
+  if (typeof logAction === 'function') {
+    logAction(currentUser || 'unknown', 'issue', `Marked issue ${issueStatusLabel(status)}: ${issue.summary || issue.area}`, { issueId:id, status });
+  }
+  renderIssueReport();
+  try {
+    await _v25PatchSharedNow(['issueReports','activityLog'], 'issue status');
+    showToast('Issue updated');
+  } catch(err) {
+    issueReports = beforeIssues;
+    activityLog = beforeActivity;
+    renderIssueReport();
+    alert('Issue status did not save: ' + err.message);
+  }
+}
+
+document.getElementById('issue-report-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeIssueReport();
+});
+
 function betaEntry(id){
   if (!betaTestState || typeof betaTestState !== 'object') betaTestState = { items:{}, notes:'' };
   if (!betaTestState.items) betaTestState.items = {};
@@ -3746,6 +3960,10 @@ function renderBetaTest(){
       <div class="settings-section-title"><span>Beta Notes</span></div>
       <div class="settings-status premium">Use this for bigger product notes: what confused you, what felt premium, and what should be fixed before asking anyone else to use it.</div>
       <textarea class="beta-note" id="beta-test-notes" placeholder="Example: Brittany acknowledged travel on iPhone and it cleared after refresh...">${_v13EscapeHtml(betaTestState.notes || '')}</textarea>
+      <div class="setup-actions">
+        <button class="btn btn-cancel" onclick="closeBetaTest();openIssueReport()">Report an Issue</button>
+        <button class="btn btn-cancel" onclick="closeBetaTest();openHistory()">Open Permanent Record</button>
+      </div>
     </div>
   `;
 }
@@ -4114,17 +4332,19 @@ function renderSystemCheck(){
   const setup = systemCheckSetupInfo();
   const mobileQa = systemCheckMobileInfo();
   const product = systemCheckProductInfo();
+  const issues = systemCheckIssueInfo();
   const loaded = typeof _v16SharedDataLoaded !== 'undefined' && _v16SharedDataLoaded;
   const loadedInfo = loaded
     ? { tone:'ok', title:'Shared calendar loaded', text:`Last loaded ${settingsTimeLabel(typeof _v16LastRemoteAt !== 'undefined' ? _v16LastRemoteAt : '', 'during this session')}.` }
     : { tone:'warn', title:'Shared calendar loading', text:'The app is still waiting for Firebase. Avoid saving major changes until the sync bar confirms it loaded.' };
-  const healthItems = [setup, product, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
+  const healthItems = [setup, product, issues, mobileQa, account, sync, loadedInfo, saved, backup, school, summer, receipts, agreement, mode, build];
 
   body.innerHTML = `
     ${healthHero(healthItems)}
     <div class="system-check-grid">
       ${systemCheckCard(setup.tone, '🚀', setup.title, setup.text)}
       ${systemCheckCard(product.tone, '🏗️', product.title, product.text)}
+      ${systemCheckCard(issues.tone, '⚠️', issues.title, issues.text)}
       ${systemCheckCard(mobileQa.tone, '📱', mobileQa.title, mobileQa.text)}
       ${systemCheckCard(account.tone, '🔐', account.title, account.text)}
       ${systemCheckCard(sync.tone, '🔄', sync.title, sync.text)}
@@ -4150,6 +4370,10 @@ function renderSystemCheck(){
       <div class="settings-section-title"><span>Mobile QA Checklist</span></div>
       <div class="settings-status premium" style="margin-bottom:9px">This keeps the iPhone experience honest as the app grows.</div>
       ${renderMobileQaChecklist()}
+      <div class="setup-actions">
+        <button class="btn btn-cancel" onclick="closeSystemCheck();openIssueReport()">Report Issue</button>
+        <button class="btn btn-cancel" onclick="closeSystemCheck();openBetaTest()">Beta Test</button>
+      </div>
     </div>
     <div class="settings-section data" style="margin-top:11px">
       <div class="settings-section-title"><span>Release Notes</span></div>
@@ -6045,6 +6269,7 @@ window._fbSave = function(overrides, summerPlan, pendingSwaps, activityLog, summ
       activityLog: activityLog || [],
       summerProposal: summerProposal || null,
       familyProfile: typeof refreshFamilyProfile === 'function' ? refreshFamilyProfile() : familyProfile || null,
+      issueReports: typeof issueReportList === 'function' ? issueReportList() : issueReports || [],
       updatedAt: new Date().toISOString(),
     });
   } else {
@@ -10485,6 +10710,7 @@ function _v16BuildSavePayload(){
     appSettings:       getAppSettings(),
     familyProfile:     refreshFamilyProfile(),
     betaTestState:     betaTestState || { items:{}, notes:'' },
+    issueReports:      issueReportList(),
     updatedAt:         new Date().toISOString(),
     updatedBy:         currentUser || 'unknown'
   };
@@ -10602,6 +10828,7 @@ function _v16ApplyPayload(data){
   if (data.summerSubmitted)   summerSubmitted   = data.summerSubmitted;
   if (data.summerNoticeSent)  summerNoticeSent  = data.summerNoticeSent;
   if (data.betaTestState)     betaTestState     = data.betaTestState;
+  if (data.issueReports)      issueReports      = data.issueReports;
   if (data.familyProfile)     familyProfile     = data.familyProfile;
   if (data.appSettings)       appSettings       = Object.assign(getAppSettings(), data.appSettings);
   if (data.parentEmails) {
@@ -11261,7 +11488,8 @@ function _v25PatchValueForKey(key){
     parentEmails: parentEmails || {},
     appSettings: getAppSettings(),
     familyProfile: refreshFamilyProfile(),
-    betaTestState: betaTestState || { items:{}, notes:'' }
+    betaTestState: betaTestState || { items:{}, notes:'' },
+    issueReports: issueReportList()
   };
   return _v25Clone(values[key]);
 }
