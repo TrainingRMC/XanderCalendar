@@ -3077,12 +3077,13 @@ let betaTestState = { items:{}, notes:'' };
 let issueReports = [];
 let familyProfile = null;
 const APP_BUILD = {
-  version: '0.43.0',
-  name: 'Launch Roadmap',
-  date: '2026-05-29',
+  version: '0.44.0',
+  name: 'Travel Smoke Test',
+  date: '2026-06-01',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.44.0', date:'2026-06-01', title:'Travel smoke test polish', text:'Keeps the Travel quick button focused on the travel manager unless the current parent has a travel acknowledgement waiting.' },
   { version:'0.43.0', date:'2026-05-29', title:'Launch roadmap', text:'Adds a private-beta-to-App-Store roadmap view with readiness checkpoints for productization and monetization planning.' },
   { version:'0.42.0', date:'2026-05-29', title:'Issue reporting', text:'Adds an in-app issue report flow for real beta hardening with area, impact, status, and permanent-record logging.' },
   { version:'0.41.0', date:'2026-05-29', title:'Product data foundation', text:'Adds a normalized family profile layer for future multi-family/app-store readiness while keeping Justin, Brittany, Xander, and Indiana IPG behavior intact.' },
@@ -9950,11 +9951,11 @@ function renderDashboard(){
   const travel = _v13FindUpcomingTravel();
   const highlight = _v13FindUpcomingHighlight();
   const expenseSummary = typeof getExpenseSummary === 'function' ? getExpenseSummary() : { openCount:0, owedToJustin:0, owedToBrittany:0 };
+  const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
   const handoffAction = handoff ? `_v13OpenDate('${handoff.date}')` : 'openInbox()';
-  const travelAction = travel ? `_v17OpenTravelFromDashboard('${travel.id || ''}')` : 'openTravel()';
+  const travelAction = travelNeedsAck && travel ? `_v17OpenTravelFromDashboard('${travel.id || ''}')` : 'openTravel()';
   const highlightAction = highlight ? `_v13OpenDate('${highlight.date}')` : '_v13ShowSearch()';
   const hasAttention = inboxCount > 0;
-  const travelNeedsAck = !!(travel && !isTravelAcknowledged(travel));
 
   document.getElementById('dash-kicker').textContent =
     today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
