@@ -1473,6 +1473,26 @@ body.drawer-open{overflow:hidden}
 .expense-summary-label{font-family:'Nunito',sans-serif;font-size:.68em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .expense-summary-value{font-family:'Nunito',sans-serif;font-size:1.03em;font-weight:900;color:var(--text);margin-top:4px}
 .expense-summary-value.j{color:var(--j)}.expense-summary-value.b{color:var(--b)}.expense-summary-value.good{color:var(--emerald)}
+.expense-doc-panel{background:linear-gradient(135deg,rgba(13,148,136,.1),var(--card));border:1px solid rgba(13,148,136,.28);border-radius:13px;padding:11px 12px;margin:0 0 12px;box-shadow:var(--shadow-sm)}
+.expense-doc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:9px}
+.expense-doc-title{font-family:'Nunito',sans-serif;font-size:.76em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.expense-doc-copy{font-size:.76em;color:var(--muted);line-height:1.35;margin-top:2px}
+.expense-doc-lock{font-family:'Nunito',sans-serif;font-size:.72em;font-weight:900;color:#0f766e;background:rgba(13,148,136,.12);border:1px solid rgba(13,148,136,.28);border-radius:999px;padding:4px 8px;white-space:nowrap}
+.expense-doc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.expense-doc-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 9px}
+.expense-doc-label{font-family:'Nunito',sans-serif;font-size:.64em;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.expense-doc-value{font-family:'Nunito',sans-serif;font-size:.95em;font-weight:900;color:var(--text);margin-top:3px}
+.expense-record-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
+.expense-record-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:var(--bg-2);color:var(--muted);border-radius:999px;padding:3px 8px;font-size:.7em;font-family:'Nunito',sans-serif;font-weight:900}
+.expense-record-chip.good{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.28);color:#047857}
+.expense-record-chip.warn{background:var(--gold-soft);border-color:rgba(245,158,11,.32);color:#92400e}
+.expense-trail{background:var(--bg-2);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 9px;margin-top:8px;display:grid;gap:6px}
+.expense-trail-row{display:flex;gap:7px;align-items:flex-start;font-size:.74em;line-height:1.35;color:var(--muted)}
+.expense-trail-dot{width:7px;height:7px;border-radius:50%;background:#0d9488;flex-shrink:0;margin-top:5px}
+.expense-trail-row.warn .expense-trail-dot{background:var(--gold)}
+.expense-trail-row.good .expense-trail-dot{background:var(--emerald)}
+.expense-trail-main{font-weight:800;color:var(--text)}
+.expense-trail-meta{color:var(--muted)}
 .expense-form-panel{background:var(--bg-2);border:1px solid var(--border);border-radius:13px;padding:12px;margin-bottom:12px}
 .expense-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .expense-form-grid .inp,.expense-form-grid .sel{margin-bottom:10px}
@@ -1526,8 +1546,11 @@ body.drawer-open{overflow:hidden}
 :root[data-theme="dark"] .expense-summary-card,:root[data-theme="dark"] .expense-form-panel{background:var(--bg-2)}
 :root[data-theme="dark"] .expense-split-preview{background:linear-gradient(135deg,rgba(16,185,129,.16),var(--card))}
 :root[data-theme="dark"] .expense-note{background:var(--bg-2)}
+:root[data-theme="dark"] .expense-doc-card{background:var(--bg-2)}
+:root[data-theme="dark"] .expense-trail{background:var(--bg-2)}
 @media(max-width:520px){
-  .expense-summary-grid,.expense-form-grid{grid-template-columns:1fr}
+  .expense-summary-grid,.expense-form-grid,.expense-doc-grid{grid-template-columns:1fr}
+  .expense-doc-top{flex-direction:column}
   .expense-actions{flex-direction:column}
 }
 .ipg-confidence{background:linear-gradient(135deg,var(--j-soft),var(--card));border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 12px;margin:10px 0 13px;box-shadow:var(--shadow-sm)}
@@ -2364,6 +2387,7 @@ body.drawer-open{overflow:hidden}
       <div class="expense-note">
         Receipts are stored with the shared expense record. Crop or cover card numbers, account details, and unrelated personal info before attaching.
       </div>
+      <div id="expense-doc-summary"></div>
       <div id="expense-save-status" class="save-confidence" style="display:none"></div>
       <div class="expense-form-panel">
         <div class="expense-list-title" id="expense-form-title">Add Expense</div>
@@ -3077,12 +3101,13 @@ let betaTestState = { items:{}, notes:'' };
 let issueReports = [];
 let familyProfile = null;
 const APP_BUILD = {
-  version: '0.44.0',
-  name: 'Travel Smoke Test',
+  version: '0.45.0',
+  name: 'Expense Document Trail',
   date: '2026-06-01',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.45.0', date:'2026-06-01', title:'Expense document trail', text:'Adds a cleaner expense record view with receipt status, reimbursement state, and created/updated history without adding payment processing.' },
   { version:'0.44.0', date:'2026-06-01', title:'Travel smoke test polish', text:'Keeps the Travel quick button focused on the travel manager unless the current parent has a travel acknowledgement waiting.' },
   { version:'0.43.0', date:'2026-05-29', title:'Launch roadmap', text:'Adds a private-beta-to-App-Store roadmap view with readiness checkpoints for productization and monetization planning.' },
   { version:'0.42.0', date:'2026-05-29', title:'Issue reporting', text:'Adds an in-app issue report flow for real beta hardening with area, impact, status, and permanent-record logging.' },
@@ -12378,6 +12403,94 @@ function expenseStatusLabel(exp){
   return `${c.owedBy} owes ${formatMoney(c.owedAmount)}`;
 }
 
+function expenseReceiptRecordLabel(exp){
+  if (!exp || !exp.receipt) return 'No receipt attached';
+  if (isDatabaseReceipt(exp.receipt)) return 'Receipt saved in protected record';
+  if (exp.receipt.storagePath) return 'Receipt saved in secure storage';
+  return 'Receipt attached';
+}
+
+function expenseRecordSummary(){
+  const list = expenseEntries || [];
+  const receipts = list.filter(e => e && e.receipt).length;
+  const secureReceipts = list.filter(e => e && e.receipt && (isDatabaseReceipt(e.receipt) || e.receipt.storagePath)).length;
+  const open = list.filter(e => e && !expenseComputed(e).settled).length;
+  const settled = list.filter(e => e && expenseComputed(e).settled).length;
+  return { receipts, secureReceipts, open, settled, total: list.length };
+}
+
+function renderExpenseDocumentSummary(){
+  const el = document.getElementById('expense-doc-summary');
+  if (!el) return;
+  const s = expenseRecordSummary();
+  if (!s.total) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="expense-doc-panel">
+      <div class="expense-doc-top">
+        <div>
+          <div class="expense-doc-title">Document Trail</div>
+          <div class="expense-doc-copy">Receipts, reimbursement status, and record updates stay attached to each expense. No payment processing is stored here.</div>
+        </div>
+        <div class="expense-doc-lock">Private record</div>
+      </div>
+      <div class="expense-doc-grid">
+        <div class="expense-doc-card">
+          <div class="expense-doc-label">Receipts</div>
+          <div class="expense-doc-value">${s.receipts}/${s.total}</div>
+        </div>
+        <div class="expense-doc-card">
+          <div class="expense-doc-label">Open</div>
+          <div class="expense-doc-value">${s.open}</div>
+        </div>
+        <div class="expense-doc-card">
+          <div class="expense-doc-label">Completed</div>
+          <div class="expense-doc-value">${s.settled}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function expenseRecordTrailHtml(exp, computed){
+  const receiptLabel = expenseReceiptRecordLabel(exp);
+  const receiptCls = exp.receipt ? 'good' : 'warn';
+  const reimbursementText = computed.settled
+    ? (exp.paidDate ? `Reimbursement marked paid on ${fmtDate(exp.paidDate)}` : 'No reimbursement currently open')
+    : `${computed.owedBy} still owes ${computed.owedTo} ${formatMoney(computed.owedAmount)}`;
+  const reimbursementCls = computed.settled ? 'good' : 'warn';
+  const createdBy = exp.createdBy || exp.paidBy || 'Parent';
+  const updatedBy = exp.updatedBy || createdBy;
+  const createdWhen = exp.createdAt ? formatLogTime(exp.createdAt) : fmtDate(exp.date);
+  const updatedWhen = exp.updatedAt ? formatLogTime(exp.updatedAt) : createdWhen;
+  return `
+    <div class="expense-record-line">
+      <span class="expense-record-chip ${computed.settled ? 'good' : 'warn'}">${computed.settled ? 'Complete' : 'Open reimbursement'}</span>
+      <span class="expense-record-chip ${exp.receipt ? 'good' : ''}">${exp.receipt ? 'Receipt on file' : 'No receipt'}</span>
+    </div>
+    <div class="expense-trail">
+      <div class="expense-trail-row">
+        <span class="expense-trail-dot"></span>
+        <div><span class="expense-trail-main">Created</span> <span class="expense-trail-meta">by ${_v13EscapeHtml(createdBy)} · ${_v13EscapeHtml(createdWhen)}</span></div>
+      </div>
+      <div class="expense-trail-row ${receiptCls}">
+        <span class="expense-trail-dot"></span>
+        <div><span class="expense-trail-main">Receipt</span> <span class="expense-trail-meta">${_v13EscapeHtml(receiptLabel)}</span></div>
+      </div>
+      <div class="expense-trail-row ${reimbursementCls}">
+        <span class="expense-trail-dot"></span>
+        <div><span class="expense-trail-main">Reimbursement</span> <span class="expense-trail-meta">${_v13EscapeHtml(reimbursementText)}</span></div>
+      </div>
+      <div class="expense-trail-row">
+        <span class="expense-trail-dot"></span>
+        <div><span class="expense-trail-main">Last update</span> <span class="expense-trail-meta">by ${_v13EscapeHtml(updatedBy)} · ${_v13EscapeHtml(updatedWhen)}</span></div>
+      </div>
+    </div>
+  `;
+}
+
 function openExpenses(){
   clearExpenseForm(false);
   renderExpenses();
@@ -12458,6 +12571,7 @@ function renderExpenses(){
       <div class="expense-summary-value b">${formatMoney(summary.owedToBrittany)}</div>
     </div>
   `;
+  renderExpenseDocumentSummary();
 
   const sorted = [...(expenseEntries || [])].sort((a,b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
   if (sorted.length === 0){
@@ -12488,6 +12602,7 @@ function renderExpenses(){
       ${paidLine}
       <div class="expense-pill ${cls}">${expenseStatusLabel(exp)}</div>
       ${receiptChip}
+      ${expenseRecordTrailHtml(exp, c)}
       <div class="expense-actions">
         <button class="expense-action-btn" onclick="editExpense('${exp.id}')">Edit</button>
         ${c.settled ? '' : `<button class="expense-action-btn primary" onclick="openExpensePaidDate('${exp.id}')">Mark Paid</button>`}
