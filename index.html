@@ -1983,8 +1983,8 @@ body.drawer-open{overflow:hidden}
       </div>
     </button>
   </div>
-  <div class="menu-section">
-    <div class="menu-section-label">Setup</div>
+  <div class="menu-section admin-only">
+    <div class="menu-section-label">Admin & Testing</div>
     <button class="menu-item" onclick="closeMenu();openSystemCheck()">
       <span class="menu-icon">✅</span>
       <div class="menu-text">
@@ -2027,6 +2027,9 @@ body.drawer-open{overflow:hidden}
         <div class="menu-hint">Profile, parents, rules, and launch checklist</div>
       </div>
     </button>
+  </div>
+  <div class="menu-section">
+    <div class="menu-section-label">Preferences</div>
     <button class="menu-item" onclick="closeMenu();openNotifs()">
       <span class="menu-icon">🔔</span>
       <div class="menu-text">
@@ -3094,6 +3097,20 @@ function isFirebaseSignedIn() {
 function isFirebaseAuthSettled() {
   return window._fbAuthSettled === true;
 }
+function isAdminUser() {
+  return currentUser === 'Justin';
+}
+function requireAdminAccess(label) {
+  if (isAdminUser()) return true;
+  showToast(`${label || 'Admin tool'} is available to Justin only`);
+  return false;
+}
+function applyRoleVisibility() {
+  const admin = isAdminUser();
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = admin ? '' : 'none';
+  });
+}
 let currentUser = isFirebaseAuthRequired() ? null : (sessionStorage.getItem(USER_KEY) || null);
 let firebaseAuthUser = window._fbUser || null;
 let parentEmails = {};
@@ -3101,12 +3118,13 @@ let betaTestState = { items:{}, notes:'' };
 let issueReports = [];
 let familyProfile = null;
 const APP_BUILD = {
-  version: '0.45.0',
-  name: 'Expense Document Trail',
-  date: '2026-06-01',
+  version: '0.46.0',
+  name: 'Parent Role Cleanup',
+  date: '2026-06-03',
   channel: window.location.protocol === 'file:' ? 'Local Preview' : 'Live'
 };
 const RELEASE_NOTES = [
+  { version:'0.46.0', date:'2026-06-03', title:'Parent role cleanup', text:'Keeps admin and beta-testing tools visible to Justin while Brittany sees a cleaner shared-parent experience.' },
   { version:'0.45.0', date:'2026-06-01', title:'Expense document trail', text:'Adds a cleaner expense record view with receipt status, reimbursement state, and created/updated history without adding payment processing.' },
   { version:'0.44.0', date:'2026-06-01', title:'Travel smoke test polish', text:'Keeps the Travel quick button focused on the travel manager unless the current parent has a travel acknowledgement waiting.' },
   { version:'0.43.0', date:'2026-05-29', title:'Launch roadmap', text:'Adds a private-beta-to-App-Store roadmap view with readiness checkpoints for productization and monetization planning.' },
@@ -3312,6 +3330,7 @@ function applyAppSettings(){
 }
 
 function openSettings(){
+  if (!requireAdminAccess('Family Setup')) return;
   renderSettings();
   document.getElementById('settings-overlay').classList.add('open');
 }
@@ -3381,6 +3400,7 @@ function welcomeCalendarName(){
 }
 
 function openSystemCheck(){
+  if (!requireAdminAccess('App Health')) return;
   renderSystemCheck();
   document.getElementById('system-check-overlay').classList.add('open');
 }
@@ -3872,6 +3892,7 @@ function renderIssueReport(prefillArea){
 }
 
 function openIssueReport(area){
+  if (!requireAdminAccess('Report Issue')) return;
   renderIssueReport(area);
   document.getElementById('issue-report-overlay').classList.add('open');
 }
@@ -4076,6 +4097,7 @@ function renderLaunchRoadmap(){
 }
 
 function openLaunchRoadmap(){
+  if (!requireAdminAccess('Launch Roadmap')) return;
   renderLaunchRoadmap();
   document.getElementById('launch-roadmap-overlay').classList.add('open');
 }
@@ -4194,6 +4216,7 @@ function renderBetaTest(){
 }
 
 function openBetaTest(){
+  if (!requireAdminAccess('Beta Test')) return;
   renderBetaTest();
   document.getElementById('beta-test-overlay').classList.add('open');
 }
@@ -4254,6 +4277,7 @@ function scrollToCalendar(){
 }
 
 function openOnboarding(step){
+  if (!requireAdminAccess('Guided Setup')) return;
   onboardingStep = typeof step === 'number' ? Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, step)) : 0;
   renderOnboarding();
   document.getElementById('onboarding-overlay').classList.add('open');
@@ -4481,7 +4505,7 @@ function prevOnboardingStep(){
 }
 
 function maybeShowOnboarding(){
-  if (!currentUser || document.body.classList.contains('auth-locked')) return;
+  if (!currentUser || !isAdminUser() || document.body.classList.contains('auth-locked')) return;
   let seen = '';
   try { seen = localStorage.getItem(ONBOARDING_KEY) || ''; } catch(e) {}
   const setup = setupChecklistSummary();
@@ -4838,6 +4862,7 @@ function setUser(name) {
   document.body.classList.add('auth-unlocked');
   document.body.style.overflow = '';
   updateUserBadge();
+  applyRoleVisibility();
   maybeShowOnboarding();
   const logToggle = document.getElementById('log-toggle');
   if (logToggle) logToggle.style.display = 'flex';
@@ -4853,6 +4878,7 @@ function switchUser() {
   document.body.classList.remove('auth-unlocked');
   document.body.classList.add('auth-locked');
   updateUserBadge();
+  applyRoleVisibility();
   showWhoPickerIfNeeded(true);
 }
 
@@ -4868,6 +4894,7 @@ async function secureSignOut() {
   document.body.classList.remove('auth-unlocked');
   document.body.classList.add('auth-locked');
   updateUserBadge();
+  applyRoleVisibility();
   showWhoPickerIfNeeded(true);
 }
 
@@ -4883,6 +4910,7 @@ function updateUserBadge() {
     badge.classList.remove('b');
     if (logout) logout.style.display = 'none';
     if (accountSection) accountSection.style.display = 'none';
+    applyRoleVisibility();
     return;
   }
   text.textContent = (currentUser === 'Justin' ? '👨 ' : '👩 ') + currentUser;
@@ -4890,6 +4918,7 @@ function updateUserBadge() {
   if (accountSection) accountSection.style.display = 'block';
   if (logout) logout.style.display = 'flex';
   if (logoutHint) logoutHint.textContent = `Signed in as ${currentUser}`;
+  applyRoleVisibility();
 }
 
 async function pinHash(pin, name) {
