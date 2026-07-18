@@ -7899,6 +7899,249 @@ getInfo = function(y, m, d){
   return Object.assign({}, base || {}, school || {});
 };
 
+
+// ═══════════════════════════════════════════════════════
+//  INDIANA PARENTING TIME GUIDELINES ENGINE
+//  Applies the current Indiana IPG schedule for this family profile:
+//  child age 5+, Justin = noncustodial/father, Brittany = custodial/mother.
+//  Manual overrides and saved summer-plan overrides still take priority.
+// ═══════════════════════════════════════════════════════
+
+const IPG_PROFILE = {
+  custodial: 'Brittany',
+  noncustodial: 'Justin',
+  mother: 'Brittany',
+  father: 'Justin',
+  childName: 'Xander',
+  childBirthday: '05-27',
+  parentBirthdays: { Justin: '08-03', Brittany: '01-24' },
+  regularWeekendAnchor: '2026-03-14',
+  midweekDays: [2, 4],
+  midweekLabel: 'IPG midweek parenting time after school',
+};
+
+function ipgDateKeyFromDate(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function ipgLocalDate(key){ return new Date(key + 'T12:00:00'); }
+function ipgAddDays(key, n){
+  const d = ipgLocalDate(key);
+  d.setDate(d.getDate() + n);
+  return ipgDateKeyFromDate(d);
+}
+function ipgRange(start, end){
+  const out = [];
+  if (!start || !end) return out;
+  for (let d = ipgLocalDate(start), last = ipgLocalDate(end); d <= last; d.setDate(d.getDate()+1)) out.push(ipgDateKeyFromDate(d));
+  return out;
+}
+function ipgNthWeekday(year, monthIndex, weekday, nth){
+  const d = new Date(year, monthIndex, 1, 12);
+  const add = (weekday - d.getDay() + 7) % 7;
+  d.setDate(1 + add + (nth - 1) * 7);
+  return ipgDateKeyFromDate(d);
+}
+function ipgLastWeekday(year, monthIndex, weekday){
+  const d = new Date(year, monthIndex + 1, 0, 12);
+  const sub = (d.getDay() - weekday + 7) % 7;
+  d.setDate(d.getDate() - sub);
+  return ipgDateKeyFromDate(d);
+}
+function ipgEaster(year){
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return ipgDateKeyFromDate(new Date(year, month, day, 12));
+}
+function ipgHolidayOwner(year, ncYears){
+  const ncHasYear = ncYears === 'even' ? year % 2 === 0 : year % 2 === 1;
+  return ncHasYear ? IPG_PROFILE.noncustodial : IPG_PROFILE.custodial;
+}
+function ipgSchoolYearForDateKey(dateKey){
+  const y = parseInt(dateKey.slice(0,4), 10);
+  const m = parseInt(dateKey.slice(5,7), 10) - 1;
+  return getAcademicYearKey(y, m);
+}
+function ipgSchoolObserved(dateKey, patterns){
+  const yKey = ipgSchoolYearForDateKey(dateKey);
+  const sc = schoolCalendar && schoolCalendar[yKey];
+  if (!sc || !Array.isArray(sc.noSchoolDays)) return true;
+  return sc.noSchoolDays.some(x => x && x.date === dateKey && patterns.some(p => (x.label || '').toLowerCase().includes(p)));
+}
+function ipgApplyRange(map, start, end, owner, event, extra){
+  ipgRange(start, end).forEach(key => {
+    map[key] = Object.assign({ owner, event, is_holiday:true, ipgRule:event }, extra || {});
+  });
+}
+function ipgChristmasRange(year){
+  const candidates = [`${year}-${year+1}`, `${year-1}-${year}`];
+  for (const yKey of candidates){
+    const sc = schoolCalendar && schoolCalendar[yKey];
+    const r = sc && sc.winterBreak;
+    if (r && r.start && r.end && r.start.slice(0,4) === String(year)) return { start:r.start, end:r.end, yearKey:yKey };
+  }
+  return { start:`${year}-12-21`, end:`${year+1}-01-03`, yearKey:`${year}-${year+1}`, approximate:true };
+}
+const _ipgHolidayCache = {};
+function ipgBuildHolidayMap(year){
+  const cacheKey = `${year}|${JSON.stringify(schoolCalendar || {})}`;
+  if (_ipgHolidayCache[cacheKey]) return _ipgHolidayCache[cacheKey];
+  const map = {};
+  const evenOwner = ipgHolidayOwner(year, 'even');
+  const oddOwner  = ipgHolidayOwner(year, 'odd');
+
+  // Special days always go to the named parent.
+  const mothersDay = ipgNthWeekday(year, 4, 0, 2);
+  ipgApplyRange(map, ipgAddDays(mothersDay, -2), mothersDay, IPG_PROFILE.mother, "Mother's Day", { specialDay:true });
+  const fathersDay = ipgNthWeekday(year, 5, 0, 3);
+  ipgApplyRange(map, ipgAddDays(fathersDay, -2), fathersDay, IPG_PROFILE.father, "Father's Day", { specialDay:true });
+
+  // Christmas vacation comes from the school calendar when present; otherwise a clearly approximate default is used.
+  const xmas = ipgChristmasRange(year);
+  const days = ipgRange(xmas.start, xmas.end);
+  if (days.length){
+    const firstHalfOwner = year % 2 === 0 ? IPG_PROFILE.custodial : IPG_PROFILE.noncustodial;
+    const secondHalfOwner = firstHalfOwner === IPG_PROFILE.custodial ? IPG_PROFILE.noncustodial : IPG_PROFILE.custodial;
+    const split = Math.ceil(days.length / 2);
+    days.forEach((key, idx) => {
+      const first = idx < split;
+      map[key] = {
+        owner: first ? firstHalfOwner : secondHalfOwner,
+        event: `Christmas Vacation ${first ? '1st half' : '2nd half'}`,
+        is_holiday:true,
+        ipgRule:'Christmas Vacation',
+        schoolYear:xmas.yearKey,
+        approximate:!!xmas.approximate,
+      };
+    });
+    const xmasDay = `${year}-12-25`;
+    if (map[xmasDay]) map[xmasDay].note = (map[xmasDay].note ? map[xmasDay].note + ' ' : '') + 'IPG also gives noon-9pm Christmas Day time to the parent whose half does not include Christmas.';
+  }
+
+  const mlk = ipgNthWeekday(year, 0, 1, 3);
+  if (ipgSchoolObserved(mlk, ['mlk', 'martin luther king'])) ipgApplyRange(map, ipgAddDays(mlk, -3), mlk, evenOwner, 'MLK Day');
+  const presidents = ipgNthWeekday(year, 1, 1, 3);
+  if (ipgSchoolObserved(presidents, ['president'])) ipgApplyRange(map, ipgAddDays(presidents, -3), presidents, evenOwner, 'Presidents Day');
+  const memorial = ipgLastWeekday(year, 4, 1);
+  ipgApplyRange(map, ipgAddDays(memorial, -3), memorial, evenOwner, 'Memorial Day');
+  const labor = ipgNthWeekday(year, 8, 1, 1);
+  ipgApplyRange(map, ipgAddDays(labor, -3), labor, evenOwner, 'Labor Day');
+  const thanksgiving = ipgNthWeekday(year, 10, 4, 4);
+  ipgApplyRange(map, ipgAddDays(thanksgiving, -1), ipgAddDays(thanksgiving, 3), evenOwner, 'Thanksgiving');
+
+  const easter = ipgEaster(year);
+  ipgApplyRange(map, ipgAddDays(easter, -2), easter, oddOwner, 'Easter');
+  ipgApplyRange(map, `${year}-07-03`, `${year}-07-05`, oddOwner, 'Fourth of July');
+  map[`${year}-10-31`] = { owner:oddOwner, event:'Halloween', is_holiday:true, ipgRule:'Halloween', timeMode:'both', timeFrom:'18:00', timeTo:'21:00' };
+
+  // School-calendar breaks that rotate under IPG.
+  const schoolYears = schoolCalendar && typeof schoolCalendar === 'object' ? Object.keys(schoolCalendar) : [];
+  schoolYears.forEach(yKey => {
+    const sc = schoolCalendar[yKey];
+    if (!sc) return;
+    const spring = sc.springBreak;
+    if (spring && spring.start && spring.end && spring.start.slice(0,4) === String(year)) {
+      ipgApplyRange(map, spring.start, spring.end, oddOwner, 'Spring Break', { schoolYear:yKey });
+    }
+    const fall = sc.fallBreak;
+    if (fall && fall.start && fall.end && fall.start.slice(0,4) === String(year)) {
+      ipgApplyRange(map, fall.start, fall.end, oddOwner, 'Fall Break', { schoolYear:yKey });
+    }
+  });
+
+  _ipgHolidayCache[cacheKey] = map;
+  return map;
+}
+function ipgRegularInfo(dateKey){
+  const d = ipgLocalDate(dateKey);
+  const dow = d.getDay();
+  const anchor = ipgLocalDate(IPG_PROFILE.regularWeekendAnchor);
+  const diff = Math.round((d - anchor) / 86400000);
+  const isJustinWeekend = (dow === 0 || dow === 6) && diff >= 0 && ((diff % 14 + 14) % 14 <= 1);
+  const isMidweek = IPG_PROFILE.midweekDays.includes(dow);
+  return {
+    owner: isJustinWeekend ? IPG_PROFILE.noncustodial : IPG_PROFILE.custodial,
+    event: '',
+    is_bday:false,
+    parent_bday:null,
+    midweek:isMidweek,
+    is_summer:false,
+    is_holiday:false,
+    is_weekend:dow === 0 || dow === 6,
+    ipgRule:isJustinWeekend ? 'Regular alternating weekend' : (isMidweek ? IPG_PROFILE.midweekLabel : 'Regular custodial day')
+  };
+}
+function ipgBirthdayInfo(dateKey, existingHoliday){
+  if (existingHoliday && (existingHoliday.is_holiday || existingHoliday.specialDay)) return null;
+  const year = parseInt(dateKey.slice(0,4), 10);
+  const md = dateKey.slice(5);
+  const childDay = `${year}-${IPG_PROFILE.childBirthday}`;
+  const childEve = ipgAddDays(childDay, -1);
+  if (dateKey === childDay || dateKey === childEve){
+    const even = year % 2 === 0;
+    const owner = (dateKey === childDay)
+      ? (even ? IPG_PROFILE.noncustodial : IPG_PROFILE.custodial)
+      : (even ? IPG_PROFILE.custodial : IPG_PROFILE.noncustodial);
+    return { owner, event:`${IPG_PROFILE.childName}'s Birthday`, is_holiday:true, is_bday:dateKey===childDay, ipgRule:'Child birthday', timeMode:'both', timeFrom:'09:00', timeTo:'21:00' };
+  }
+  for (const [parent, bday] of Object.entries(IPG_PROFILE.parentBirthdays)){
+    if (md === bday) return { owner:parent, event:`${parent}'s Birthday`, is_holiday:true, parent_bday:parent, ipgRule:'Parent birthday', timeMode:'both', timeFrom:'09:00', timeTo:'21:00' };
+  }
+  return null;
+}
+function ipgCalculatedInfo(y, m, d){
+  const dateKey = dk(y,m,d);
+  const regular = ipgRegularInfo(dateKey);
+  const holiday = ipgBuildHolidayMap(y)[dateKey] || ipgBuildHolidayMap(y-1)[dateKey] || null;
+  const birthday = ipgBirthdayInfo(dateKey, holiday);
+  const chosen = Object.assign({}, regular, holiday || {}, birthday || {});
+  if (chosen.event === "Mother's Day" || chosen.event === "Father's Day") chosen.is_holiday = true;
+  if (chosen.ipgRule) chosen.ipg_generated = true;
+  return chosen;
+}
+
+const _ipg_engine_prevGetInfo = getInfo;
+getInfo = function(y, m, d){
+  const dateKey = dk(y,m,d);
+  const generated = ipgCalculatedInfo(y,m,d);
+  const previous = _ipg_engine_prevGetInfo(y,m,d) || {};
+  const ov = overrides && overrides[dateKey] ? overrides[dateKey] : null;
+  // Keep manual/summer overrides authoritative, but replace the old static default with generated IPG rules.
+  if (ov) return Object.assign({}, generated || {}, previous || {}, ov || {});
+  const merged = Object.assign({}, previous || {}, generated || {});
+  if ((previous && previous.event) && (!generated || !generated.event)) merged.event = previous.event;
+  return merged;
+};
+
+function summarizeIpgCoverageForYear(yr){
+  const checks = [
+    'Regular alternating weekends', 'IPG midweek parenting time after school', "Mother's Day", "Father's Day",
+    'Child birthday', 'Parent birthday', 'Christmas Vacation', 'MLK Day', 'Presidents Day',
+    'Memorial Day', 'Labor Day', 'Thanksgiving', 'Spring Break', 'Easter', 'Fourth of July', 'Fall Break', 'Halloween'
+  ];
+  const found = new Set();
+  for (let m=0; m<12; m++){
+    const last = new Date(yr, m+1, 0).getDate();
+    for (let d=1; d<=last; d++){
+      const info = ipgCalculatedInfo(yr,m,d);
+      if (info && info.ipgRule) found.add(info.ipgRule);
+      if (info && info.event) found.add(info.event.replace(/ 1st half| 2nd half/g,''));
+    }
+  }
+  return { found:[...found], missing:checks.filter(x => !found.has(x)) };
+}
+
 // ─── School Calendar modal ───────────────────────────────────
 function openSchoolCal(yearKey){
   if (!_activeSchoolYear){
