@@ -4314,6 +4314,17 @@ function onboardingField(id, label, value, type){
   </div>`;
 }
 
+function parentRoleSelect(id, label, value){
+  const v = value === 'Mother' ? 'Mother' : 'Father';
+  return `<div>
+    <div class="field-lbl">${_v13EscapeHtml(label)}</div>
+    <select class="settings-select" id="${id}">
+      <option value="Father" ${v === 'Father' ? 'selected' : ''}>Father</option>
+      <option value="Mother" ${v === 'Mother' ? 'selected' : ''}>Mother</option>
+    </select>
+  </div>`;
+}
+
 function renderOnboarding(){
   const body = document.getElementById('onboarding-body');
   const sub = document.getElementById('onboarding-sub');
@@ -4382,12 +4393,12 @@ function renderOnboarding(){
       'Parent profiles',
       'These fields make the app feel personal while keeping the internal IPG roles stable.',
       `<div class="onboarding-grid">
-        ${onboardingField('ob-justin-name', 'Justin display name', s.justinDisplay)}
-        ${onboardingField('ob-brittany-name', 'Brittany display name', s.brittanyDisplay)}
+        ${onboardingField('ob-justin-name', 'Non-custodial parent display name', s.justinDisplay)}
+        ${parentRoleSelect('ob-justin-role', 'Non-custodial parent visible role', s.justinRole)}
         ${onboardingField('ob-justin-email', 'Justin email', emails.Justin || '', 'email')}
+        ${onboardingField('ob-brittany-name', 'Custodial parent display name', s.brittanyDisplay)}
+        ${parentRoleSelect('ob-brittany-role', 'Custodial parent visible role', s.brittanyRole)}
         ${onboardingField('ob-brittany-email', 'Brittany email', emails.Brittany || '', 'email')}
-        ${onboardingField('ob-justin-role', 'Justin visible role', s.justinRole)}
-        ${onboardingField('ob-brittany-role', 'Brittany visible role', s.brittanyRole)}
       </div>
       <div class="onboarding-callout">Emails power the summer notice draft today and give the app a clean path for future reminders and setup flows.</div>`
     );
@@ -4771,12 +4782,12 @@ function renderSettings(){
     <div class="settings-section parents">
       <div class="settings-section-title"><span>Parents</span></div>
       <div class="settings-grid">
-        ${settingsField('set-justin-name', 'Justin display name', s.justinDisplay)}
-        ${settingsField('set-brittany-name', 'Brittany display name', s.brittanyDisplay)}
+        ${settingsField('set-justin-name', 'Non-custodial parent display name', s.justinDisplay)}
+        ${parentRoleSelect('set-justin-role', 'Non-custodial parent visible role', s.justinRole)}
         ${settingsField('set-justin-email', 'Justin email', emails.Justin || '', 'email')}
+        ${settingsField('set-brittany-name', 'Custodial parent display name', s.brittanyDisplay)}
+        ${parentRoleSelect('set-brittany-role', 'Custodial parent visible role', s.brittanyRole)}
         ${settingsField('set-brittany-email', 'Brittany email', emails.Brittany || '', 'email')}
-        ${settingsField('set-justin-role', 'Justin visible role', s.justinRole)}
-        ${settingsField('set-brittany-role', 'Brittany visible role', s.brittanyRole)}
       </div>
       <div class="settings-status premium" style="margin-top:9px">Custodial/noncustodial logic stays preserved internally for IPG calculations. These fields only clean up what the app displays.</div>
     </div>
@@ -5026,7 +5037,7 @@ function renderPinGate() {
   if (eyebrow) eyebrow.textContent = welcomeCalendarName();
   if (benefits) benefits.style.display = 'grid';
   if (loading) loading.classList.remove('show');
-  if (isFirebaseAuthRequired() && !isFirebaseAuthSettled()) {
+  if (isFirebaseAuthRequired() && !isFirebaseAuthSettled() && !isLocalPreviewOnly()) {
     title.textContent = 'Welcome';
     sub.textContent = 'Checking secure access for this family calendar.';
     setup.style.display = 'none';
@@ -5181,7 +5192,7 @@ function enterLocalPreviewMode(){
 }
 
 setTimeout(() => {
-  if (!firebaseAuthHelpersReady() && isLocalWebPreview()) {
+  if (!firebaseAuthHelpersReady() && (isLocalWebPreview() || isLocalFilePreview())) {
     _v33FirebaseBootTimedOut = true;
     window._fbAuthSettled = true;
     window._fbAuthed = false;
