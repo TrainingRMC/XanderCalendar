@@ -761,6 +761,18 @@ body.auth-unlocked #who-gate{display:none}
 .travel-edit-banner.show{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .travel-edit-cancel{border:none;background:transparent;color:#dc2626;font-weight:900;cursor:pointer;font-family:'Nunito',sans-serif}
 .travel-empty{text-align:center;color:var(--muted);font-size:.84em;padding:14px;font-style:italic}
+.travel-draft-actions{display:flex;gap:7px;margin:-2px 0 10px;flex-wrap:wrap}
+.travel-draft-btn{border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.12);color:#047857;border-radius:8px;padding:8px 11px;font-size:.8em;font-weight:900;font-family:'Nunito',sans-serif;cursor:pointer;transition:background .14s,transform .12s}
+.travel-draft-btn:hover{background:rgba(16,185,129,.2);transform:translateY(-1px)}
+.travel-draft-btn.clear{border-color:rgba(100,116,139,.3);background:var(--bg-2);color:var(--muted)}
+.travel-draft-list{margin-bottom:12px}
+.travel-draft-empty{font-size:.78em;color:var(--muted);background:var(--bg-2);border:1px dashed var(--border);border-radius:9px;padding:9px 11px;line-height:1.35}
+.travel-draft-item{display:flex;align-items:flex-start;gap:9px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.24);border-radius:9px;padding:9px 10px;margin-bottom:7px}
+.travel-draft-meta{flex:1;min-width:0}
+.travel-draft-dates{font-weight:900;font-family:'Nunito',sans-serif;font-size:.84em;color:var(--text)}
+.travel-draft-label{font-size:.76em;color:var(--muted);margin-top:2px}
+.travel-draft-remove{border:none;background:transparent;color:#dc2626;font-size:1.05em;font-weight:900;line-height:1;cursor:pointer;padding:2px 5px;border-radius:5px}
+.travel-draft-remove:hover{background:rgba(220,38,38,.1)}
 
 /* Make the existing log drawer match dark theme */
 :root[data-theme="dark"] #log-drawer{background:var(--card-elev)}
@@ -803,6 +815,8 @@ body.auth-unlocked #who-gate{display:none}
 :root[data-theme="dark"] .pw-error{background:rgba(220,38,38,.18);color:#fca5a5}
 :root[data-theme="dark"] .travel-modal{background:var(--card-elev)}
 :root[data-theme="dark"] .travel-item{background:var(--bg-2)}
+:root[data-theme="dark"] .travel-draft-btn{color:#6ee7b7}
+:root[data-theme="dark"] .travel-draft-item{background:rgba(16,185,129,.12)}
 :root[data-theme="dark"] #pw-input{background:var(--bg-2);color:var(--text);border-color:var(--border)}
 :root[data-theme="dark"] .who-card{background:var(--card-elev);color:var(--text)}
 :root[data-theme="dark"] .who-title{color:var(--text)}
@@ -2359,16 +2373,22 @@ body.drawer-open{overflow:hidden}
       <div id="travel-save-status" class="save-confidence" style="display:none"></div>
 
       <div class="field-lbl">Start Date</div>
-      <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','start')">
+      <input type="date" class="inp" id="tr-start" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','start');updateTravelEditMode()">
 
       <div class="field-lbl">End Date</div>
-      <input type="date" class="inp" id="tr-end" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','end')">
+      <input type="date" class="inp" id="tr-end" min="2026-03-01" max="2028-12-31" onchange="syncDateRange('tr-start','tr-end','end');updateTravelEditMode()">
 
       <div class="field-lbl">Trip Label (optional)</div>
       <input class="inp" id="tr-label" placeholder="e.g. Chicago Conference, Customer Visit…">
 
       <div class="field-lbl">Notes</div>
       <textarea class="ta" id="tr-notes" placeholder="Hotel, flight times, contact info…"></textarea>
+
+      <div class="travel-draft-actions" id="travel-draft-actions">
+        <button class="travel-draft-btn" onclick="addTravelDraftRange()">+ Add Another Week / Range</button>
+        <button class="travel-draft-btn clear" onclick="clearTravelDraftRanges()">Clear queued</button>
+      </div>
+      <div class="travel-draft-list" id="travel-draft-list"></div>
 
       <div class="btn-row">
         <button class="btn btn-cancel" onclick="closeTravel()">Cancel</button>
@@ -7406,6 +7426,7 @@ function validDate(y, m, d) {
 
 let travelEntries = []; // {id, start, end, label, notes, by, createdAt}
 let editingTravelId = null;
+let travelDraftEntries = [];
 
 function travelAckKey(id){ return 'travel-' + id; }
 function travelOtherParent(t){ return t.by === 'Justin' ? 'Brittany' : 'Justin'; }
@@ -7442,6 +7463,7 @@ function acknowledgeTravel(id){
 
 function openTravel(prefillStart, prefillEnd) {
   editingTravelId = null;
+  travelDraftEntries = [];
   document.getElementById('tr-start').value = prefillStart || '';
   document.getElementById('tr-end').value = prefillEnd || prefillStart || '';
   document.getElementById('tr-label').value = '';
@@ -7462,6 +7484,82 @@ function closeTravel() {
   document.getElementById('travel-overlay').classList.remove('show');
 }
 
+function currentTravelDraftFromInputs() {
+  return {
+    start: document.getElementById('tr-start').value,
+    end: document.getElementById('tr-end').value,
+    label: document.getElementById('tr-label').value.trim(),
+    notes: document.getElementById('tr-notes').value.trim()
+  };
+}
+
+function isCompleteTravelDraft(draft) {
+  return !!(draft && draft.start && draft.end);
+}
+
+function validateTravelDraft(draft) {
+  if (!draft.start || !draft.end) return 'Please pick start and end dates';
+  if (draft.end < draft.start) return 'End date must be on or after start date';
+  return '';
+}
+
+function travelDraftSaveCount() {
+  if (editingTravelId) return 0;
+  const current = currentTravelDraftFromInputs();
+  const currentIncluded = isCompleteTravelDraft(current) ? 1 : 0;
+  return travelDraftEntries.length + currentIncluded;
+}
+
+function renderTravelDraftList() {
+  const list = document.getElementById('travel-draft-list');
+  const actions = document.getElementById('travel-draft-actions');
+  if (!list || !actions) return;
+  const editing = !!editingTravelId;
+  actions.style.display = editing ? 'none' : 'flex';
+  list.style.display = editing ? 'none' : 'block';
+  if (editing) return;
+
+  if (!travelDraftEntries.length) {
+    list.innerHTML = `<div class="travel-draft-empty">Need multiple travel weeks? Enter the first range, tap <b>Add Another Week / Range</b>, then repeat. The final Save button sends all queued ranges at once.</div>`;
+  } else {
+    list.innerHTML = travelDraftEntries.map((t, i) => `
+      <div class="travel-draft-item">
+        <div class="travel-item-icon">✈️</div>
+        <div class="travel-draft-meta">
+          <div class="travel-draft-dates">${fmtDate(t.start)} → ${fmtDate(t.end)} · ${daysBetween(t.start, t.end)} day${daysBetween(t.start, t.end)===1?'':'s'}</div>
+          ${t.label ? `<div class="travel-draft-label">${_v13EscapeHtml(t.label)}</div>` : ''}
+          ${t.notes ? `<div class="travel-draft-label">${_v13EscapeHtml(t.notes)}</div>` : ''}
+        </div>
+        <button class="travel-draft-remove" onclick="removeTravelDraftRange(${i})" title="Remove queued range">×</button>
+      </div>`).join('');
+  }
+  updateTravelEditMode();
+}
+
+function addTravelDraftRange() {
+  if (editingTravelId) return;
+  const draft = currentTravelDraftFromInputs();
+  const err = validateTravelDraft(draft);
+  if (err) { alert(err); return; }
+  travelDraftEntries.push(draft);
+  document.getElementById('tr-start').value = '';
+  document.getElementById('tr-end').value = '';
+  document.getElementById('tr-label').value = '';
+  document.getElementById('tr-notes').value = '';
+  renderTravelDraftList();
+  showToast('Travel range queued');
+}
+
+function removeTravelDraftRange(index) {
+  travelDraftEntries.splice(index, 1);
+  renderTravelDraftList();
+}
+
+function clearTravelDraftRanges() {
+  travelDraftEntries = [];
+  renderTravelDraftList();
+}
+
 function updateTravelEditMode() {
   const banner = document.getElementById('travel-edit-banner');
   const text = document.getElementById('travel-edit-text');
@@ -7469,18 +7567,25 @@ function updateTravelEditMode() {
   const editing = editingTravelId ? (travelEntries || []).find(t => t.id === editingTravelId) : null;
   if (banner) banner.classList.toggle('show', !!editing);
   if (text && editing) text.textContent = `Editing ${fmtDate(editing.start)} → ${fmtDate(editing.end)}`;
-  if (saveBtn) saveBtn.textContent = editing ? '✓ Update Travel' : '✈️ Add & Notify';
+  if (saveBtn) {
+    if (editing) saveBtn.textContent = '✓ Update Travel';
+    else {
+      const count = travelDraftSaveCount();
+      saveBtn.textContent = count > 1 ? `✈️ Save ${count} Trips & Notify` : '✈️ Add & Notify';
+    }
+  }
 }
 
 function editTravel(id) {
   const t = (travelEntries || []).find(x => x.id === id);
   if (!t) return;
   editingTravelId = id;
+  travelDraftEntries = [];
   document.getElementById('tr-start').value = t.start || '';
   document.getElementById('tr-end').value = t.end || t.start || '';
   document.getElementById('tr-label').value = t.label || '';
   document.getElementById('tr-notes').value = t.notes || '';
-  updateTravelEditMode();
+  renderTravelDraftList();
   showToast('Editing travel');
 }
 
@@ -7490,7 +7595,7 @@ function cancelTravelEdit() {
   document.getElementById('tr-end').value = '';
   document.getElementById('tr-label').value = '';
   document.getElementById('tr-notes').value = '';
-  updateTravelEditMode();
+  renderTravelDraftList();
 }
 
 function renderTravelList() {
@@ -7499,6 +7604,7 @@ function renderTravelList() {
     list.innerHTML = `<div class="travel-list-title">Active Travel</div>
       <div class="travel-empty">No travel scheduled yet</div>`;
     updateTravelEditMode();
+    renderTravelDraftList();
     return;
   }
   // Sort by start date
@@ -7530,24 +7636,35 @@ function renderTravelList() {
   }
   list.innerHTML = html;
   updateTravelEditMode();
+  renderTravelDraftList();
 }
 
 async function saveTravel() {
-  const start = document.getElementById('tr-start').value;
-  const end = document.getElementById('tr-end').value;
-  const label = document.getElementById('tr-label').value.trim();
-  const notes = document.getElementById('tr-notes').value.trim();
+  const formDraft = currentTravelDraftFromInputs();
+  const start = formDraft.start;
+  const end = formDraft.end;
+  const label = formDraft.label;
+  const notes = formDraft.notes;
 
-  if (!start || !end) { alert('Please pick start and end dates'); return; }
-  if (end < start) { alert('End date must be on or after start date'); return; }
+  if (editingTravelId || travelDraftEntries.length === 0) {
+    const err = validateTravelDraft(formDraft);
+    if (err) { alert(err); return; }
+  } else if (start || end) {
+    const err = validateTravelDraft(formDraft);
+    if (err) { alert(err); return; }
+  }
   if (!currentUser) { alert('Please pick who you are first'); return; }
+
+  const batchDrafts = editingTravelId
+    ? []
+    : travelDraftEntries.concat(isCompleteTravelDraft(formDraft) ? [formDraft] : []);
 
   const saveBtn = document.getElementById('tr-save-btn');
   if (saveBtn) {
     saveBtn.disabled = true;
-    saveBtn.textContent = editingTravelId ? 'Saving Trip...' : 'Saving Travel...';
+    saveBtn.textContent = editingTravelId ? 'Saving Trip...' : (batchDrafts.length > 1 ? 'Saving Trips...' : 'Saving Travel...');
   }
-  setScopedSaveStatus('travel', 'saving', editingTravelId ? 'Saving travel changes to the shared calendar...' : 'Saving travel and notifying the other parent...');
+  setScopedSaveStatus('travel', 'saving', editingTravelId ? 'Saving travel changes to the shared calendar...' : (batchDrafts.length > 1 ? 'Saving travel trips and notifying the other parent...' : 'Saving travel and notifying the other parent...'));
 
   try {
     await _v26EnsureSharedDataBeforeTravelSave();
@@ -7590,24 +7707,33 @@ async function saveTravel() {
     pushBody = `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`;
     editingTravelId = null;
   } else {
-    const entry = {
-      id: 'tr_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-      start: start,
-      end: end,
-      label: label,
-      notes: notes,
-      by: currentUser,
-      createdAt: new Date().toISOString()
-    };
-    travelEntries.push(entry);
+    const createdAt = new Date().toISOString();
+    const draftsToSave = batchDrafts.length ? batchDrafts : [formDraft];
+    draftsToSave.forEach((draft, idx) => {
+      const entry = {
+        id: 'tr_' + Date.now() + '_' + idx + '_' + Math.floor(Math.random()*1000),
+        start: draft.start,
+        end: draft.end,
+        label: draft.label,
+        notes: draft.notes,
+        by: currentUser,
+        createdAt
+      };
+      travelEntries.push(entry);
+    });
 
-    // Log it
-    logAction(currentUser, 'travel',
-      `Added travel ${fmtDate(start)} → ${fmtDate(end)}${label ? ` (${label})` : ''}`
-    );
-
-    pushTitle = `${currentUser} added travel`;
-    pushBody = `${fmtDate(start)} → ${fmtDate(end)}${label ? ` · ${label}` : ''}`;
+    if (draftsToSave.length > 1) {
+      logAction(currentUser, 'travel', `Added ${draftsToSave.length} travel trips`);
+      pushTitle = `${currentUser} added ${draftsToSave.length} travel trips`;
+      pushBody = draftsToSave.map(t => `${fmtDate(t.start)} → ${fmtDate(t.end)}${t.label ? ` · ${t.label}` : ''}`).join('; ');
+    } else {
+      const only = draftsToSave[0];
+      logAction(currentUser, 'travel',
+        `Added travel ${fmtDate(only.start)} → ${fmtDate(only.end)}${only.label ? ` (${only.label})` : ''}`
+      );
+      pushTitle = `${currentUser} added travel`;
+      pushBody = `${fmtDate(only.start)} → ${fmtDate(only.end)}${only.label ? ` · ${only.label}` : ''}`;
+    }
   }
 
   try {
@@ -7626,9 +7752,10 @@ async function saveTravel() {
   }
 
   closeTravel();
+  travelDraftEntries = [];
   render();
   triggerPushNotification(other, pushTitle, pushBody, window.location.origin);
-  showToast('✈️ Travel saved & ' + other + ' notified');
+  showToast(batchDrafts.length > 1 ? `✈️ ${batchDrafts.length} trips saved & ${other} notified` : '✈️ Travel saved & ' + other + ' notified');
 }
 
 async function removeTravel(id) {
